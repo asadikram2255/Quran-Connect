@@ -1,4 +1,4 @@
-// Minimal, dependency-free JS (no change to search logic)
+// Minimal, dependency-free JS (kept simple to avoid breaking working features)
 
 const state = {
   manifest: null,
@@ -21,6 +21,13 @@ const state = {
   pairsByAyah: new Map(),     // ayah_id -> pair record
   hadithById: new Map(),      // hadith_id -> record (filled lazily)
 
+  // search caches (speed)
+  searchCache: {
+    en: new Map(),
+    ar: new Map(),
+    id: new Map(),
+  },
+
   // UI state
   selectedAyahId: null,
   lastResults: []
@@ -28,6 +35,12 @@ const state = {
 
 const els = {
   badge: document.getElementById("statusBadge"),
+
+  // landing / about
+  landingCard: document.getElementById("landingCard"),
+  startBtn: document.getElementById("startBtn"),
+  aboutBtn: document.getElementById("aboutBtn"),
+
   enQuery: document.getElementById("enQuery"),
   arQuery: document.getElementById("arQuery"),
   idQuery: document.getElementById("idQuery"),
@@ -61,14 +74,28 @@ async function fetchJson(path){
   return await res.json();
 }
 
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
 // ---------- Normalization ----------
 function normEn(s){
   return (s || "").toLowerCase().replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
 }
+
+// Small English stopwords list to reduce irrelevant matches (kept tiny on purpose)
+const STOP_EN = new Set([
+  "the","a","an","and","or","but","if","then","than","to","of","in","on","at","by","for","from",
+  "with","without","into","over","under","between","within","about","as","is","are","was","were",
+  "be","been","being","it","this","that","these","those","i","you","he","she","they","we","my","your",
+  "his","her","their","our","me","him","them"
+]);
+
 function tokenizeEn(s){
   const t = normEn(s).split(" ").filter(Boolean);
-  return t.filter(x => x.length >= 2);
+  return t
+    .filter(x => x.length >= 2)
+    .filter(x => !STOP_EN.has(x));
 }
+
 function normAr(s){
   // mirror python normalization roughly
   return (s || "")
@@ -120,6 +147,29 @@ function maxAllowedEdits(len){
   return 2;
 }
 
+// Very light stemming (enough for spy/spying/spies etc.)
+// returns a small set: original + a few simplified forms
+function stemVariantsEn(tok){
+  const out = new Set([tok]);
+  let t = tok;
+
+  // plural/3rd person
+  if(t.endsWith("ies") && t.length > 4) out.add(t.slice(0,-3) + "y");
+  if(t.endsWith("es") && t.length > 3) out.add(t.slice(0,-2));
+  if(t.endsWith("s") && t.length > 3) out.add(t.slice(0,-1));
+
+  // common suffixes
+  if(t.endsWith("ing") && t.length > 5){
+    out.add(t.slice(0,-3));     // spying -> spy
+    out.add(t.slice(0,-3) + "e"); // making -> make
+  }
+  if(t.endsWith("ed") && t.length > 4) out.add(t.slice(0,-2));
+  if(t.endsWith("ly") && t.length > 4) out.add(t.slice(0,-2));
+
+  // keep only reasonable lengths
+  return Array.from(out).filter(x => x.length >= 2);
+}
+
 // ---------- Shard loading ----------
 function surahFromAyahId(ayahId){
   const p = ayahId.split(":");
@@ -160,10 +210,15 @@ async function ensureHadithById(hadithId){
 
 // ---------- Search ----------
 async function searchByAyahId(ayahId){
-  const surah = surahFromAyahId(ayahId);
+  const norm = ayahId.trim();
+  if(state.searchCache.id.has(norm)) return state.searchCache.id.get(norm);
+
+  const surah = surahFromAyahId(norm);
   await ensureSurahLoaded(surah);
-  const rec = state.quranById.get(ayahId);
-  return rec ? [rec] : [];
+  const rec = state.quranById.get(norm);
+  const out = rec ? [rec] : [];
+  state.searchCache.id.set(norm, out);
+  return out;
 }
 
 function unique(arr){
@@ -171,48 +226,111 @@ function unique(arr){
 }
 
 async function searchByArabicKeyword(q){
-  const tok = tokenizeAr(q)[0];
+  const norm = normAr(q);
+  if(state.searchCache.ar.has(norm)) return state.searchCache.ar.get(norm);
+
+  // Arabic: use first token only (fast + predictable)
+  const tok = tokenizeAr(norm)[0];
   if(!tok) return [];
   const ids = state.arTokenToAyah[tok] || [];
   const surahs = unique(ids.map(surahFromAyahId));
   for(const s of surahs) await ensureSurahLoaded(s);
-  return ids.map(id => state.quranById.get(id)).filter(Boolean);
+  const out = ids.map(id => state.quranById.get(id)).filter(Boolean);
+  state.searchCache.ar.set(norm, out);
+  return out;
 }
 
-async function searchByEnglishFuzzy(q){
-  const toks = tokenizeEn(q);
-  if(!toks.length) return [];
+async function searchByEnglishSmart(q){
+  const norm = normEn(q);
+  if(state.searchCache.en.has(norm)) return state.searchCache.en.get(norm);
 
-  const matchedAyahScores = new Map();
-  for(const qt of toks){
-    const grams = trigrams(qt);
+  const toks0 = tokenizeEn(norm);
+  if(!toks0.length) return [];
+
+  // For phrase-like queries, limit token count so the search stays fast and meaningful
+  const toks = toks0.slice(0, 8);
+
+  const matchedAyahScores = new Map();     // ayah_id -> score
+  const matchedTokenCounts = new Map();    // ayah_id -> number of query tokens it matched
+
+  // time-slice heavy loops so UI doesn't feel "stuck"
+  let lastYield = performance.now();
+
+  for(let ti=0; ti<toks.length; ti++){
+    const qt = toks[ti];
+    const variants = stemVariantsEn(qt);
+
+    // gather candidate tokens (from trigram index)
     const candidates = new Set();
-    for(const g of grams){
-      const c = state.enTriToTokens[g] || [];
-      for(const t of c) candidates.add(t);
+    for(const v of variants){
+      const grams = trigrams(v);
+      for(const g of grams){
+        const c = state.enTriToTokens[g] || [];
+        for(const t of c) candidates.add(t);
+      }
     }
 
     const maxEd = maxAllowedEdits(qt.length);
     const good = [];
+
+    let checked = 0;
     for(const t of candidates){
+      checked++;
       if(Math.abs(t.length - qt.length) > maxEd) continue;
-      const d = levenshtein(qt, t);
-      if(d <= maxEd) good.push({t, d});
+
+      // compare against best variant
+      let bestD = 999;
+      for(const v of variants){
+        const d = levenshtein(v, t);
+        if(d < bestD) bestD = d;
+        if(bestD === 0) break;
+      }
+      if(bestD <= maxEd) good.push({t, d: bestD});
+
+      // yield every ~10ms
+      if(checked % 800 === 0){
+        const now = performance.now();
+        if(now - lastYield > 10){
+          await sleep(0);
+          lastYield = now;
+        }
+      }
     }
 
     good.sort((a,b)=>a.d-b.d);
-    const best = good.slice(0, 10);
+    const best = good.slice(0, 12);
+
+    // Track which ayat matched this query token at least once
+    const ayatMatchedThisToken = new Set();
 
     for(const m of best){
       const ids = state.enTokenToAyah[m.t] || [];
+      const base = (maxEd - m.d + 1);
+      const exactBonus = (m.d === 0 ? 2 : 0);
+
       for(const id of ids){
         const prev = matchedAyahScores.get(id) || 0;
-        matchedAyahScores.set(id, prev + (maxEd - m.d + 1));
+        matchedAyahScores.set(id, prev + base + exactBonus);
+        ayatMatchedThisToken.add(id);
       }
+    }
+
+    // update token-match count (helps avoid totally irrelevant ayat)
+    for(const id of ayatMatchedThisToken){
+      matchedTokenCounts.set(id, (matchedTokenCounts.get(id) || 0) + 1);
+    }
+
+    // small progress hint for long searches
+    if(toks.length > 2){
+      setBadge("warn", `Searching… (${ti+1}/${toks.length})`);
     }
   }
 
+  // Require the result to match at least some of the query tokens
+  const minMatch = Math.max(1, Math.ceil(toks.length * 0.6));
+
   const ranked = Array.from(matchedAyahScores.entries())
+    .filter(([id,_score]) => (matchedTokenCounts.get(id) || 0) >= minMatch)
     .sort((a,b)=>b[1]-a[1])
     .slice(0, 200)
     .map(x => x[0]);
@@ -220,7 +338,10 @@ async function searchByEnglishFuzzy(q){
   const surahs = unique(ranked.map(surahFromAyahId));
   for(const s of surahs) await ensureSurahLoaded(s);
 
-  return ranked.map(id => state.quranById.get(id)).filter(Boolean);
+  const out = ranked.map(id => state.quranById.get(id)).filter(Boolean);
+
+  state.searchCache.en.set(norm, out);
+  return out;
 }
 
 // ---------- Rendering ----------
@@ -364,7 +485,7 @@ async function openDetail(ayahId){
       if(i % 25 === 0){
         renderPairList(els.semHadith, semH, "hadith");
         renderPairList(els.lexHadith, lexH, "hadith");
-        await new Promise(r=>setTimeout(r, 10));
+        await sleep(10);
       }
     }
     renderPairList(els.semHadith, semH, "hadith");
@@ -372,6 +493,77 @@ async function openDetail(ayahId){
   }, 40);
 
   setTab("semantic");
+}
+
+// ---------- UX helpers ----------
+function showLanding(show){
+  if(!els.landingCard) return;
+  els.landingCard.classList.toggle("hidden", !show);
+  if(show){
+    // keep the landing in view
+    els.landingCard.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+}
+
+function clearOtherInputs(active){
+  if(active === "en"){
+    els.arQuery.value = "";
+    els.idQuery.value = "";
+  } else if(active === "ar"){
+    els.enQuery.value = "";
+    els.idQuery.value = "";
+  } else if(active === "id"){
+    els.enQuery.value = "";
+    els.arQuery.value = "";
+  }
+}
+
+function getFilledInputs(){
+  const en = els.enQuery.value.trim();
+  const ar = els.arQuery.value.trim();
+  const id = els.idQuery.value.trim();
+  return {en, ar, id, count: (en?1:0)+(ar?1:0)+(id?1:0)};
+}
+
+async function runSearch(){
+  const {en, ar, id, count} = getFilledInputs();
+
+  // New search resets selection highlight
+  state.selectedAyahId = null;
+
+  els.detailView.classList.add("hidden");
+  els.detailEmpty.classList.remove("hidden");
+
+  if(count === 0){
+    setBadge("warn", "Enter a query first");
+    renderResults([]);
+    return;
+  }
+  if(count > 1){
+    setBadge("warn", "Please use ONE input: English OR Arabic OR Ayah ID");
+    return;
+  }
+
+  let results = [];
+  try{
+    setBadge("warn", "Searching…");
+    // allow paint before heavy work
+    await sleep(0);
+
+    if(id){
+      results = await searchByAyahId(id);
+    } else if(ar){
+      results = await searchByArabicKeyword(ar);
+    } else if(en){
+      results = await searchByEnglishSmart(en);
+    }
+
+    renderResults(results);
+    setBadge("ok", `Found ${results.length} ayat`);
+  } catch(err){
+    console.error(err);
+    setBadge("err", "Search failed");
+  }
 }
 
 // ---------- Main ----------
@@ -389,44 +581,55 @@ async function init(){
     state.arTokenToAyah = await fetchJson(manifest.paths.arabic_token_to_ayahids);
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
+
+    // Landing / About actions (safe if missing)
+    if(els.startBtn){
+      els.startBtn.addEventListener("click", ()=>{
+        showLanding(false);
+        // scroll to search box
+        els.enQuery.scrollIntoView({behavior:"smooth", block:"center"});
+        els.enQuery.focus();
+      });
+    }
+    if(els.aboutBtn){
+      els.aboutBtn.addEventListener("click", ()=>showLanding(true));
+    }
+
+    // Example buttons (safe if none)
+    document.querySelectorAll(".exampleBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const fill = btn.dataset.fill;
+        const val = btn.dataset.value || "";
+        if(fill === "en"){ els.enQuery.value = val; clearOtherInputs("en"); }
+        if(fill === "ar"){ els.arQuery.value = val; clearOtherInputs("ar"); }
+        if(fill === "id"){ els.idQuery.value = val; clearOtherInputs("id"); }
+        showLanding(false);
+        runSearch();
+      });
+    });
+
+    // “One input at a time” helper: when user starts typing, clear other boxes
+    els.enQuery.addEventListener("input", ()=>{ if(els.enQuery.value.trim()) clearOtherInputs("en"); });
+    els.arQuery.addEventListener("input", ()=>{ if(els.arQuery.value.trim()) clearOtherInputs("ar"); });
+    els.idQuery.addEventListener("input", ()=>{ if(els.idQuery.value.trim()) clearOtherInputs("id"); });
+
+    // Enter key triggers search
+    [els.enQuery, els.arQuery, els.idQuery].forEach(inp=>{
+      inp.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){
+          e.preventDefault();
+          runSearch();
+        }
+      });
+    });
+
   } catch(err){
     console.error(err);
     setBadge("err", "Failed to load required JSON files");
   }
 }
 
-els.searchBtn.onclick = async () => {
-  const en = els.enQuery.value.trim();
-  const ar = els.arQuery.value.trim();
-  const id = els.idQuery.value.trim();
-
-  // New search resets selection highlight
-  state.selectedAyahId = null;
-
-  els.detailView.classList.add("hidden");
-  els.detailEmpty.classList.remove("hidden");
-
-  let results = [];
-  try{
-    setBadge("warn", "Searching…");
-    if(id){
-      results = await searchByAyahId(id);
-    } else if(ar){
-      results = await searchByArabicKeyword(ar);
-    } else if(en){
-      results = await searchByEnglishFuzzy(en);
-    } else {
-      setBadge("warn", "Enter a query first");
-      renderResults([]);
-      return;
-    }
-    renderResults(results);
-    setBadge("ok", `Found ${results.length} ayat`);
-  } catch(err){
-    console.error(err);
-    setBadge("err", "Search failed");
-  }
-};
+els.searchBtn.onclick = runSearch;
 
 els.clearBtn.onclick = () => {
   els.enQuery.value = "";

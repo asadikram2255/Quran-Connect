@@ -127,9 +127,63 @@
     <div class="header">
       <div>
         <div class="h1">Quran Better For Me</div>
-        <div class="sub">A Quran &amp; Hadith semantic + lexical understanding system (static GitHub Pages)</div>
+        <div class="sub">A simple Quran &amp; Hadith tool to explore meaning connections (works on GitHub Pages)</div>
       </div>
-      <div id="statusBadge" class="badge warn">Loading…</div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button id="aboutBtn" class="btn ghost smallBtn" type="button">About</button>
+        <div id="statusBadge" class="badge warn">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Landing / About -->
+    <div id="landingCard" class="card landing">
+      <div class="landingTop">
+        <div>
+          <div class="landingTitle">Why this exists</div>
+          <div class="landingText">
+            Many people want to understand the Qur’an more deeply, but it’s hard to connect related meanings across different ayat and authentic Hadith.
+            This website helps you explore those connections quickly, in one place.
+          </div>
+        </div>
+        <button id="startBtn" class="btn startBtn" type="button">Start Using</button>
+      </div>
+
+      <div class="landingGrid">
+        <div class="landingBox">
+          <div class="landingH">What problems it solves</div>
+          <ul class="landingList">
+            <li>Find ayat related to a topic (English or Arabic keyword).</li>
+            <li>See “Meaning Match” and “Word Match” connections instantly.</li>
+            <li>View related Qur’an ayat + Hadith side-by-side to learn context.</li>
+          </ul>
+        </div>
+
+        <div class="landingBox">
+          <div class="landingH">How to use (simple)</div>
+          <ol class="landingList">
+            <li><b>Use only ONE input</b>: English OR Arabic OR Ayah ID.</li>
+            <li>Press <b>Search</b> (or hit <b>Enter</b>).</li>
+            <li>Click an ayah in <b>Search Results</b> to load pairs.</li>
+          </ol>
+          <div class="landingNote">
+            Tip: Results are <b>suggested links</b> to help study. Always verify with trusted tafseer and scholars.
+          </div>
+        </div>
+
+        <div class="landingBox">
+          <div class="landingH">Examples you can try</div>
+          <div class="examples">
+            <button class="chip exampleBtn" data-fill="en" data-value="justice" type="button">justice</button>
+            <button class="chip exampleBtn" data-fill="en" data-value="patience" type="button">patience</button>
+            <button class="chip exampleBtn" data-fill="ar" data-value="عدل" type="button">عدل</button>
+            <button class="chip exampleBtn" data-fill="ar" data-value="صبر" type="button">صبر</button>
+            <button class="chip exampleBtn" data-fill="id" data-value="2:177" type="button">2:177</button>
+          </div>
+          <div class="landingSmall">
+            Still improving — suggestions are welcome.
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Search row -->
@@ -176,16 +230,16 @@
               <div class="chip" style="opacity:.9;">Quran Top 20 + Hadith Top 50</div>
             </div>
             <div class="tabs" style="margin:0;">
-              <button class="tab active" data-tab="semantic">Semantic</button>
-              <button class="tab" data-tab="lexical">Lexical</button>
+              <button class="tab active" data-tab="semantic">Meaning Match</button>
+              <button class="tab" data-tab="lexical">Word Match</button>
             </div>
           </div>
 
           <div id="detailEmpty" class="detail">
             <div class="ayahBox">
               <div style="color:var(--muted);line-height:1.6;">
-                Select an ayah from <b>Search Results</b> to load Quran + Hadith pairings here.
-                Quran (20 Pairs)                                      Hadith (50 Pairs)
+                Select an ayah from <b>Search Results</b> to load pairings here.<br>
+                <span class="small">Quran: Top 20 • Hadith: Top 50</span>
               </div>
             </div>
           </div>

@@ -92,7 +92,7 @@ input:focus{border-color:rgba(79,209,197,.5)}
 .stickyHead{
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 60;
 }
 
 .list{padding:10px 10px 14px}
@@ -198,6 +198,22 @@ input:focus{border-color:rgba(79,209,197,.5)}
 .small{color:var(--muted);font-size:12px;margin-top:6px}
 
 .footer{color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
+
+/* ---------- Landing / About ---------- */
+.smallBtn{padding:8px 10px;border-radius:12px;font-size:12px}
+.landing{padding:16px}
+.landingTop{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.landingTitle{font-size:18px;font-weight:800;margin-bottom:6px}
+.landingText{color:var(--muted);line-height:1.6}
+.startBtn{white-space:nowrap}
+.landingGrid{display:grid;grid-template-columns:1.2fr 1.2fr 1fr;gap:12px;margin-top:14px}
+.landingBox{border:1px solid var(--border);border-radius:16px;padding:12px;background:rgba(255,255,255,.02)}
+.landingH{font-weight:800;margin-bottom:8px;color:var(--text)}
+.landingList{margin:0;padding-left:18px;color:var(--muted);line-height:1.7}
+.landingNote{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6}
+.examples{display:flex;flex-wrap:wrap;gap:8px}
+.exampleBtn{cursor:pointer}
+.landingSmall{margin-top:10px;color:var(--muted);font-size:12px}
 
 @media (max-width: 1100px){
   body{overflow:auto;}
