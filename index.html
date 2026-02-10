@@ -8,14 +8,12 @@
 
   <!-- Layout + behavior fixes (kept here so you don’t need to touch styles.css) -->
   <style>
-    /* Make the app wide and readable */
     .app{
       max-width: 1800px !important;
       width: min(98vw, 1800px) !important;
       margin: 0 auto !important;
     }
 
-    /* Turn the page into a fixed-height "app" so panels scroll instead of the whole page */
     html, body { height: 100%; }
     body { overflow: hidden; }
 
@@ -25,7 +23,6 @@
       flex-direction: column;
     }
 
-    /* Header + search should stay visible */
     .header { flex: 0 0 auto; }
     .card.stickyTop{
       position: sticky;
@@ -33,15 +30,13 @@
       z-index: 50;
     }
 
-    /* Main results area should take remaining height */
     .results{
       flex: 1 1 auto;
-      min-height: 0; /* critical for nested scrolling */
+      min-height: 0;
       display: flex;
       flex-direction: column;
     }
 
-    /* Two main columns */
     .layout{
       flex: 1 1 auto;
       min-height: 0;
@@ -51,21 +46,19 @@
       align-items: stretch;
     }
 
-    /* Each panel is a column with internal scrolling */
     .panel{
       min-height: 0;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
-    /* Panel headers always visible */
     .panelTitle.stickyHead{
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 60;
     }
 
-    /* Left: Search Results scroll */
     .scrollBody{
       flex: 1 1 auto;
       min-height: 0;
@@ -73,13 +66,13 @@
       padding-right: 4px;
     }
 
-    /* Right: Pairs scroll */
     .detail{
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
       flex-direction: column;
     }
+
     .detailScroll{
       flex: 1 1 auto;
       min-height: 0;
@@ -87,7 +80,6 @@
       padding-right: 4px;
     }
 
-    /* Inside pairs: Quran + Hadith side-by-side */
     .twoCol{
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -95,22 +87,18 @@
       align-items: start;
     }
 
-    /* Selected ayah highlight in Search Results ONLY */
     .list .item.selected{
       outline: 2px solid rgba(80, 220, 255, 0.35);
       background: rgba(80, 220, 255, 0.08);
       border-radius: 12px;
     }
 
-    /* Slight readability improvements */
     .list .item{ padding: 12px 12px; }
     .txt[dir="rtl"], .pairBody [dir="rtl"]{ line-height: 1.9; }
     .tabs{ white-space: nowrap; }
 
-    /* Keep JS compatibility nodes fully hidden */
     .hiddenCompat{ display: none !important; }
 
-    /* Mobile fallback */
     @media (max-width: 1100px){
       body{ overflow: auto; }
       .app{ height: auto; }
@@ -235,53 +223,59 @@
             </div>
           </div>
 
-          <div id="detailEmpty" class="detail">
-            <div class="ayahBox">
-              <div style="color:var(--muted);line-height:1.6;">
-                Select an ayah from <b>Search Results</b> to load pairings here.<br>
-                <span class="small">Quran: Top 20 • Hadith: Top 50</span>
-              </div>
-            </div>
-          </div>
+          <!-- ✅ SINGLE STATE WRAPPER: prevents overlap forever -->
+          <div id="detailWrap" class="detailWrap" data-state="empty">
 
-          <!-- Detail view: NO selected ayah preview shown -->
-          <div id="detailView" class="detail hidden">
-            <!-- Keep for JS compatibility (but fully hidden) -->
-            <div class="hiddenCompat">
-              <div id="dAyahId"></div>
-              <div id="dArabic"></div>
-              <div id="dEnglish"></div>
-            </div>
-
-            <div class="detailScroll">
-              <div id="tabSemantic">
-                <div class="twoCol">
-                  <div class="subpanel">
-                    <div class="subTitle">Quran (Top 20)</div>
-                    <div id="semQuran" class="pairsList"></div>
-                  </div>
-                  <div class="subpanel">
-                    <div class="subTitle">Hadith (Top 50)</div>
-                    <div id="semHadith" class="pairsList"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div id="tabLexical" class="hidden">
-                <div class="twoCol">
-                  <div class="subpanel">
-                    <div class="subTitle">Quran (Top 20)</div>
-                    <div id="lexQuran" class="pairsList"></div>
-                  </div>
-                  <div class="subpanel">
-                    <div class="subTitle">Hadith (Top 50)</div>
-                    <div id="lexHadith" class="pairsList"></div>
-                  </div>
+            <!-- Empty state (only visible when data-state="empty") -->
+            <div id="detailEmpty" class="detailEmpty">
+              <div class="ayahBox">
+                <div style="color:var(--muted);line-height:1.6;">
+                  Select an ayah from <b>Search Results</b> to load pairings here.<br>
+                  <span class="small">Quran: Top 20 • Hadith: Top 50</span>
                 </div>
               </div>
             </div>
-            <!-- /detailScroll -->
+
+            <!-- Detail view (only visible when data-state="detail") -->
+            <div id="detailView" class="detailView">
+              <!-- Keep for JS compatibility (but fully hidden) -->
+              <div class="hiddenCompat">
+                <div id="dAyahId"></div>
+                <div id="dArabic"></div>
+                <div id="dEnglish"></div>
+              </div>
+
+              <div class="detailScroll">
+                <div id="tabSemantic">
+                  <div class="twoCol">
+                    <div class="subpanel">
+                      <div class="subTitle">Quran (Top 20)</div>
+                      <div id="semQuran" class="pairsList"></div>
+                    </div>
+                    <div class="subpanel">
+                      <div class="subTitle">Hadith (Top 50)</div>
+                      <div id="semHadith" class="pairsList"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="tabLexical" class="hidden">
+                  <div class="twoCol">
+                    <div class="subpanel">
+                      <div class="subTitle">Quran (Top 20)</div>
+                      <div id="lexQuran" class="pairsList"></div>
+                    </div>
+                    <div class="subpanel">
+                      <div class="subTitle">Hadith (Top 50)</div>
+                      <div id="lexHadith" class="pairsList"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /detailScroll -->
+            </div>
           </div>
+          <!-- /detailWrap -->
         </div>
 
       </div>

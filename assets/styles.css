@@ -15,10 +15,10 @@
 
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
-body{overflow:hidden;} /* stable layout; inner panes scroll */
+body{overflow:hidden;}
 
 .app{
-  max-width: 1800px; /* WIDENED */
+  max-width: 1800px;
   margin:0 auto;
   padding:16px 14px 20px;
   height:100vh;
@@ -58,14 +58,10 @@ input:focus{border-color:rgba(79,209,197,.5)}
   z-index: 50;
 }
 
-.results{
-  flex:1;
-  min-height:0;
-}
-
+.results{flex:1;min-height:0}
 .layout{
   display:grid;
-  grid-template-columns: 1.15fr 1.85fr; /* WIDENED */
+  grid-template-columns: 1.15fr 1.85fr;
   gap:14px;
   height:100%;
 }
@@ -118,13 +114,6 @@ input:focus{border-color:rgba(79,209,197,.5)}
 .item .txt{color:var(--text);opacity:.92}
 .item .subtxt{color:var(--muted);font-size:12px;margin-top:4px}
 
-.detail{
-  padding:12px 12px 14px;
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-  gap:10px;
-}
 .hidden{display:none}
 
 .ayahBox{
@@ -133,19 +122,6 @@ input:focus{border-color:rgba(79,209,197,.5)}
   padding:12px;
   background:rgba(255,255,255,.02);
 }
-
-.stickyAyah{
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background:linear-gradient(180deg,rgba(15,27,51,.96),rgba(12,22,43,.96));
-  backdrop-filter: blur(6px);
-}
-
-.ayahArabic{font-size:22px;line-height:1.8;text-align:right}
-.ayahEnglish{margin-top:10px;color:var(--muted);line-height:1.5}
-.metaRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.chip{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted);background:rgba(255,255,255,.02)}
 
 .tabs{display:flex;gap:8px;margin-top:12px}
 .tab{
@@ -157,9 +133,27 @@ input:focus{border-color:rgba(79,209,197,.5)}
 .detailScroll{
   flex:1;
   min-height:0;
-  overflow:auto; /* ONLY this scrolls => selected ayah stays visible */
+  overflow:auto;
   padding-right:6px;
 }
+
+/* ✅ RIGHT PANEL STATE WRAPPER (prevents overlap) */
+.detailWrap{
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding:12px 12px 14px;
+}
+
+.detailEmpty, .detailView{
+  min-height: 0;
+  flex: 1 1 auto;
+  display: none; /* default hidden; we switch via data-state */
+}
+
+.detailWrap[data-state="empty"] .detailEmpty{ display:flex; flex-direction:column; gap:10px; }
+.detailWrap[data-state="detail"] .detailView{ display:flex; flex-direction:column; min-height:0; }
 
 .twoCol{
   display:grid;
@@ -199,7 +193,7 @@ input:focus{border-color:rgba(79,209,197,.5)}
 
 .footer{color:var(--muted);font-size:12px;text-align:center;margin-top:6px}
 
-/* ---------- Landing / About ---------- */
+/* Landing */
 .smallBtn{padding:8px 10px;border-radius:12px;font-size:12px}
 .landing{padding:16px}
 .landingTop{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
@@ -221,6 +215,6 @@ input:focus{border-color:rgba(79,209,197,.5)}
   .grid3{grid-template-columns:1fr}
   .layout{grid-template-columns:1fr}
   .twoCol{grid-template-columns:1fr}
-  .stickyTop,.stickyHead,.stickyAyah{position:static;}
+  .stickyTop,.stickyHead{position:static;}
   .detailScroll{overflow:visible;}
 }

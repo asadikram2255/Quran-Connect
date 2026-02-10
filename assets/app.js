@@ -1,34 +1,23 @@
-// Minimal, dependency-free JS (kept simple to avoid breaking working features)
-
 const state = {
   manifest: null,
   shardMapQuran: null,
   shardMapPairs: null,
   shardMapHadith: null,
 
-  // Search indexes
   enTokenToAyah: null,
   enTriToTokens: null,
   arTokenToAyah: null,
 
-  // Caches
-  quranTextCache: new Map(),  // surah -> array of ayah records
-  pairCache: new Map(),       // surah -> array of pair records
-  hadithCache: new Map(),     // shardFile -> array of hadith records
+  quranTextCache: new Map(),
+  pairCache: new Map(),
+  hadithCache: new Map(),
 
-  // quick lookup caches
-  quranById: new Map(),       // ayah_id -> record
-  pairsByAyah: new Map(),     // ayah_id -> pair record
-  hadithById: new Map(),      // hadith_id -> record (filled lazily)
+  quranById: new Map(),
+  pairsByAyah: new Map(),
+  hadithById: new Map(),
 
-  // search caches (speed)
-  searchCache: {
-    en: new Map(),
-    ar: new Map(),
-    id: new Map(),
-  },
+  searchCache: { en: new Map(), ar: new Map(), id: new Map() },
 
-  // UI state
   selectedAyahId: null,
   lastResults: []
 };
@@ -36,7 +25,6 @@ const state = {
 const els = {
   badge: document.getElementById("statusBadge"),
 
-  // landing / about
   landingCard: document.getElementById("landingCard"),
   startBtn: document.getElementById("startBtn"),
   aboutBtn: document.getElementById("aboutBtn"),
@@ -48,8 +36,9 @@ const els = {
   clearBtn: document.getElementById("clearBtn"),
   resultsList: document.getElementById("resultsList"),
 
-  detailEmpty: document.getElementById("detailEmpty"),
-  detailView: document.getElementById("detailView"),
+  // ✅ new wrapper-state approach
+  detailWrap: document.getElementById("detailWrap"),
+
   dArabic: document.getElementById("dArabic"),
   dEnglish: document.getElementById("dEnglish"),
   dAyahId: document.getElementById("dAyahId"),
@@ -76,12 +65,18 @@ async function fetchJson(path){
 
 function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
+// ✅ single source of truth: right panel state
+function setDetailState(mode){
+  // mode: "empty" | "detail"
+  if(!els.detailWrap) return;
+  els.detailWrap.setAttribute("data-state", mode);
+}
+
 // ---------- Normalization ----------
 function normEn(s){
   return (s || "").toLowerCase().replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
 }
 
-// Small English stopwords list to reduce irrelevant matches (kept tiny on purpose)
 const STOP_EN = new Set([
   "the","a","an","and","or","but","if","then","than","to","of","in","on","at","by","for","from",
   "with","without","into","over","under","between","within","about","as","is","are","was","were",
@@ -91,13 +86,10 @@ const STOP_EN = new Set([
 
 function tokenizeEn(s){
   const t = normEn(s).split(" ").filter(Boolean);
-  return t
-    .filter(x => x.length >= 2)
-    .filter(x => !STOP_EN.has(x));
+  return t.filter(x => x.length >= 2).filter(x => !STOP_EN.has(x));
 }
 
 function normAr(s){
-  // mirror python normalization roughly
   return (s || "")
     .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,"")
     .replace(/\u0640/g,"")
@@ -120,7 +112,6 @@ function trigrams(tok){
   return out;
 }
 
-// Levenshtein distance (small tokens only)
 function levenshtein(a,b){
   if(a===b) return 0;
   const m=a.length, n=b.length;
@@ -147,26 +138,21 @@ function maxAllowedEdits(len){
   return 2;
 }
 
-// Very light stemming (enough for spy/spying/spies etc.)
-// returns a small set: original + a few simplified forms
 function stemVariantsEn(tok){
   const out = new Set([tok]);
   let t = tok;
 
-  // plural/3rd person
   if(t.endsWith("ies") && t.length > 4) out.add(t.slice(0,-3) + "y");
   if(t.endsWith("es") && t.length > 3) out.add(t.slice(0,-2));
   if(t.endsWith("s") && t.length > 3) out.add(t.slice(0,-1));
 
-  // common suffixes
   if(t.endsWith("ing") && t.length > 5){
-    out.add(t.slice(0,-3));     // spying -> spy
-    out.add(t.slice(0,-3) + "e"); // making -> make
+    out.add(t.slice(0,-3));
+    out.add(t.slice(0,-3) + "e");
   }
   if(t.endsWith("ed") && t.length > 4) out.add(t.slice(0,-2));
   if(t.endsWith("ly") && t.length > 4) out.add(t.slice(0,-2));
 
-  // keep only reasonable lengths
   return Array.from(out).filter(x => x.length >= 2);
 }
 
@@ -192,7 +178,6 @@ async function ensureSurahLoaded(surah){
   }
 }
 
-// Hadith shard map is array [{start,end,file}]
 async function ensureHadithById(hadithId){
   if(state.hadithById.has(hadithId)) return;
 
@@ -229,7 +214,6 @@ async function searchByArabicKeyword(q){
   const norm = normAr(q);
   if(state.searchCache.ar.has(norm)) return state.searchCache.ar.get(norm);
 
-  // Arabic: use first token only (fast + predictable)
   const tok = tokenizeAr(norm)[0];
   if(!tok) return [];
   const ids = state.arTokenToAyah[tok] || [];
@@ -247,20 +231,17 @@ async function searchByEnglishSmart(q){
   const toks0 = tokenizeEn(norm);
   if(!toks0.length) return [];
 
-  // For phrase-like queries, limit token count so the search stays fast and meaningful
   const toks = toks0.slice(0, 8);
 
-  const matchedAyahScores = new Map();     // ayah_id -> score
-  const matchedTokenCounts = new Map();    // ayah_id -> number of query tokens it matched
+  const matchedAyahScores = new Map();
+  const matchedTokenCounts = new Map();
 
-  // time-slice heavy loops so UI doesn't feel "stuck"
   let lastYield = performance.now();
 
   for(let ti=0; ti<toks.length; ti++){
     const qt = toks[ti];
     const variants = stemVariantsEn(qt);
 
-    // gather candidate tokens (from trigram index)
     const candidates = new Set();
     for(const v of variants){
       const grams = trigrams(v);
@@ -278,7 +259,6 @@ async function searchByEnglishSmart(q){
       checked++;
       if(Math.abs(t.length - qt.length) > maxEd) continue;
 
-      // compare against best variant
       let bestD = 999;
       for(const v of variants){
         const d = levenshtein(v, t);
@@ -287,7 +267,6 @@ async function searchByEnglishSmart(q){
       }
       if(bestD <= maxEd) good.push({t, d: bestD});
 
-      // yield every ~10ms
       if(checked % 800 === 0){
         const now = performance.now();
         if(now - lastYield > 10){
@@ -300,7 +279,6 @@ async function searchByEnglishSmart(q){
     good.sort((a,b)=>a.d-b.d);
     const best = good.slice(0, 12);
 
-    // Track which ayat matched this query token at least once
     const ayatMatchedThisToken = new Set();
 
     for(const m of best){
@@ -315,18 +293,15 @@ async function searchByEnglishSmart(q){
       }
     }
 
-    // update token-match count (helps avoid totally irrelevant ayat)
     for(const id of ayatMatchedThisToken){
       matchedTokenCounts.set(id, (matchedTokenCounts.get(id) || 0) + 1);
     }
 
-    // small progress hint for long searches
     if(toks.length > 2){
       setBadge("warn", `Searching… (${ti+1}/${toks.length})`);
     }
   }
 
-  // Require the result to match at least some of the query tokens
   const minMatch = Math.max(1, Math.ceil(toks.length * 0.6));
 
   const ranked = Array.from(matchedAyahScores.entries())
@@ -438,7 +413,6 @@ function renderPairList(container, items, kind){
 }
 
 async function openDetail(ayahId){
-  // ✅ Only “selection UI”: highlight in Search Results (no preview pane shown)
   state.selectedAyahId = ayahId;
   renderResults(state.lastResults);
 
@@ -449,10 +423,9 @@ async function openDetail(ayahId){
   const pairs = state.pairsByAyah.get(ayahId);
   if(!rec || !pairs) return;
 
-  els.detailEmpty.classList.add("hidden");
-  els.detailView.classList.remove("hidden");
+  // ✅ ensures ONLY detail content is visible
+  setDetailState("detail");
 
-  // Keep compatibility fields updated (but they’re hidden in HTML)
   els.dArabic.textContent = rec.arabic;
   els.dEnglish.textContent = rec.english;
   els.dAyahId.textContent = rec.ayah_id;
@@ -468,7 +441,6 @@ async function openDetail(ayahId){
   const semH = pairs.semantic.hadith_top50 || [];
   const lexH = pairs.lexical.hadith_top50 || [];
 
-  // quick-load some hadith
   const toLoad = [...new Set([...semH.slice(0,12), ...lexH.slice(0,12)].map(x=>x.id))];
   for(const hid of toLoad) await ensureHadithById(hid);
 
@@ -477,7 +449,6 @@ async function openDetail(ayahId){
   renderPairList(els.semHadith, semH, "hadith");
   renderPairList(els.lexHadith, lexH, "hadith");
 
-  // lazy load rest
   setTimeout(async ()=>{
     const allH = [...new Set([...semH, ...lexH].map(x=>x.id))];
     for(let i=0;i<allH.length;i++){
@@ -500,7 +471,6 @@ function showLanding(show){
   if(!els.landingCard) return;
   els.landingCard.classList.toggle("hidden", !show);
   if(show){
-    // keep the landing in view
     els.landingCard.scrollIntoView({behavior:"smooth", block:"start"});
   }
 }
@@ -528,11 +498,10 @@ function getFilledInputs(){
 async function runSearch(){
   const {en, ar, id, count} = getFilledInputs();
 
-  // New search resets selection highlight
   state.selectedAyahId = null;
 
-  els.detailView.classList.add("hidden");
-  els.detailEmpty.classList.remove("hidden");
+  // ✅ guarantees idle state has NO confusing boxes
+  setDetailState("empty");
 
   if(count === 0){
     setBadge("warn", "Enter a query first");
@@ -547,7 +516,6 @@ async function runSearch(){
   let results = [];
   try{
     setBadge("warn", "Searching…");
-    // allow paint before heavy work
     await sleep(0);
 
     if(id){
@@ -582,11 +550,12 @@ async function init(){
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
 
-    // Landing / About actions (safe if missing)
+    // ✅ initial right panel must be empty (no confusing boxes)
+    setDetailState("empty");
+
     if(els.startBtn){
       els.startBtn.addEventListener("click", ()=>{
         showLanding(false);
-        // scroll to search box
         els.enQuery.scrollIntoView({behavior:"smooth", block:"center"});
         els.enQuery.focus();
       });
@@ -595,7 +564,6 @@ async function init(){
       els.aboutBtn.addEventListener("click", ()=>showLanding(true));
     }
 
-    // Example buttons (safe if none)
     document.querySelectorAll(".exampleBtn").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const fill = btn.dataset.fill;
@@ -608,12 +576,10 @@ async function init(){
       });
     });
 
-    // “One input at a time” helper: when user starts typing, clear other boxes
     els.enQuery.addEventListener("input", ()=>{ if(els.enQuery.value.trim()) clearOtherInputs("en"); });
     els.arQuery.addEventListener("input", ()=>{ if(els.arQuery.value.trim()) clearOtherInputs("ar"); });
     els.idQuery.addEventListener("input", ()=>{ if(els.idQuery.value.trim()) clearOtherInputs("id"); });
 
-    // Enter key triggers search
     [els.enQuery, els.arQuery, els.idQuery].forEach(inp=>{
       inp.addEventListener("keydown", (e)=>{
         if(e.key === "Enter"){
@@ -640,8 +606,7 @@ els.clearBtn.onclick = () => {
   state.lastResults = [];
 
   renderResults([]);
-  els.detailView.classList.add("hidden");
-  els.detailEmpty.classList.remove("hidden");
+  setDetailState("empty");
   setBadge("ok", "Ready");
 };
 
