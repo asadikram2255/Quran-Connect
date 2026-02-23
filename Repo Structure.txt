@@ -28,4 +28,7 @@ quran-better-for-me/
 │  ├─ 01_build_pairs.py
 │  └─ requirements.txt
 └─ README.md
-|__ raw
+│  ├─ search_index/
+│  │  ├─ english_token_to_ayahids.json
+│  │  ├─ english_trigram_to_tokens.json
+│  │  ├─ arabic_token_to_ayahids.json
