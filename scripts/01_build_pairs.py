@@ -1,5 +1,8 @@
 # %% [0] Debug + environment sanity
-import os, sys, re, json
+import os
+import sys
+import re
+import json
 from collections import defaultdict, Counter
 
 print("RUNNING:", os.path.abspath(__file__))
@@ -8,76 +11,125 @@ print("PYTHON:", sys.version)
 if sys.version_info >= (3, 13):
     print("WARNING: You are on Python >= 3.13. If Torch/sentence-transformers fails, use Python 3.10/3.11.")
 
-# %% [1] Imports & config
+# %% [1] Imports
 import numpy as np
 import pandas as pd
-
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
 
-# Input datasets (repo paths)
-QURAN_AR_PATH = "../raw/quran.csv"
-QURAN_EN_PATH = "../raw/Quran_English.csv"
-HADITH_PATH   = "../raw/All_Hadith_Clean.csv"
+# %% [2] Path helpers
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+RAW_DIR = os.path.join(REPO_ROOT, "raw")
+DATA_DIR = os.path.join(REPO_ROOT, "data")
+
+
+def first_existing_path(*candidates: str) -> str:
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return candidates[0]
+
+
+# Input datasets
+QURAN_AR_PATH = first_existing_path(
+    os.path.join(RAW_DIR, "quran.csv"),
+    os.path.join(REPO_ROOT, "quran.csv"),
+)
+
+QURAN_EN_PATH = first_existing_path(
+    os.path.join(RAW_DIR, "Quran_English.csv"),
+    os.path.join(REPO_ROOT, "Quran_English.csv"),
+)
+
+HADITH_PATH = first_existing_path(
+    os.path.join(RAW_DIR, "All_Hadith_Clean.csv"),
+    os.path.join(REPO_ROOT, "All_Hadith_Clean.csv"),
+)
+
+ROOT_WORDS_PATH = first_existing_path(
+    os.path.join(RAW_DIR, "Root Words.csv"),
+    os.path.join(REPO_ROOT, "Root Words.csv"),
+)
 
 # Output dirs
-OUT_DATA_DIR = "../data"
+OUT_DATA_DIR = DATA_DIR
 OUT_META_DIR = os.path.join(OUT_DATA_DIR, "meta")
-OUT_QURAN_TEXT_DIR  = os.path.join(OUT_DATA_DIR, "quran_text")
+OUT_QURAN_TEXT_DIR = os.path.join(OUT_DATA_DIR, "quran_text")
 OUT_QURAN_PAIRS_DIR = os.path.join(OUT_DATA_DIR, "quran_pairs")
 OUT_HADITH_TEXT_DIR = os.path.join(OUT_DATA_DIR, "hadith_text")
-OUT_SEARCH_DIR      = os.path.join(OUT_DATA_DIR, "search_index")
+OUT_SEARCH_DIR = os.path.join(OUT_DATA_DIR, "search_index")
 
-for d in [OUT_META_DIR, OUT_QURAN_TEXT_DIR, OUT_QURAN_PAIRS_DIR, OUT_HADITH_TEXT_DIR, OUT_SEARCH_DIR]:
+for d in [OUT_DATA_DIR, OUT_META_DIR, OUT_QURAN_TEXT_DIR, OUT_QURAN_PAIRS_DIR, OUT_HADITH_TEXT_DIR, OUT_SEARCH_DIR]:
     os.makedirs(d, exist_ok=True)
 
-# Sharding
-HADITH_SHARD_SIZE = 1000  # ~50k -> ~51 shards
+print("Resolved paths:")
+print("  QURAN_AR_PATH  =", QURAN_AR_PATH)
+print("  QURAN_EN_PATH  =", QURAN_EN_PATH)
+print("  HADITH_PATH    =", HADITH_PATH)
+print("  ROOT_WORDS_PATH=", ROOT_WORDS_PATH)
+print("  OUT_DATA_DIR   =", OUT_DATA_DIR)
 
-# Similarity params
-TOPK_QURAN_SEMANTIC  = 20
+# %% [3] Config
+HADITH_SHARD_SIZE = 1000
+
+TOPK_QURAN_SEMANTIC = 20
 TOPK_HADITH_SEMANTIC = 50
-TOPK_QURAN_LEXICAL   = 20
-TOPK_HADITH_LEXICAL  = 50
+TOPK_QURAN_LEXICAL = 20
+TOPK_HADITH_LEXICAL = 50
 
-# Embeddings
-EMBED_MODEL_NAME  = "intfloat/multilingual-e5-base"
-EMBED_BATCH_SIZE  = 256
-VEC_PREVIEW_DIMS  = 8  # stored in Quran shards (UI may ignore)
+EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
+EMBED_BATCH_SIZE = 256
+VEC_PREVIEW_DIMS = 8
 
-# Save size control
 MAX_SHARED_TOKENS_STORED = 8
 
-# %% [2] Basic helpers
+# %% [4] Basic helpers
 def safe_str(x):
     return "" if pd.isna(x) else str(x)
+
 
 def write_json(path: str, obj):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
 
+
 def surah_to_shard_name(surah: int) -> str:
     return f"{surah:03d}"
 
-# %% [3] Robust CSV reader (handles encoding/weird quoting)
-def read_csv_robust(path):
+
+def require_file(path: str, label: str):
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"{label} file not found at: {path}\n"
+            f"Please place it either in:\n"
+            f"  {RAW_DIR}\n"
+            f"or repo root:\n"
+            f"  {REPO_ROOT}"
+        )
+
+
+# %% [5] Robust CSV reader
+def read_csv_robust(path: str) -> pd.DataFrame:
+    require_file(path, "Input CSV")
     last_err = None
     for enc in ["utf-8", "utf-8-sig", "cp1256", "latin1"]:
         try:
             return pd.read_csv(path, encoding=enc)
         except Exception as e:
             last_err = e
-    # Fallback for broken quoting / inconsistent rows
     try:
         return pd.read_csv(path, engine="python")
     except Exception as e:
         raise RuntimeError(f"Failed to read CSV: {path}\nLast errors: {last_err}\n{e}")
 
-# %% [4] Arabic normalization + tokenization (recommended)
+
+# %% [6] Arabic normalization + tokenization
 AR_DIACRITICS_RE = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]")
 AR_TATWEEL_RE = re.compile(r"\u0640")
 AR_PUNCT_RE = re.compile(r"[^\u0600-\u06FF0-9\s]")
 AR_MULTI_SPACE_RE = re.compile(r"\s+")
+
 
 def normalize_ar(text: str) -> str:
     text = safe_str(text)
@@ -90,6 +142,7 @@ def normalize_ar(text: str) -> str:
     text = AR_MULTI_SPACE_RE.sub(" ", text).strip()
     return text
 
+
 def load_stopwords_ar(path_txt: str) -> set:
     sw = set()
     with open(path_txt, "r", encoding="utf-8") as f:
@@ -98,6 +151,7 @@ def load_stopwords_ar(path_txt: str) -> set:
             if t and not t.startswith("#"):
                 sw.add(normalize_ar(t))
     return sw
+
 
 def tokenize_ar(text: str, stopwords: set) -> list:
     text = normalize_ar(text)
@@ -113,15 +167,18 @@ def tokenize_ar(text: str, stopwords: set) -> list:
         out.append(t)
     return out
 
-# %% [5] English normalization/tokenization (GUI search only)
+
+# %% [7] English normalization/tokenization
 EN_PUNCT_RE = re.compile(r"[^a-z0-9\s]")
 EN_MULTI_SPACE_RE = re.compile(r"\s+")
+
 
 def normalize_en(text: str) -> str:
     text = safe_str(text).lower()
     text = EN_PUNCT_RE.sub(" ", text)
     text = EN_MULTI_SPACE_RE.sub(" ", text).strip()
     return text
+
 
 def load_stopwords_en_default() -> set:
     return {
@@ -132,6 +189,7 @@ def load_stopwords_en_default() -> set:
         "i","me","my","mine",
         "not","no","nor","so","too","very","can","could","may","might","shall","should","will","would"
     }
+
 
 def tokenize_en(text: str, stopwords: set) -> list:
     text = normalize_en(text)
@@ -147,12 +205,86 @@ def tokenize_en(text: str, stopwords: set) -> list:
         out.append(t)
     return out
 
+
 def trigrams(token: str):
     if len(token) <= 3:
         return {token}
     return {token[i:i+3] for i in range(len(token)-2)}
 
-# %% [6] Stopwords file creation (bundled locally)
+
+# %% [8] Column/header helpers
+def normalize_header_name(s: str) -> str:
+    s = safe_str(s).strip().lower()
+    s = re.sub(r"[\s_\-]+", " ", s)
+    return s
+
+
+def find_required_column(df: pd.DataFrame, accepted_names: list[str], label: str) -> str:
+    norm_to_actual = {normalize_header_name(c): c for c in df.columns}
+    for name in accepted_names:
+        key = normalize_header_name(name)
+        if key in norm_to_actual:
+            return norm_to_actual[key]
+    raise ValueError(
+        f"Required column for '{label}' not found.\n"
+        f"Expected one of: {accepted_names}\n"
+        f"Available columns: {list(df.columns)}"
+    )
+
+
+# %% [9] Root-word helpers
+def load_root_words_map(path_csv: str) -> dict[str, set[str]]:
+    rw = read_csv_robust(path_csv)
+
+    root_col = find_required_column(
+        rw,
+        accepted_names=["Arabic Root Word"],
+        label="Arabic Root Word"
+    )
+    chapter_col = find_required_column(
+        rw,
+        accepted_names=["ChapterNo", "Chapter No", "SurahNo", "Surah No"],
+        label="ChapterNo"
+    )
+    verse_col = find_required_column(
+        rw,
+        accepted_names=["VerseNo", "Verse No", "AyahNo", "Ayah No"],
+        label="VerseNo"
+    )
+    actual_word_col = find_required_column(
+        rw,
+        accepted_names=["Actual Arabic Word"],
+        label="Actual Arabic Word"
+    )
+
+    rw = rw[[root_col, chapter_col, verse_col, actual_word_col]].copy()
+
+    rw[chapter_col] = pd.to_numeric(rw[chapter_col], errors="coerce")
+    rw[verse_col] = pd.to_numeric(rw[verse_col], errors="coerce")
+    rw = rw.dropna(subset=[chapter_col, verse_col])
+
+    rw[chapter_col] = rw[chapter_col].astype(int)
+    rw[verse_col] = rw[verse_col].astype(int)
+
+    rw[root_col] = rw[root_col].map(normalize_ar)
+    rw[actual_word_col] = rw[actual_word_col].map(normalize_ar)
+    rw = rw[rw[root_col].astype(str).str.len() > 0].copy()
+
+    rw[root_col] = rw[root_col].map(lambda x: x.replace(" ", ""))
+
+    ayah_to_roots = defaultdict(set)
+    for _, row in rw.iterrows():
+        ayah_id = f"{int(row[chapter_col])}:{int(row[verse_col])}"
+        root = safe_str(row[root_col]).strip()
+        if root:
+            ayah_to_roots[ayah_id].add(root)
+
+    print("Loaded root-word rows:", len(rw))
+    print("Ayat with at least one root:", len(ayah_to_roots))
+    return ayah_to_roots
+
+
+# %% [10] Stopwords file
 STOPWORDS_AR_TXT = os.path.join(OUT_SEARCH_DIR, "stopwords_ar.txt")
 
 if not os.path.exists(STOPWORDS_AR_TXT):
@@ -171,26 +303,65 @@ if not os.path.exists(STOPWORDS_AR_TXT):
 stop_ar = load_stopwords_ar(STOPWORDS_AR_TXT)
 stop_en = load_stopwords_en_default()
 
-# %% [7] Load datasets + enforce join rule + Hadith Arabic+English capture
+# %% [11] Load datasets
 q_ar = read_csv_robust(QURAN_AR_PATH)
 q_en = read_csv_robust(QURAN_EN_PATH)
 h_df = read_csv_robust(HADITH_PATH)
 
-# normalize headers
+# preserve original names first
+q_ar_original_columns = list(q_ar.columns)
+q_en_original_columns = list(q_en.columns)
+h_original_columns = list(h_df.columns)
+
+# normalize for matching
 q_ar.columns = [c.strip().lower() for c in q_ar.columns]
 q_en.columns = [c.strip().lower() for c in q_en.columns]
 h_df.columns = [c.strip().lower() for c in h_df.columns]
 
-# Quran ID
+# Quran Arabic
+if "surah" not in q_ar.columns or "ayah" not in q_ar.columns:
+    raise ValueError(f"quran.csv must contain surah and ayah. Found: {list(q_ar.columns)}")
+
+quran_arabic_col = None
+for c in ["arabic_text", "text", "arabic", "uthmani", "simple"]:
+    if c in q_ar.columns:
+        quran_arabic_col = c
+        break
+
+if quran_arabic_col is None:
+    raise ValueError(
+        f"quran.csv must contain one of these Arabic text columns: "
+        f"['arabic_text','text','arabic','uthmani','simple'].\n"
+        f"Found: {list(q_ar.columns)}"
+    )
+
 q_ar["surah"] = pd.to_numeric(q_ar["surah"], errors="raise").astype(int)
-q_ar["ayah"]  = pd.to_numeric(q_ar["ayah"], errors="raise").astype(int)
+q_ar["ayah"] = pd.to_numeric(q_ar["ayah"], errors="raise").astype(int)
 q_ar["ayah_id"] = q_ar["surah"].astype(str) + ":" + q_ar["ayah"].astype(str)
+q_ar["arabic_text"] = q_ar[quran_arabic_col].astype(str)
+
+# Quran English
+if "surah" not in q_en.columns or "ayat" not in q_en.columns:
+    raise ValueError(f"Quran_English.csv must contain surah and ayat. Found: {list(q_en.columns)}")
+
+english_text_col = None
+for c in ["english_text", "translation", "text", "english"]:
+    if c in q_en.columns:
+        english_text_col = c
+        break
+
+if english_text_col is None:
+    raise ValueError(
+        f"Could not find English translation column in Quran_English.csv. "
+        f"Found: {list(q_en.columns)}"
+    )
 
 q_en["surah"] = pd.to_numeric(q_en["surah"], errors="raise").astype(int)
-q_en["ayat"]  = pd.to_numeric(q_en["ayat"], errors="raise").astype(int)
+q_en["ayat"] = pd.to_numeric(q_en["ayat"], errors="raise").astype(int)
 q_en["ayah_id"] = q_en["surah"].astype(str) + ":" + q_en["ayat"].astype(str)
+q_en["english_text"] = q_en[english_text_col].astype(str)
 
-# Validate join rule (Surah+Ayat == surah+ayah)
+# Join validation
 set_ar = set(q_ar["ayah_id"].tolist())
 set_en = set(q_en["ayah_id"].tolist())
 if set_ar != set_en:
@@ -202,58 +373,70 @@ if set_ar != set_en:
         f"English IDs missing in Arabic (sample): {missing_ar}\n"
     )
 
-q = q_ar.merge(q_en[["ayah_id","english_text"]], on="ayah_id", how="left")
+q = q_ar[["ayah_id", "surah", "ayah", "arabic_text"]].merge(
+    q_en[["ayah_id", "english_text"]],
+    on="ayah_id",
+    how="left"
+)
 
-# Hadith column detection (based on your confirmed schema)
-# Your run showed: ['serial','book','reference','narrated by','english text','arabic text']
-if "arabic text" not in h_df.columns:
-    raise ValueError(f"Hadith arabic text column not found. Columns: {list(h_df.columns)}")
-if "english text" not in h_df.columns:
+# Hadith
+hadith_ar_col = None
+for c in ["arabic text", "arabic_text", "arabic", "text_ar"]:
+    if c in h_df.columns:
+        hadith_ar_col = c
+        break
+
+if hadith_ar_col is None:
+    raise ValueError(
+        f"Hadith Arabic text column not found. "
+        f"Expected one of ['arabic text','arabic_text','arabic','text_ar'].\n"
+        f"Found: {list(h_df.columns)}"
+    )
+
+hadith_en_col = None
+for c in ["english text", "english_text", "english", "translation", "text_en"]:
+    if c in h_df.columns:
+        hadith_en_col = c
+        break
+
+if hadith_en_col is None:
     print("WARNING: Hadith English column not found. Hadith translation will be blank in UI.")
 
-ar_col = "arabic text"
-en_col = "english text" if "english text" in h_df.columns else None
-
-print("Hadith columns:", list(h_df.columns))
-print("Using hadith Arabic column:", ar_col)
-print("Using hadith English column:", en_col if en_col else "(missing)")
-
-# Safe serial: ALWAYS generate from row index (prevents your earlier crash forever)
 h_df["serial"] = np.arange(1, len(h_df) + 1, dtype=np.int32)
-
-# Optional metadata fields
 h_df["book"] = h_df["book"].astype(str) if "book" in h_df.columns else "Unknown"
 h_df["reference"] = h_df["reference"].astype(str) if "reference" in h_df.columns else ""
-
-# Store english_text safely
-if en_col:
-    h_df["english_text"] = h_df[en_col].astype(str)
-else:
-    h_df["english_text"] = ""
-
-# Combined hadith id you requested
+h_df["english_text"] = h_df[hadith_en_col].astype(str) if hadith_en_col else ""
 h_df["hadith_id"] = h_df["book"].astype(str) + "|" + h_df["reference"].astype(str) + "|" + h_df["serial"].astype(str)
 
-h_keep = h_df[["hadith_id","serial","book","reference",ar_col,"english_text"]].copy()
-h_keep.rename(columns={ar_col:"arabic_text"}, inplace=True)
+h_keep = h_df[["hadith_id", "serial", "book", "reference", hadith_ar_col, "english_text"]].copy()
+h_keep.rename(columns={hadith_ar_col: "arabic_text"}, inplace=True)
 
 print("Loaded Quran:", len(q), "| Hadith:", len(h_keep))
 
-# %% [8] Tokenize Quran Arabic + Hadith Arabic (lexical similarity)
+# %% [12] Tokenize Quran + Hadith
 q["arabic_norm"] = q["arabic_text"].map(normalize_ar)
 q["arabic_tokens"] = q["arabic_text"].map(lambda t: tokenize_ar(t, stop_ar))
-q["tok_set"] = q["arabic_tokens"].map(lambda xs: set(xs))
+q["tok_set"] = q["arabic_tokens"].map(set)
 q["tok_len"] = q["tok_set"].map(len)
 
 h_keep["arabic_norm"] = h_keep["arabic_text"].map(normalize_ar)
 h_keep["arabic_tokens"] = h_keep["arabic_text"].map(lambda t: tokenize_ar(t, stop_ar))
-h_keep["tok_set"] = h_keep["arabic_tokens"].map(lambda xs: set(xs))
+h_keep["tok_set"] = h_keep["arabic_tokens"].map(set)
 h_keep["tok_len"] = h_keep["tok_set"].map(len)
 
 print("Avg Quran token count:", float(q["tok_len"].mean()))
 print("Avg Hadith token count:", float(h_keep["tok_len"].mean()))
 
-# %% [9] Build English + Arabic search indexes (for the website)
+# %% [13] Root sets for Quran-Quran lexical pairs
+ayah_to_rootset = load_root_words_map(ROOT_WORDS_PATH)
+q["root_set"] = q["ayah_id"].map(lambda aid: ayah_to_rootset.get(aid, set()))
+q["root_len"] = q["root_set"].map(len)
+
+missing_root_ayat = int((q["root_len"] == 0).sum())
+print("Avg Quran root count:", float(q["root_len"].mean()))
+print("Quran ayat with ZERO roots in root file:", missing_root_ayat)
+
+# %% [14] Search indexes
 q["english_tokens"] = q["english_text"].map(lambda t: tokenize_en(t, stop_en))
 
 english_token_to_ayah = defaultdict(list)
@@ -277,11 +460,11 @@ write_json(os.path.join(OUT_SEARCH_DIR, "arabic_token_to_ayahids.json"), arabic_
 
 print("English vocab:", len(english_token_to_ayah), "Arabic vocab:", len(arabic_token_to_ayah))
 
-# %% [10] Embeddings (Arabic-only): Quran + Hadith
+# %% [15] Embeddings
 model = SentenceTransformer(EMBED_MODEL_NAME)
 
 def embed_passages(texts: list[str]) -> np.ndarray:
-    texts = [f"passage: {t}" for t in texts]  # E5 format
+    texts = [f"passage: {t}" for t in texts]
     emb = model.encode(
         texts,
         batch_size=EMBED_BATCH_SIZE,
@@ -295,11 +478,10 @@ h_emb = embed_passages(h_keep["arabic_norm"].tolist())
 
 print("Embeddings shapes:", q_emb.shape, h_emb.shape)
 
-# %% [11] Semantic nearest neighbors (NO FAISS): cosine distance -> cosine similarity
+# %% [16] Semantic nearest neighbors
 q_ids = q["ayah_id"].tolist()
 h_ids = h_keep["hadith_id"].tolist()
 
-# Quran-Quran (+1 for self match)
 nn_q = NearestNeighbors(
     n_neighbors=TOPK_QURAN_SEMANTIC + 1,
     metric="cosine",
@@ -308,7 +490,6 @@ nn_q = NearestNeighbors(
 nn_q.fit(q_emb)
 dist_qq, ind_qq = nn_q.kneighbors(q_emb, return_distance=True)
 
-# Quran-Hadith
 nn_h = NearestNeighbors(
     n_neighbors=TOPK_HADITH_SEMANTIC,
     metric="cosine",
@@ -335,30 +516,38 @@ for i, ayah_id in enumerate(q_ids):
 
 print("Semantic pairing done.")
 
-# %% [12] Lexical similarity (Jaccard) using inverted index (efficient)
-post_q = defaultdict(list)
-for idx, tset in enumerate(q["tok_set"]):
-    for t in tset:
-        post_q[t].append(idx)
+# %% [17] Lexical similarity
+post_q_roots = defaultdict(list)
+for idx, rset in enumerate(q["root_set"]):
+    for r in rset:
+        post_q_roots[r].append(idx)
 
 post_h = defaultdict(list)
 for idx, tset in enumerate(h_keep["tok_set"]):
     for t in tset:
         post_h[t].append(idx)
 
-q_tok_lens = q["tok_len"].to_numpy()
+q_root_lens = q["root_len"].to_numpy()
 h_tok_lens = h_keep["tok_len"].to_numpy()
 
-def topk_jaccard(i: int, postings: dict, other_lens: np.ndarray, other_ids: list, topk: int, is_quran: bool):
-    base_set = q.at[i, "tok_set"]
-    base_len = int(q_tok_lens[i])
+def topk_jaccard_generic(
+    base_set: set,
+    base_index: int,
+    postings: dict,
+    other_lens: np.ndarray,
+    other_ids: list,
+    topk: int,
+    other_set_getter,
+    skip_self: bool
+):
+    base_len = int(len(base_set))
     if base_len == 0:
         return []
 
     counts = Counter()
-    for t in base_set:
-        for j in postings.get(t, []):
-            if is_quran and j == i:
+    for term in base_set:
+        for j in postings.get(term, []):
+            if skip_self and j == base_index:
                 continue
             counts[j] += 1
 
@@ -370,16 +559,13 @@ def topk_jaccard(i: int, postings: dict, other_lens: np.ndarray, other_ids: list
         score = inter / union
         scored.append((score, j, inter))
 
-    scored.sort(reverse=True, key=lambda x: x[0])
+    scored.sort(reverse=True, key=lambda x: (x[0], x[2], other_ids[x[1]]))
     scored = scored[:topk]
 
     out = []
     for score, j, inter in scored:
-        if is_quran:
-            shared = list(base_set.intersection(q.at[j, "tok_set"]))
-        else:
-            shared = list(base_set.intersection(h_keep.at[j, "tok_set"]))
-        shared = shared[:MAX_SHARED_TOKENS_STORED]
+        other_set = other_set_getter(j)
+        shared = sorted(list(base_set.intersection(other_set)))[:MAX_SHARED_TOKENS_STORED]
         out.append({
             "id": other_ids[j],
             "score": float(score),
@@ -392,18 +578,35 @@ lex_pairs_quran = {}
 lex_pairs_hadith = {}
 
 for i, ayah_id in enumerate(q_ids):
-    lex_pairs_quran[ayah_id] = topk_jaccard(
-        i=i, postings=post_q, other_lens=q_tok_lens,
-        other_ids=q_ids, topk=TOPK_QURAN_LEXICAL, is_quran=True
+    # Quran-Quran lexical now uses ROOT overlap
+    lex_pairs_quran[ayah_id] = topk_jaccard_generic(
+        base_set=q.at[i, "root_set"],
+        base_index=i,
+        postings=post_q_roots,
+        other_lens=q_root_lens,
+        other_ids=q_ids,
+        topk=TOPK_QURAN_LEXICAL,
+        other_set_getter=lambda j: q.at[j, "root_set"],
+        skip_self=True
     )
-    lex_pairs_hadith[ayah_id] = topk_jaccard(
-        i=i, postings=post_h, other_lens=h_tok_lens,
-        other_ids=h_ids, topk=TOPK_HADITH_LEXICAL, is_quran=False
+
+    # Quran-Hadith lexical remains token-based
+    lex_pairs_hadith[ayah_id] = topk_jaccard_generic(
+        base_set=q.at[i, "tok_set"],
+        base_index=i,
+        postings=post_h,
+        other_lens=h_tok_lens,
+        other_ids=h_ids,
+        topk=TOPK_HADITH_LEXICAL,
+        other_set_getter=lambda j: h_keep.at[j, "tok_set"],
+        skip_self=False
     )
 
 print("Lexical pairing done.")
+print("Quran-Quran lexical uses ROOT overlap.")
+print("Quran-Hadith lexical uses TOKEN overlap.")
 
-# %% [13] Quran text shards (per surah) + vector preview
+# %% [18] Quran text shards
 q["vec_preview"] = [np.round(v[:VEC_PREVIEW_DIMS], 4).tolist() for v in q_emb]
 
 shard_map_quran = {}
@@ -427,7 +630,7 @@ for surah in sorted(q["surah"].unique().tolist()):
 write_json(os.path.join(OUT_META_DIR, "shard_map_quran.json"), shard_map_quran)
 print("Wrote Quran text shards:", len(shard_map_quran))
 
-# %% [14] Hadith text shards (by serial ranges) — NOW INCLUDES ENGLISH
+# %% [19] Hadith text shards
 h_sorted = h_keep.sort_values("serial").reset_index(drop=True)
 
 shard_map_hadith = []
@@ -437,7 +640,7 @@ for start in range(0, n, HADITH_SHARD_SIZE):
     end = min(n, start + HADITH_SHARD_SIZE)
     block = h_sorted.iloc[start:end]
     serial_start = int(block["serial"].iloc[0])
-    serial_end   = int(block["serial"].iloc[-1])
+    serial_end = int(block["serial"].iloc[-1])
     fn = f"hadith_{serial_start:05d}_{serial_end:05d}.json"
 
     out = []
@@ -448,16 +651,20 @@ for start in range(0, n, HADITH_SHARD_SIZE):
             "book": safe_str(row["book"]),
             "reference": safe_str(row["reference"]),
             "arabic": safe_str(row["arabic_text"]),
-            "english": safe_str(row["english_text"])  # ✅ NEW
+            "english": safe_str(row["english_text"])
         })
 
     write_json(os.path.join(OUT_HADITH_TEXT_DIR, fn), out)
-    shard_map_hadith.append({"start": serial_start, "end": serial_end, "file": f"hadith_text/{fn}"})
+    shard_map_hadith.append({
+        "start": serial_start,
+        "end": serial_end,
+        "file": f"hadith_text/{fn}"
+    })
 
 write_json(os.path.join(OUT_META_DIR, "shard_map_hadith.json"), shard_map_hadith)
 print("Wrote Hadith shards:", len(shard_map_hadith))
 
-# %% [15] Pair shards (per surah)
+# %% [20] Pair shards
 shard_map_pairs = {}
 
 for surah in sorted(q["surah"].unique().tolist()):
@@ -485,7 +692,7 @@ for surah in sorted(q["surah"].unique().tolist()):
 write_json(os.path.join(OUT_META_DIR, "shard_map_pairs.json"), shard_map_pairs)
 print("Wrote pair shards:", len(shard_map_pairs))
 
-# %% [16] Manifest
+# %% [21] Manifest
 manifest = {
     "version": 1,
     "counts": {
@@ -503,6 +710,6 @@ manifest = {
         "arabic_token_to_ayahids": "data/search_index/arabic_token_to_ayahids.json"
     }
 }
-write_json(os.path.join(OUT_META_DIR, "manifest.json"), manifest)
 
+write_json(os.path.join(OUT_META_DIR, "manifest.json"), manifest)
 print("DONE ✅ Manifest written:", os.path.join(OUT_META_DIR, "manifest.json"))
