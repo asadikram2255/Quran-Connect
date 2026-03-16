@@ -108,7 +108,6 @@ def require_file(path: str, label: str):
             f"  {REPO_ROOT}"
         )
 
-
 # %% [5] Robust CSV reader
 def read_csv_robust(path: str) -> pd.DataFrame:
     require_file(path, "Input CSV")
@@ -122,7 +121,6 @@ def read_csv_robust(path: str) -> pd.DataFrame:
         return pd.read_csv(path, engine="python")
     except Exception as e:
         raise RuntimeError(f"Failed to read CSV: {path}\nLast errors: {last_err}\n{e}")
-
 
 # %% [6] Arabic normalization + tokenization
 AR_DIACRITICS_RE = re.compile(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]")
@@ -167,7 +165,6 @@ def tokenize_ar(text: str, stopwords: set) -> list:
         out.append(t)
     return out
 
-
 # %% [7] English normalization/tokenization
 EN_PUNCT_RE = re.compile(r"[^a-z0-9\s]")
 EN_MULTI_SPACE_RE = re.compile(r"\s+")
@@ -211,7 +208,6 @@ def trigrams(token: str):
         return {token}
     return {token[i:i+3] for i in range(len(token)-2)}
 
-
 # %% [8] Column/header helpers
 def normalize_header_name(s: str) -> str:
     s = safe_str(s).strip().lower()
@@ -231,9 +227,13 @@ def find_required_column(df: pd.DataFrame, accepted_names: list[str], label: str
         f"Available columns: {list(df.columns)}"
     )
 
-
 # %% [9] Root-word helpers
-def load_root_words_map(path_csv: str) -> dict[str, set[str]]:
+def load_root_words_maps(path_csv: str):
+    """
+    Returns:
+      ayah_to_rootset: {ayah_id -> set(root)}
+      ayah_to_rootseq: {ayah_id -> [root, root, root...]}  # in CSV row order
+    """
     rw = read_csv_robust(path_csv)
 
     root_col = find_required_column(
@@ -268,21 +268,23 @@ def load_root_words_map(path_csv: str) -> dict[str, set[str]]:
 
     rw[root_col] = rw[root_col].map(normalize_ar)
     rw[actual_word_col] = rw[actual_word_col].map(normalize_ar)
-    rw = rw[rw[root_col].astype(str).str.len() > 0].copy()
 
+    rw = rw[rw[root_col].astype(str).str.len() > 0].copy()
     rw[root_col] = rw[root_col].map(lambda x: x.replace(" ", ""))
 
-    ayah_to_roots = defaultdict(set)
+    ayah_to_rootset = defaultdict(set)
+    ayah_to_rootseq = defaultdict(list)
+
     for _, row in rw.iterrows():
         ayah_id = f"{int(row[chapter_col])}:{int(row[verse_col])}"
         root = safe_str(row[root_col]).strip()
         if root:
-            ayah_to_roots[ayah_id].add(root)
+            ayah_to_rootset[ayah_id].add(root)
+            ayah_to_rootseq[ayah_id].append(root)
 
     print("Loaded root-word rows:", len(rw))
-    print("Ayat with at least one root:", len(ayah_to_roots))
-    return ayah_to_roots
-
+    print("Ayat with at least one root:", len(ayah_to_rootset))
+    return ayah_to_rootset, ayah_to_rootseq
 
 # %% [10] Stopwords file
 STOPWORDS_AR_TXT = os.path.join(OUT_SEARCH_DIR, "stopwords_ar.txt")
@@ -308,12 +310,6 @@ q_ar = read_csv_robust(QURAN_AR_PATH)
 q_en = read_csv_robust(QURAN_EN_PATH)
 h_df = read_csv_robust(HADITH_PATH)
 
-# preserve original names first
-q_ar_original_columns = list(q_ar.columns)
-q_en_original_columns = list(q_en.columns)
-h_original_columns = list(h_df.columns)
-
-# normalize for matching
 q_ar.columns = [c.strip().lower() for c in q_ar.columns]
 q_en.columns = [c.strip().lower() for c in q_en.columns]
 h_df.columns = [c.strip().lower() for c in h_df.columns]
@@ -330,8 +326,8 @@ for c in ["arabic_text", "text", "arabic", "uthmani", "simple"]:
 
 if quran_arabic_col is None:
     raise ValueError(
-        f"quran.csv must contain one of these Arabic text columns: "
-        f"['arabic_text','text','arabic','uthmani','simple'].\n"
+        "quran.csv must contain one of these Arabic text columns: "
+        "['arabic_text','text','arabic','uthmani','simple'].\n"
         f"Found: {list(q_ar.columns)}"
     )
 
@@ -352,7 +348,7 @@ for c in ["english_text", "translation", "text", "english"]:
 
 if english_text_col is None:
     raise ValueError(
-        f"Could not find English translation column in Quran_English.csv. "
+        "Could not find English translation column in Quran_English.csv. "
         f"Found: {list(q_en.columns)}"
     )
 
@@ -361,7 +357,6 @@ q_en["ayat"] = pd.to_numeric(q_en["ayat"], errors="raise").astype(int)
 q_en["ayah_id"] = q_en["surah"].astype(str) + ":" + q_en["ayat"].astype(str)
 q_en["english_text"] = q_en[english_text_col].astype(str)
 
-# Join validation
 set_ar = set(q_ar["ayah_id"].tolist())
 set_en = set(q_en["ayah_id"].tolist())
 if set_ar != set_en:
@@ -388,8 +383,8 @@ for c in ["arabic text", "arabic_text", "arabic", "text_ar"]:
 
 if hadith_ar_col is None:
     raise ValueError(
-        f"Hadith Arabic text column not found. "
-        f"Expected one of ['arabic text','arabic_text','arabic','text_ar'].\n"
+        "Hadith Arabic text column not found. "
+        "Expected one of ['arabic text','arabic_text','arabic','text_ar'].\n"
         f"Found: {list(h_df.columns)}"
     )
 
@@ -427,10 +422,11 @@ h_keep["tok_len"] = h_keep["tok_set"].map(len)
 print("Avg Quran token count:", float(q["tok_len"].mean()))
 print("Avg Hadith token count:", float(h_keep["tok_len"].mean()))
 
-# %% [13] Root sets for Quran-Quran lexical pairs
-ayah_to_rootset = load_root_words_map(ROOT_WORDS_PATH)
+# %% [13] Root sets + ordered root sequence
+ayah_to_rootset, ayah_to_rootseq = load_root_words_maps(ROOT_WORDS_PATH)
 q["root_set"] = q["ayah_id"].map(lambda aid: ayah_to_rootset.get(aid, set()))
 q["root_len"] = q["root_set"].map(len)
+q["roots_ordered"] = q["ayah_id"].map(lambda aid: ayah_to_rootseq.get(aid, []))
 
 missing_root_ayat = int((q["root_len"] == 0).sum())
 print("Avg Quran root count:", float(q["root_len"].mean()))
@@ -578,7 +574,6 @@ lex_pairs_quran = {}
 lex_pairs_hadith = {}
 
 for i, ayah_id in enumerate(q_ids):
-    # Quran-Quran lexical now uses ROOT overlap
     lex_pairs_quran[ayah_id] = topk_jaccard_generic(
         base_set=q.at[i, "root_set"],
         base_index=i,
@@ -590,7 +585,6 @@ for i, ayah_id in enumerate(q_ids):
         skip_self=True
     )
 
-    # Quran-Hadith lexical remains token-based
     lex_pairs_hadith[ayah_id] = topk_jaccard_generic(
         base_set=q.at[i, "tok_set"],
         base_index=i,
@@ -621,6 +615,7 @@ for surah in sorted(q["surah"].unique().tolist()):
             "ayah": int(row["ayah"]),
             "arabic": safe_str(row["arabic_text"]),
             "english": safe_str(row["english_text"]),
+            "roots_ordered": row["roots_ordered"],
             "vec_preview": row["vec_preview"]
         })
     fn = f"quran_s{surah_to_shard_name(s)}.json"
