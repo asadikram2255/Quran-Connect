@@ -1,5 +1,36 @@
+const els = {
+  enQuery: document.getElementById("enQuery"),
+  arQuery: document.getElementById("arQuery"),
+  idQuery: document.getElementById("idQuery"),
+  searchBtn: document.getElementById("searchBtn"),
+  clearBtn: document.getElementById("clearBtn"),
+  resultsList: document.getElementById("resultsList"),
+  statusBadge: document.getElementById("statusBadge"),
+
+  dAyahId: document.getElementById("dAyahId"),
+  dArabic: document.getElementById("dArabic"),
+  dEnglish: document.getElementById("dEnglish"),
+
+  semQuran: document.getElementById("semQuran"),
+  semHadith: document.getElementById("semHadith"),
+  lexQuran: document.getElementById("lexQuran"),
+  lexHadith: document.getElementById("lexHadith"),
+
+  tabSemantic: document.getElementById("tabSemantic"),
+  tabLexical: document.getElementById("tabLexical"),
+
+  detailWrap: document.getElementById("detailWrap"),
+  detailEmpty: document.getElementById("detailEmpty"),
+  detailView: document.getElementById("detailView"),
+
+  landingCard: document.getElementById("landingCard"),
+  startBtn: document.getElementById("startBtn"),
+  aboutBtn: document.getElementById("aboutBtn")
+};
+
 const state = {
   manifest: null,
+
   shardMapQuran: null,
   shardMapPairs: null,
   shardMapHadith: null,
@@ -8,230 +39,247 @@ const state = {
   enTriToTokens: null,
   arTokenToAyah: null,
 
-  quranTextCache: new Map(),
-  pairCache: new Map(),
-  hadithCache: new Map(),
+  loadedSurahs: new Set(),
+  loadedHadithShardFiles: new Set(),
 
   quranById: new Map(),
   pairsByAyah: new Map(),
   hadithById: new Map(),
 
-  searchCache: { en: new Map(), ar: new Map(), id: new Map() },
-
   selectedAyahId: null,
-  lastResults: []
+  lastResults: [],
+
+  searchCache: {
+    id: new Map(),
+    ar: new Map(),
+    en: new Map()
+  }
 };
 
-const els = {
-  badge: document.getElementById("statusBadge"),
-
-  landingCard: document.getElementById("landingCard"),
-  startBtn: document.getElementById("startBtn"),
-  aboutBtn: document.getElementById("aboutBtn"),
-
-  enQuery: document.getElementById("enQuery"),
-  arQuery: document.getElementById("arQuery"),
-  idQuery: document.getElementById("idQuery"),
-  searchBtn: document.getElementById("searchBtn"),
-  clearBtn: document.getElementById("clearBtn"),
-  resultsList: document.getElementById("resultsList"),
-
-  // ✅ new wrapper-state approach
-  detailWrap: document.getElementById("detailWrap"),
-
-  dArabic: document.getElementById("dArabic"),
-  dEnglish: document.getElementById("dEnglish"),
-  dAyahId: document.getElementById("dAyahId"),
-
-  tabSemantic: document.getElementById("tabSemantic"),
-  tabLexical: document.getElementById("tabLexical"),
-
-  semQuran: document.getElementById("semQuran"),
-  semHadith: document.getElementById("semHadith"),
-  lexQuran: document.getElementById("lexQuran"),
-  lexHadith: document.getElementById("lexHadith"),
-};
-
-function setBadge(kind, text){
-  els.badge.className = `badge ${kind}`;
-  els.badge.textContent = text;
-}
+// ---------- Utils ----------
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 async function fetchJson(path){
-  const res = await fetch(path, {cache:"force-cache"});
+  const res = await fetch(path);
   if(!res.ok) throw new Error(`Failed to fetch ${path}`);
-  return await res.json();
+  return res.json();
 }
 
-function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+function setBadge(kind, text){
+  els.statusBadge.className = `badge ${kind}`;
+  els.statusBadge.textContent = text;
+}
 
-// ✅ single source of truth: right panel state
+function unique(arr){
+  return [...new Set(arr)];
+}
+
+function surahFromAyahId(ayahId){
+  return String(ayahId).split(":")[0];
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fmtScore(x){
+  return (Math.round(x*10000)/10000).toFixed(4);
+}
+
+function showLanding(show){
+  if(!els.landingCard) return;
+  els.landingCard.style.display = show ? "" : "none";
+}
+
 function setDetailState(mode){
-  // mode: "empty" | "detail"
   if(!els.detailWrap) return;
-  els.detailWrap.setAttribute("data-state", mode);
+  els.detailWrap.dataset.state = mode;
 }
 
-// ---------- Normalization ----------
-function normEn(s){
-  return (s || "").toLowerCase().replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
+function clearOtherInputs(keep){
+  if(keep !== "en") els.enQuery.value = "";
+  if(keep !== "ar") els.arQuery.value = "";
+  if(keep !== "id") els.idQuery.value = "";
 }
 
-const STOP_EN = new Set([
-  "the","a","an","and","or","but","if","then","than","to","of","in","on","at","by","for","from",
-  "with","without","into","over","under","between","within","about","as","is","are","was","were",
-  "be","been","being","it","this","that","these","those","i","you","he","she","they","we","my","your",
-  "his","her","their","our","me","him","them"
-]);
-
-function tokenizeEn(s){
-  const t = normEn(s).split(" ").filter(Boolean);
-  return t.filter(x => x.length >= 2).filter(x => !STOP_EN.has(x));
-}
-
-function normAr(s){
-  return (s || "")
-    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,"")
-    .replace(/\u0640/g,"")
-    .replace(/[أإآ]/g,"ا")
-    .replace(/ى/g,"ي")
-    .replace(/[ؤئ]/g,"ء")
-    .replace(/[^\u0600-\u06FF0-9\s]/g," ")
-    .replace(/\s+/g," ")
+// ---------- String helpers ----------
+function normalizeArabic(s){
+  return String(s || "")
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/\u0640/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/[ؤئ]/g, "ء")
+    .replace(/[^\u0600-\u06FF0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
-function tokenizeAr(s){
-  const t = normAr(s).split(" ").filter(Boolean);
-  return t.filter(x => x.length >= 2 && !/^\d+$/.test(x));
+
+function normalizeEnglish(s){
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function trigrams(tok){
-  if(tok.length <= 3) return new Set([tok]);
-  const out = new Set();
-  for(let i=0;i<tok.length-2;i++) out.add(tok.slice(i,i+3));
+function trigrams(token){
+  if(token.length <= 3) return [token];
+  const out = [];
+  for(let i=0; i<token.length-2; i++) out.push(token.slice(i, i+3));
   return out;
-}
-
-function levenshtein(a,b){
-  if(a===b) return 0;
-  const m=a.length, n=b.length;
-  if(m===0) return n;
-  if(n===0) return m;
-  const dp = new Array(n+1);
-  for(let j=0;j<=n;j++) dp[j]=j;
-  for(let i=1;i<=m;i++){
-    let prev=dp[0];
-    dp[0]=i;
-    for(let j=1;j<=n;j++){
-      const tmp=dp[j];
-      const cost=(a[i-1]===b[j-1])?0:1;
-      dp[j]=Math.min(dp[j]+1, dp[j-1]+1, prev+cost);
-      prev=tmp;
-    }
-  }
-  return dp[n];
 }
 
 function maxAllowedEdits(len){
   if(len <= 4) return 1;
-  if(len <= 7) return 2;
-  return 2;
+  if(len <= 8) return 2;
+  return 3;
 }
 
-function stemVariantsEn(tok){
-  const out = new Set([tok]);
-  let t = tok;
+function stemVariantsEn(token){
+  const vars = new Set([token]);
+  if(token.endsWith("ing") && token.length > 5) vars.add(token.slice(0, -3));
+  if(token.endsWith("ed") && token.length > 4) vars.add(token.slice(0, -2));
+  if(token.endsWith("es") && token.length > 4) vars.add(token.slice(0, -2));
+  if(token.endsWith("s") && token.length > 3) vars.add(token.slice(0, -1));
+  if(token.endsWith("ies") && token.length > 5) vars.add(token.slice(0, -3) + "y");
+  return [...vars];
+}
 
-  if(t.endsWith("ies") && t.length > 4) out.add(t.slice(0,-3) + "y");
-  if(t.endsWith("es") && t.length > 3) out.add(t.slice(0,-2));
-  if(t.endsWith("s") && t.length > 3) out.add(t.slice(0,-1));
+function levenshtein(a, b){
+  if(a === b) return 0;
+  const m = a.length, n = b.length;
+  if(m === 0) return n;
+  if(n === 0) return m;
 
-  if(t.endsWith("ing") && t.length > 5){
-    out.add(t.slice(0,-3));
-    out.add(t.slice(0,-3) + "e");
+  let prev = new Array(n + 1);
+  let curr = new Array(n + 1);
+
+  for(let j = 0; j <= n; j++) prev[j] = j;
+
+  for(let i = 1; i <= m; i++){
+    curr[0] = i;
+    const ca = a.charCodeAt(i - 1);
+    for(let j = 1; j <= n; j++){
+      const cost = (ca === b.charCodeAt(j - 1)) ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost
+      );
+    }
+    [prev, curr] = [curr, prev];
   }
-  if(t.endsWith("ed") && t.length > 4) out.add(t.slice(0,-2));
-  if(t.endsWith("ly") && t.length > 4) out.add(t.slice(0,-2));
-
-  return Array.from(out).filter(x => x.length >= 2);
+  return prev[n];
 }
 
-// ---------- Shard loading ----------
-function surahFromAyahId(ayahId){
-  const p = ayahId.split(":");
-  return parseInt(p[0],10);
-}
-
+// ---------- Loaders ----------
 async function ensureSurahLoaded(surah){
-  const key = String(surah);
-  if(!state.quranTextCache.has(key)){
-    const file = state.shardMapQuran[key];
-    const data = await fetchJson("data/" + file);
-    state.quranTextCache.set(key, data);
-    for(const rec of data) state.quranById.set(rec.ayah_id, rec);
+  surah = String(surah);
+  if(state.loadedSurahs.has(surah)) return;
+
+  const qPath = state.shardMapQuran[surah];
+  const pPath = state.shardMapPairs[surah];
+  if(!qPath || !pPath) return;
+
+  const [qShard, pShard] = await Promise.all([
+    fetchJson(`data/${qPath.split("data/").pop()}`.replace(/^data\/data\//, "data/")),
+    fetchJson(`data/${pPath.split("data/").pop()}`.replace(/^data\/data\//, "data/"))
+  ]).catch(async () => {
+    const [qShard2, pShard2] = await Promise.all([
+      fetchJson(qPath),
+      fetchJson(pPath)
+    ]);
+    return [qShard2, pShard2];
+  });
+
+  for(const rec of qShard){
+    state.quranById.set(rec.ayah_id, rec);
   }
-  if(!state.pairCache.has(key)){
-    const file = state.shardMapPairs[key];
-    const data = await fetchJson("data/" + file);
-    state.pairCache.set(key, data);
-    for(const rec of data) state.pairsByAyah.set(rec.ayah_id, rec);
+  for(const rec of pShard){
+    state.pairsByAyah.set(rec.ayah_id, rec);
   }
+
+  state.loadedSurahs.add(surah);
+}
+
+function findHadithShardFileBySerial(serial){
+  for(const x of state.shardMapHadith){
+    if(serial >= x.start && serial <= x.end) return x.file;
+  }
+  return null;
+}
+
+function hadithSerialFromId(hid){
+  const parts = String(hid).split("|");
+  const s = Number(parts[parts.length - 1]);
+  return Number.isFinite(s) ? s : null;
 }
 
 async function ensureHadithById(hadithId){
   if(state.hadithById.has(hadithId)) return;
 
-  const parts = hadithId.split("|");
-  const serial = parseInt(parts[parts.length-1],10);
-  const shard = state.shardMapHadith.find(s => serial >= s.start && serial <= s.end);
-  if(!shard) return;
+  const serial = hadithSerialFromId(hadithId);
+  if(serial == null) return;
 
-  if(!state.hadithCache.has(shard.file)){
-    const data = await fetchJson("data/" + shard.file);
-    state.hadithCache.set(shard.file, data);
-    for(const rec of data) state.hadithById.set(rec.hadith_id, rec);
+  const file = findHadithShardFileBySerial(serial);
+  if(!file) return;
+  if(state.loadedHadithShardFiles.has(file)) return;
+
+  const shard = await fetchJson(`data/${file.split("data/").pop()}`.replace(/^data\/data\//, "data/")).catch(async () => {
+    return await fetchJson(file);
+  });
+
+  for(const rec of shard){
+    state.hadithById.set(rec.hadith_id, rec);
   }
+
+  state.loadedHadithShardFiles.add(file);
 }
 
 // ---------- Search ----------
-async function searchByAyahId(ayahId){
-  const norm = ayahId.trim();
+async function searchByAyahId(raw){
+  const norm = String(raw || "").trim();
   if(state.searchCache.id.has(norm)) return state.searchCache.id.get(norm);
 
-  const surah = surahFromAyahId(norm);
+  const m = norm.match(/^(\d+)\s*:\s*(\d+)$/);
+  if(!m) return [];
+
+  const id = `${Number(m[1])}:${Number(m[2])}`;
+  const surah = surahFromAyahId(id);
   await ensureSurahLoaded(surah);
-  const rec = state.quranById.get(norm);
+
+  const rec = state.quranById.get(id);
   const out = rec ? [rec] : [];
   state.searchCache.id.set(norm, out);
   return out;
 }
 
-function unique(arr){
-  return Array.from(new Set(arr));
-}
-
-async function searchByArabicKeyword(q){
-  const norm = normAr(q);
+async function searchByArabicKeyword(raw){
+  const norm = normalizeArabic(raw);
+  if(!norm) return [];
   if(state.searchCache.ar.has(norm)) return state.searchCache.ar.get(norm);
 
-  const tok = tokenizeAr(norm)[0];
-  if(!tok) return [];
-  const ids = state.arTokenToAyah[tok] || [];
+  const ids = state.arTokenToAyah[norm] || [];
   const surahs = unique(ids.map(surahFromAyahId));
   for(const s of surahs) await ensureSurahLoaded(s);
+
   const out = ids.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.ar.set(norm, out);
   return out;
 }
 
-async function searchByEnglishSmart(q){
-  const norm = normEn(q);
+async function searchByEnglishSmart(raw){
+  const norm = normalizeEnglish(raw);
+  if(!norm) return [];
   if(state.searchCache.en.has(norm)) return state.searchCache.en.get(norm);
 
-  const toks0 = tokenizeEn(norm);
-  if(!toks0.length) return [];
-
-  const toks = toks0.slice(0, 8);
+  const toks = norm.split(" ").filter(Boolean);
+  if(!toks.length) return [];
 
   const matchedAyahScores = new Map();
   const matchedTokenCounts = new Map();
@@ -334,11 +382,18 @@ function renderResults(list){
   for(const rec of list.slice(0, 60)){
     const div = document.createElement("div");
     div.className = "item" + (state.selectedAyahId === rec.ayah_id ? " selected" : "");
+
+    const roots = Array.isArray(rec.roots_ordered) ? rec.roots_ordered : [];
+    const rootsHtml = roots.length
+      ? `<div class="subtxt"><b>Root words:</b> <span dir="rtl">${escapeHtml(roots.join(" · "))}</span></div>`
+      : `<div class="subtxt"><b>Root words:</b> —</div>`;
+
     div.innerHTML = `
-      <div class="id">${rec.ayah_id}</div>
+      <div class="id">${escapeHtml(rec.ayah_id)}</div>
       <div>
-        <div class="txt" dir="rtl">${rec.arabic}</div>
-        <div class="subtxt">${rec.english}</div>
+        <div class="txt" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
+        <div class="subtxt">${escapeHtml(rec.english || "")}</div>
+        ${rootsHtml}
       </div>
     `;
     div.onclick = () => openDetail(rec.ayah_id);
@@ -357,11 +412,7 @@ document.querySelectorAll(".tab").forEach(btn=>{
   btn.addEventListener("click", ()=>setTab(btn.dataset.tab));
 });
 
-function fmtScore(x){
-  return (Math.round(x*10000)/10000).toFixed(4);
-}
-
-function renderPairList(container, items, kind){
+function renderPairList(container, items, kind, sharedLabel = "shared tokens"){
   container.innerHTML = "";
   if(!items || !items.length){
     container.innerHTML = `<div class="empty">No items.</div>`;
@@ -378,16 +429,16 @@ function renderPairList(container, items, kind){
     if(kind === "quran"){
       const rec = state.quranById.get(it.id);
       body = rec
-        ? `<div dir="rtl">${rec.arabic}</div><div class="small">${rec.english}</div>`
+        ? `<div dir="rtl">${escapeHtml(rec.arabic || "")}</div><div class="small">${escapeHtml(rec.english || "")}</div>`
         : `<div class="small">Loading…</div>`;
     } else {
       const h = state.hadithById.get(it.id);
       if(h){
         const ar = h.arabic || "";
         const en = h.english || "";
-        body = `<div dir="rtl">${ar}</div>`;
-        if(en) extra = `<div class="small">${en}</div>`;
-        else extra = `<div class="small">${h.book || ""} — ${h.reference || ""}</div>`;
+        body = `<div dir="rtl">${escapeHtml(ar)}</div>`;
+        if(en) extra = `<div class="small">${escapeHtml(en)}</div>`;
+        else extra = `<div class="small">${escapeHtml(h.book || "")} — ${escapeHtml(h.reference || "")}</div>`;
         body += extra;
       } else {
         body = `<div class="small">Loading…</div>`;
@@ -396,12 +447,12 @@ function renderPairList(container, items, kind){
 
     let shared = "";
     if(it.shared_tokens && it.shared_tokens.length){
-      shared = `<div class="small">shared tokens: <span dir="rtl">${it.shared_tokens.join(" · ")}</span></div>`;
+      shared = `<div class="small">${escapeHtml(sharedLabel)}: <span dir="rtl">${escapeHtml(it.shared_tokens.join(" · "))}</span></div>`;
     }
 
     div.innerHTML = `
       <div class="pairTop">
-        <div class="pairId">${it.id}</div>
+        <div class="pairId">${escapeHtml(it.id)}</div>
         <div class="pairScore">score: ${fmtScore(it.score)}</div>
       </div>
       <div class="pairBody">${body}</div>
@@ -423,12 +474,11 @@ async function openDetail(ayahId){
   const pairs = state.pairsByAyah.get(ayahId);
   if(!rec || !pairs) return;
 
-  // ✅ ensures ONLY detail content is visible
   setDetailState("detail");
 
-  els.dArabic.textContent = rec.arabic;
-  els.dEnglish.textContent = rec.english;
-  els.dAyahId.textContent = rec.ayah_id;
+  els.dArabic.textContent = rec.arabic || "";
+  els.dEnglish.textContent = rec.english || "";
+  els.dAyahId.textContent = rec.ayah_id || "";
 
   const semQ = pairs.semantic.quran_top20 || [];
   const lexQ = pairs.lexical.quran_top20 || [];
@@ -441,66 +491,38 @@ async function openDetail(ayahId){
   const semH = pairs.semantic.hadith_top50 || [];
   const lexH = pairs.lexical.hadith_top50 || [];
 
-  const toLoad = [...new Set([...semH.slice(0,12), ...lexH.slice(0,12)].map(x=>x.id))];
-  for(const hid of toLoad) await ensureHadithById(hid);
+  const initialHadithIds = new Set([
+    ...semH.slice(0, 12).map(x => x.id),
+    ...lexH.slice(0, 12).map(x => x.id)
+  ]);
+  for(const hid of initialHadithIds) await ensureHadithById(hid);
 
-  renderPairList(els.semQuran, semQ, "quran");
-  renderPairList(els.lexQuran, lexQ, "quran");
-  renderPairList(els.semHadith, semH, "hadith");
-  renderPairList(els.lexHadith, lexH, "hadith");
+  renderPairList(els.semQuran, semQ, "quran", "shared tokens");
+  renderPairList(els.lexQuran, lexQ, "quran", "shared roots");
+  renderPairList(els.semHadith, semH, "hadith", "shared tokens");
+  renderPairList(els.lexHadith, lexH, "hadith", "shared tokens");
 
   setTimeout(async ()=>{
-    const allH = [...new Set([...semH, ...lexH].map(x=>x.id))];
-    for(let i=0;i<allH.length;i++){
-      await ensureHadithById(allH[i]);
-      if(i % 25 === 0){
-        renderPairList(els.semHadith, semH, "hadith");
-        renderPairList(els.lexHadith, lexH, "hadith");
-        await sleep(10);
-      }
-    }
-    renderPairList(els.semHadith, semH, "hadith");
-    renderPairList(els.lexHadith, lexH, "hadith");
-  }, 40);
+    const allH = new Set([
+      ...semH.map(x => x.id),
+      ...lexH.map(x => x.id)
+    ]);
+    for(const hid of allH) await ensureHadithById(hid);
 
-  setTab("semantic");
-}
-
-// ---------- UX helpers ----------
-function showLanding(show){
-  if(!els.landingCard) return;
-  els.landingCard.classList.toggle("hidden", !show);
-  if(show){
-    els.landingCard.scrollIntoView({behavior:"smooth", block:"start"});
-  }
-}
-
-function clearOtherInputs(active){
-  if(active === "en"){
-    els.arQuery.value = "";
-    els.idQuery.value = "";
-  } else if(active === "ar"){
-    els.enQuery.value = "";
-    els.idQuery.value = "";
-  } else if(active === "id"){
-    els.enQuery.value = "";
-    els.arQuery.value = "";
-  }
-}
-
-function getFilledInputs(){
-  const en = els.enQuery.value.trim();
-  const ar = els.arQuery.value.trim();
-  const id = els.idQuery.value.trim();
-  return {en, ar, id, count: (en?1:0)+(ar?1:0)+(id?1:0)};
+    renderPairList(els.semHadith, semH, "hadith", "shared tokens");
+    renderPairList(els.lexHadith, lexH, "hadith", "shared tokens");
+  }, 0);
 }
 
 async function runSearch(){
-  const {en, ar, id, count} = getFilledInputs();
+  const en = els.enQuery.value.trim();
+  const ar = els.arQuery.value.trim();
+  const id = els.idQuery.value.trim();
+
+  const count = [en, ar, id].filter(Boolean).length;
 
   state.selectedAyahId = null;
 
-  // ✅ guarantees idle state has NO confusing boxes
   setDetailState("empty");
 
   if(count === 0){
@@ -550,7 +572,6 @@ async function init(){
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
 
-    // ✅ initial right panel must be empty (no confusing boxes)
     setDetailState("empty");
 
     if(els.startBtn){
