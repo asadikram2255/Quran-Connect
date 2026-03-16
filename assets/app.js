@@ -87,7 +87,7 @@ function escapeHtml(s){
 }
 
 function fmtScore(x){
-  return (Math.round(x*10000)/10000).toFixed(4);
+  return (Math.round(x * 10000) / 10000).toFixed(4);
 }
 
 function showLanding(show){
@@ -130,7 +130,7 @@ function normalizeEnglish(s){
 function trigrams(token){
   if(token.length <= 3) return [token];
   const out = [];
-  for(let i=0; i<token.length-2; i++) out.push(token.slice(i, i+3));
+  for(let i = 0; i < token.length - 2; i++) out.push(token.slice(i, i + 3));
   return out;
 }
 
@@ -286,7 +286,7 @@ async function searchByEnglishSmart(raw){
 
   let lastYield = performance.now();
 
-  for(let ti=0; ti<toks.length; ti++){
+  for(let ti = 0; ti < toks.length; ti++){
     const qt = toks[ti];
     const variants = stemVariantsEn(qt);
 
@@ -313,7 +313,7 @@ async function searchByEnglishSmart(raw){
         if(d < bestD) bestD = d;
         if(bestD === 0) break;
       }
-      if(bestD <= maxEd) good.push({t, d: bestD});
+      if(bestD <= maxEd) good.push({ t, d: bestD });
 
       if(checked % 800 === 0){
         const now = performance.now();
@@ -324,7 +324,7 @@ async function searchByEnglishSmart(raw){
       }
     }
 
-    good.sort((a,b)=>a.d-b.d);
+    good.sort((a, b) => a.d - b.d);
     const best = good.slice(0, 12);
 
     const ayatMatchedThisToken = new Set();
@@ -346,15 +346,15 @@ async function searchByEnglishSmart(raw){
     }
 
     if(toks.length > 2){
-      setBadge("warn", `Searching… (${ti+1}/${toks.length})`);
+      setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
     }
   }
 
   const minMatch = Math.max(1, Math.ceil(toks.length * 0.6));
 
   const ranked = Array.from(matchedAyahScores.entries())
-    .filter(([id,_score]) => (matchedTokenCounts.get(id) || 0) >= minMatch)
-    .sort((a,b)=>b[1]-a[1])
+    .filter(([id, _score]) => (matchedTokenCounts.get(id) || 0) >= minMatch)
+    .sort((a, b) => b[1] - a[1])
     .slice(0, 200)
     .map(x => x[0]);
 
@@ -368,6 +368,20 @@ async function searchByEnglishSmart(raw){
 }
 
 // ---------- Rendering ----------
+function rootsLineHtml(rec){
+  const roots = Array.isArray(rec?.roots_ordered) ? rec.roots_ordered : [];
+  if(!roots.length){
+    return `<div class="subtxt"><b>Root words:</b> —</div>`;
+  }
+
+  return `
+    <div class="subtxt">
+      <b>Root words:</b>
+      <span dir="rtl">${escapeHtml(roots.join(" • "))}</span>
+    </div>
+  `;
+}
+
 function renderResults(list){
   state.lastResults = list || [];
   els.resultsList.innerHTML = "";
@@ -383,19 +397,15 @@ function renderResults(list){
     const div = document.createElement("div");
     div.className = "item" + (state.selectedAyahId === rec.ayah_id ? " selected" : "");
 
-    const roots = Array.isArray(rec.roots_ordered) ? rec.roots_ordered : [];
-    const rootsHtml = roots.length
-      ? `<div class="subtxt"><b>Root words:</b> <span dir="rtl">${escapeHtml(roots.join(" · "))}</span></div>`
-      : `<div class="subtxt"><b>Root words:</b> —</div>`;
-
     div.innerHTML = `
       <div class="id">${escapeHtml(rec.ayah_id)}</div>
       <div>
         <div class="txt" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
         <div class="subtxt">${escapeHtml(rec.english || "")}</div>
-        ${rootsHtml}
+        ${rootsLineHtml(rec)}
       </div>
     `;
+
     div.onclick = () => openDetail(rec.ayah_id);
     els.resultsList.appendChild(div);
   }
@@ -403,13 +413,13 @@ function renderResults(list){
 
 function setTab(name){
   const tabs = document.querySelectorAll(".tab");
-  tabs.forEach(t => t.classList.toggle("active", t.dataset.tab===name));
-  els.tabSemantic.classList.toggle("hidden", name!=="semantic");
-  els.tabLexical.classList.toggle("hidden", name!=="lexical");
+  tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  els.tabSemantic.classList.toggle("hidden", name !== "semantic");
+  els.tabLexical.classList.toggle("hidden", name !== "lexical");
 }
 
-document.querySelectorAll(".tab").forEach(btn=>{
-  btn.addEventListener("click", ()=>setTab(btn.dataset.tab));
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 
 function renderPairList(container, items, kind, sharedLabel = "shared tokens"){
@@ -502,7 +512,7 @@ async function openDetail(ayahId){
   renderPairList(els.semHadith, semH, "hadith", "shared tokens");
   renderPairList(els.lexHadith, lexH, "hadith", "shared tokens");
 
-  setTimeout(async ()=>{
+  setTimeout(async () => {
     const allH = new Set([
       ...semH.map(x => x.id),
       ...lexH.map(x => x.id)
@@ -522,7 +532,6 @@ async function runSearch(){
   const count = [en, ar, id].filter(Boolean).length;
 
   state.selectedAyahId = null;
-
   setDetailState("empty");
 
   if(count === 0){
@@ -571,22 +580,22 @@ async function init(){
     state.arTokenToAyah = await fetchJson(manifest.paths.arabic_token_to_ayahids);
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
-
     setDetailState("empty");
 
     if(els.startBtn){
-      els.startBtn.addEventListener("click", ()=>{
+      els.startBtn.addEventListener("click", () => {
         showLanding(false);
-        els.enQuery.scrollIntoView({behavior:"smooth", block:"center"});
+        els.enQuery.scrollIntoView({ behavior: "smooth", block: "center" });
         els.enQuery.focus();
       });
     }
+
     if(els.aboutBtn){
-      els.aboutBtn.addEventListener("click", ()=>showLanding(true));
+      els.aboutBtn.addEventListener("click", () => showLanding(true));
     }
 
-    document.querySelectorAll(".exampleBtn").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".exampleBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
         const fill = btn.dataset.fill;
         const val = btn.dataset.value || "";
         if(fill === "en"){ els.enQuery.value = val; clearOtherInputs("en"); }
@@ -597,12 +606,12 @@ async function init(){
       });
     });
 
-    els.enQuery.addEventListener("input", ()=>{ if(els.enQuery.value.trim()) clearOtherInputs("en"); });
-    els.arQuery.addEventListener("input", ()=>{ if(els.arQuery.value.trim()) clearOtherInputs("ar"); });
-    els.idQuery.addEventListener("input", ()=>{ if(els.idQuery.value.trim()) clearOtherInputs("id"); });
+    els.enQuery.addEventListener("input", () => { if(els.enQuery.value.trim()) clearOtherInputs("en"); });
+    els.arQuery.addEventListener("input", () => { if(els.arQuery.value.trim()) clearOtherInputs("ar"); });
+    els.idQuery.addEventListener("input", () => { if(els.idQuery.value.trim()) clearOtherInputs("id"); });
 
-    [els.enQuery, els.arQuery, els.idQuery].forEach(inp=>{
-      inp.addEventListener("keydown", (e)=>{
+    [els.enQuery, els.arQuery, els.idQuery].forEach(inp => {
+      inp.addEventListener("keydown", (e) => {
         if(e.key === "Enter"){
           e.preventDefault();
           runSearch();
