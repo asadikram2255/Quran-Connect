@@ -30,25 +30,19 @@ const els = {
 
 const state = {
   manifest: null,
-
   shardMapQuran: null,
   shardMapPairs: null,
   shardMapHadith: null,
-
   enTokenToAyah: null,
   enTriToTokens: null,
   arTokenToAyah: null,
-
   loadedSurahs: new Set(),
   loadedHadithShardFiles: new Set(),
-
   quranById: new Map(),
   pairsByAyah: new Map(),
   hadithById: new Map(),
-
   selectedAyahId: null,
   lastResults: [],
-
   searchCache: {
     id: new Map(),
     ar: new Map(),
@@ -56,7 +50,6 @@ const state = {
   }
 };
 
-// ---------- Utils ----------
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 async function fetchJson(path){
@@ -87,7 +80,9 @@ function escapeHtml(s){
 }
 
 function fmtScore(x){
-  return (Math.round(x * 10000) / 10000).toFixed(4);
+  const n = Number(x);
+  if(!Number.isFinite(n)) return "—";
+  return `${Math.max(0, Math.min(100, Math.round(n)))}%`;
 }
 
 function showLanding(show){
@@ -106,7 +101,6 @@ function clearOtherInputs(keep){
   if(keep !== "id") els.idQuery.value = "";
 }
 
-// ---------- String helpers ----------
 function normalizeArabic(s){
   return String(s || "")
     .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
@@ -158,7 +152,6 @@ function levenshtein(a, b){
 
   let prev = new Array(n + 1);
   let curr = new Array(n + 1);
-
   for(let j = 0; j <= n; j++) prev[j] = j;
 
   for(let i = 1; i <= m; i++){
@@ -166,18 +159,13 @@ function levenshtein(a, b){
     const ca = a.charCodeAt(i - 1);
     for(let j = 1; j <= n; j++){
       const cost = (ca === b.charCodeAt(j - 1)) ? 0 : 1;
-      curr[j] = Math.min(
-        prev[j] + 1,
-        curr[j - 1] + 1,
-        prev[j - 1] + cost
-      );
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
     }
     [prev, curr] = [curr, prev];
   }
   return prev[n];
 }
 
-// ---------- Loaders ----------
 async function ensureSurahLoaded(surah){
   surah = String(surah);
   if(state.loadedSurahs.has(surah)) return;
@@ -190,20 +178,12 @@ async function ensureSurahLoaded(surah){
     fetchJson(`data/${qPath.split("data/").pop()}`.replace(/^data\/data\//, "data/")),
     fetchJson(`data/${pPath.split("data/").pop()}`.replace(/^data\/data\//, "data/"))
   ]).catch(async () => {
-    const [qShard2, pShard2] = await Promise.all([
-      fetchJson(qPath),
-      fetchJson(pPath)
-    ]);
+    const [qShard2, pShard2] = await Promise.all([fetchJson(qPath), fetchJson(pPath)]);
     return [qShard2, pShard2];
   });
 
-  for(const rec of qShard){
-    state.quranById.set(rec.ayah_id, rec);
-  }
-  for(const rec of pShard){
-    state.pairsByAyah.set(rec.ayah_id, rec);
-  }
-
+  for(const rec of qShard) state.quranById.set(rec.ayah_id, rec);
+  for(const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
   state.loadedSurahs.add(surah);
 }
 
@@ -222,26 +202,20 @@ function hadithSerialFromId(hid){
 
 async function ensureHadithById(hadithId){
   if(state.hadithById.has(hadithId)) return;
-
   const serial = hadithSerialFromId(hadithId);
   if(serial == null) return;
 
   const file = findHadithShardFileBySerial(serial);
-  if(!file) return;
-  if(state.loadedHadithShardFiles.has(file)) return;
+  if(!file || state.loadedHadithShardFiles.has(file)) return;
 
   const shard = await fetchJson(`data/${file.split("data/").pop()}`.replace(/^data\/data\//, "data/")).catch(async () => {
     return await fetchJson(file);
   });
 
-  for(const rec of shard){
-    state.hadithById.set(rec.hadith_id, rec);
-  }
-
+  for(const rec of shard) state.hadithById.set(rec.hadith_id, rec);
   state.loadedHadithShardFiles.add(file);
 }
 
-// ---------- Search ----------
 async function searchByAyahId(raw){
   const norm = String(raw || "").trim();
   if(state.searchCache.id.has(norm)) return state.searchCache.id.get(norm);
@@ -250,9 +224,7 @@ async function searchByAyahId(raw){
   if(!m) return [];
 
   const id = `${Number(m[1])}:${Number(m[2])}`;
-  const surah = surahFromAyahId(id);
-  await ensureSurahLoaded(surah);
-
+  await ensureSurahLoaded(surahFromAyahId(id));
   const rec = state.quranById.get(id);
   const out = rec ? [rec] : [];
   state.searchCache.id.set(norm, out);
@@ -283,7 +255,6 @@ async function searchByEnglishSmart(raw){
 
   const matchedAyahScores = new Map();
   const matchedTokenCounts = new Map();
-
   let lastYield = performance.now();
 
   for(let ti = 0; ti < toks.length; ti++){
@@ -301,8 +272,8 @@ async function searchByEnglishSmart(raw){
 
     const maxEd = maxAllowedEdits(qt.length);
     const good = [];
-
     let checked = 0;
+
     for(const t of candidates){
       checked++;
       if(Math.abs(t.length - qt.length) > maxEd) continue;
@@ -326,7 +297,6 @@ async function searchByEnglishSmart(raw){
 
     good.sort((a, b) => a.d - b.d);
     const best = good.slice(0, 12);
-
     const ayatMatchedThisToken = new Set();
 
     for(const m of best){
@@ -335,8 +305,7 @@ async function searchByEnglishSmart(raw){
       const exactBonus = (m.d === 0 ? 2 : 0);
 
       for(const id of ids){
-        const prev = matchedAyahScores.get(id) || 0;
-        matchedAyahScores.set(id, prev + base + exactBonus);
+        matchedAyahScores.set(id, (matchedAyahScores.get(id) || 0) + base + exactBonus);
         ayatMatchedThisToken.add(id);
       }
     }
@@ -345,15 +314,12 @@ async function searchByEnglishSmart(raw){
       matchedTokenCounts.set(id, (matchedTokenCounts.get(id) || 0) + 1);
     }
 
-    if(toks.length > 2){
-      setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
-    }
+    if(toks.length > 2) setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
   }
 
   const minMatch = Math.max(1, Math.ceil(toks.length * 0.6));
-
   const ranked = Array.from(matchedAyahScores.entries())
-    .filter(([id, _score]) => (matchedTokenCounts.get(id) || 0) >= minMatch)
+    .filter(([id]) => (matchedTokenCounts.get(id) || 0) >= minMatch)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 200)
     .map(x => x[0]);
@@ -362,24 +328,14 @@ async function searchByEnglishSmart(raw){
   for(const s of surahs) await ensureSurahLoaded(s);
 
   const out = ranked.map(id => state.quranById.get(id)).filter(Boolean);
-
   state.searchCache.en.set(norm, out);
   return out;
 }
 
-// ---------- Rendering ----------
 function rootsLineHtml(rec){
   const roots = Array.isArray(rec?.roots_ordered) ? rec.roots_ordered : [];
-  if(!roots.length){
-    return `<div class="subtxt"><b>Root words:</b> —</div>`;
-  }
-
-  return `
-    <div class="subtxt">
-      <b>Root words:</b>
-      <span dir="rtl">${escapeHtml(roots.join(" • "))}</span>
-    </div>
-  `;
+  if(!roots.length) return `<div class="subtxt"><b>Root words:</b> —</div>`;
+  return `<div class="subtxt"><b>Root words:</b> <span dir="rtl">${escapeHtml(roots.join(" • "))}</span></div>`;
 }
 
 function renderResults(list){
@@ -396,7 +352,6 @@ function renderResults(list){
   for(const rec of list.slice(0, 60)){
     const div = document.createElement("div");
     div.className = "item" + (state.selectedAyahId === rec.ayah_id ? " selected" : "");
-
     div.innerHTML = `
       <div class="id">${escapeHtml(rec.ayah_id)}</div>
       <div>
@@ -405,15 +360,13 @@ function renderResults(list){
         ${rootsLineHtml(rec)}
       </div>
     `;
-
     div.onclick = () => openDetail(rec.ayah_id);
     els.resultsList.appendChild(div);
   }
 }
 
 function setTab(name){
-  const tabs = document.querySelectorAll(".tab");
-  tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   els.tabSemantic.classList.toggle("hidden", name !== "semantic");
   els.tabLexical.classList.toggle("hidden", name !== "lexical");
 }
@@ -422,10 +375,22 @@ document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 
-function renderPairList(container, items, kind, sharedLabel = "shared tokens"){
+function makeSharedLine(label, values){
+  if(!values || !values.length) return "";
+  return `<div class="small"><b>${escapeHtml(label)}:</b> <span dir="rtl">${escapeHtml(values.join(" · "))}</span></div>`;
+}
+
+function renderPairList(container, items, options = {}){
+  const kind = options.kind || "quran";
+  const emptyMessage = options.emptyMessage || "No items.";
+  const sharedRootsLabel = options.sharedRootsLabel || "Shared roots";
+  const sharedTokensLabel = options.sharedTokensLabel || "Shared Arabic tokens";
+  const showRootsLine = Boolean(options.showRootsLine);
+  const showHadithTokens = Boolean(options.showHadithTokens);
+
   container.innerHTML = "";
   if(!items || !items.length){
-    container.innerHTML = `<div class="empty">No items.</div>`;
+    container.innerHTML = `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
     return;
   }
 
@@ -434,8 +399,6 @@ function renderPairList(container, items, kind, sharedLabel = "shared tokens"){
     div.className = "pair";
 
     let body = "";
-    let extra = "";
-
     if(kind === "quran"){
       const rec = state.quranById.get(it.id);
       body = rec
@@ -444,20 +407,30 @@ function renderPairList(container, items, kind, sharedLabel = "shared tokens"){
     } else {
       const h = state.hadithById.get(it.id);
       if(h){
-        const ar = h.arabic || "";
-        const en = h.english || "";
-        body = `<div dir="rtl">${escapeHtml(ar)}</div>`;
-        if(en) extra = `<div class="small">${escapeHtml(en)}</div>`;
-        else extra = `<div class="small">${escapeHtml(h.book || "")} — ${escapeHtml(h.reference || "")}</div>`;
-        body += extra;
+        body = `<div dir="rtl">${escapeHtml(h.arabic || "")}</div>`;
+        if(h.english){
+          body += `<div class="small">${escapeHtml(h.english)}</div>`;
+        } else {
+          body += `<div class="small">${escapeHtml(h.book || "")} — ${escapeHtml(h.reference || "")}</div>`;
+        }
       } else {
         body = `<div class="small">Loading…</div>`;
       }
     }
 
-    let shared = "";
-    if(it.shared_tokens && it.shared_tokens.length){
-      shared = `<div class="small">${escapeHtml(sharedLabel)}: <span dir="rtl">${escapeHtml(it.shared_tokens.join(" · "))}</span></div>`;
+    let sharedBlock = "";
+    const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
+    if(showRootsLine){
+      sharedBlock += makeSharedLine(sharedRootsLabel, shared);
+    }
+    if(showHadithTokens){
+      if(showRootsLine){
+        sharedBlock += `<div class="small"><b>${escapeHtml(sharedRootsLabel)}:</b> —</div>`;
+      }
+      sharedBlock += makeSharedLine(sharedTokensLabel, shared);
+    }
+    if(!showRootsLine && !showHadithTokens && shared.length){
+      sharedBlock += makeSharedLine(sharedTokensLabel, shared);
     }
 
     div.innerHTML = `
@@ -466,7 +439,7 @@ function renderPairList(container, items, kind, sharedLabel = "shared tokens"){
         <div class="pairScore">score: ${fmtScore(it.score)}</div>
       </div>
       <div class="pairBody">${body}</div>
-      ${shared}
+      ${sharedBlock}
     `;
 
     container.appendChild(div);
@@ -477,29 +450,26 @@ async function openDetail(ayahId){
   state.selectedAyahId = ayahId;
   renderResults(state.lastResults);
 
-  const surah = surahFromAyahId(ayahId);
-  await ensureSurahLoaded(surah);
+  await ensureSurahLoaded(surahFromAyahId(ayahId));
 
   const rec = state.quranById.get(ayahId);
   const pairs = state.pairsByAyah.get(ayahId);
   if(!rec || !pairs) return;
 
   setDetailState("detail");
-
   els.dArabic.textContent = rec.arabic || "";
   els.dEnglish.textContent = rec.english || "";
   els.dAyahId.textContent = rec.ayah_id || "";
 
-  const semQ = pairs.semantic.quran_top20 || [];
-  const lexQ = pairs.lexical.quran_top20 || [];
+  const semQ = pairs.semantic?.quran_top20 || [];
+  const semH = pairs.semantic?.hadith_top50 || [];
+  const lexQ = pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [];
+  const lexH = pairs.lexical?.hadith_top50 || [];
 
   const neededSurahs = new Set();
   for(const it of semQ) neededSurahs.add(surahFromAyahId(it.id));
   for(const it of lexQ) neededSurahs.add(surahFromAyahId(it.id));
   for(const s of neededSurahs) await ensureSurahLoaded(s);
-
-  const semH = pairs.semantic.hadith_top50 || [];
-  const lexH = pairs.lexical.hadith_top50 || [];
 
   const initialHadithIds = new Set([
     ...semH.slice(0, 12).map(x => x.id),
@@ -507,20 +477,52 @@ async function openDetail(ayahId){
   ]);
   for(const hid of initialHadithIds) await ensureHadithById(hid);
 
-  renderPairList(els.semQuran, semQ, "quran", "shared tokens");
-  renderPairList(els.lexQuran, lexQ, "quran", "shared roots");
-  renderPairList(els.semHadith, semH, "hadith", "shared tokens");
-  renderPairList(els.lexHadith, lexH, "hadith", "shared tokens");
+  renderPairList(els.semQuran, semQ, {
+    kind: "quran",
+    emptyMessage: "No context-matched Quran ayat passed the reranking filter.",
+    sharedTokensLabel: "Shared context cues"
+  });
+
+  renderPairList(els.semHadith, semH, {
+    kind: "hadith",
+    emptyMessage: "No context-matched Hadith passed the stricter filter.",
+    sharedTokensLabel: "Shared context cues"
+  });
+
+  renderPairList(els.lexQuran, lexQ, {
+    kind: "quran",
+    emptyMessage: "No Quran ayat share at least 2 root words with this ayah.",
+    showRootsLine: true,
+    sharedRootsLabel: "Root words"
+  });
+
+  renderPairList(els.lexHadith, lexH, {
+    kind: "hadith",
+    emptyMessage: "No Hadith lexical matches found.",
+    showRootsLine: true,
+    sharedRootsLabel: "Root words",
+    showHadithTokens: true,
+    sharedTokensLabel: "Hadith tokens"
+  });
 
   setTimeout(async () => {
-    const allH = new Set([
-      ...semH.map(x => x.id),
-      ...lexH.map(x => x.id)
-    ]);
-    for(const hid of allH) await ensureHadithById(hid);
+    const allHadithIds = new Set([...semH.map(x => x.id), ...lexH.map(x => x.id)]);
+    for(const hid of allHadithIds) await ensureHadithById(hid);
 
-    renderPairList(els.semHadith, semH, "hadith", "shared tokens");
-    renderPairList(els.lexHadith, lexH, "hadith", "shared tokens");
+    renderPairList(els.semHadith, semH, {
+      kind: "hadith",
+      emptyMessage: "No context-matched Hadith passed the stricter filter.",
+      sharedTokensLabel: "Shared context cues"
+    });
+
+    renderPairList(els.lexHadith, lexH, {
+      kind: "hadith",
+      emptyMessage: "No Hadith lexical matches found.",
+      showRootsLine: true,
+      sharedRootsLabel: "Root words",
+      showHadithTokens: true,
+      sharedTokensLabel: "Hadith tokens"
+    });
   }, 0);
 }
 
@@ -528,7 +530,6 @@ async function runSearch(){
   const en = els.enQuery.value.trim();
   const ar = els.arQuery.value.trim();
   const id = els.idQuery.value.trim();
-
   const count = [en, ar, id].filter(Boolean).length;
 
   state.selectedAyahId = null;
@@ -544,18 +545,14 @@ async function runSearch(){
     return;
   }
 
-  let results = [];
   try{
     setBadge("warn", "Searching…");
     await sleep(0);
 
-    if(id){
-      results = await searchByAyahId(id);
-    } else if(ar){
-      results = await searchByArabicKeyword(ar);
-    } else if(en){
-      results = await searchByEnglishSmart(en);
-    }
+    let results = [];
+    if(id) results = await searchByAyahId(id);
+    else if(ar) results = await searchByArabicKeyword(ar);
+    else if(en) results = await searchByEnglishSmart(en);
 
     renderResults(results);
     setBadge("ok", `Found ${results.length} ayat`);
@@ -565,7 +562,6 @@ async function runSearch(){
   }
 }
 
-// ---------- Main ----------
 async function init(){
   try{
     const manifest = await fetchJson("data/meta/manifest.json");
@@ -574,7 +570,6 @@ async function init(){
     state.shardMapQuran = await fetchJson(manifest.paths.shard_map_quran);
     state.shardMapPairs = await fetchJson(manifest.paths.shard_map_pairs);
     state.shardMapHadith = await fetchJson(manifest.paths.shard_map_hadith);
-
     state.enTokenToAyah = await fetchJson(manifest.paths.english_token_to_ayahids);
     state.enTriToTokens = await fetchJson(manifest.paths.english_trigram_to_tokens);
     state.arTokenToAyah = await fetchJson(manifest.paths.arabic_token_to_ayahids);
@@ -611,14 +606,13 @@ async function init(){
     els.idQuery.addEventListener("input", () => { if(els.idQuery.value.trim()) clearOtherInputs("id"); });
 
     [els.enQuery, els.arQuery, els.idQuery].forEach(inp => {
-      inp.addEventListener("keydown", (e) => {
+      inp.addEventListener("keydown", e => {
         if(e.key === "Enter"){
           e.preventDefault();
           runSearch();
         }
       });
     });
-
   } catch(err){
     console.error(err);
     setBadge("err", "Failed to load required JSON files");
@@ -626,7 +620,6 @@ async function init(){
 }
 
 els.searchBtn.onclick = runSearch;
-
 els.clearBtn.onclick = () => {
   els.enQuery.value = "";
   els.arQuery.value = "";
