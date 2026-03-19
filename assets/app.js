@@ -50,28 +50,38 @@ const state = {
   }
 };
 
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
-async function fetchJson(path){
-  const res = await fetch(path);
-  if(!res.ok) throw new Error(`Failed to fetch ${path}`);
+function resolveDataPath(path) {
+  const p = String(path || "").trim().replace(/^\.?\//, "");
+  if (!p) return p;
+  if (p.startsWith("data/")) return p;
+  return `data/${p}`;
+}
+
+async function fetchJson(path) {
+  const finalPath = resolveDataPath(path);
+  const res = await fetch(finalPath);
+  if (!res.ok) throw new Error(`Failed to fetch ${finalPath}`);
   return res.json();
 }
 
-function setBadge(kind, text){
+function setBadge(kind, text) {
   els.statusBadge.className = `badge ${kind}`;
   els.statusBadge.textContent = text;
 }
 
-function unique(arr){
+function unique(arr) {
   return [...new Set(arr)];
 }
 
-function surahFromAyahId(ayahId){
+function surahFromAyahId(ayahId) {
   return String(ayahId).split(":")[0];
 }
 
-function escapeHtml(s){
+function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -79,19 +89,19 @@ function escapeHtml(s){
     .replace(/"/g, "&quot;");
 }
 
-function fmtScore(x){
+function fmtScore(x) {
   const n = Number(x);
-  if(!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "—";
   return `${Math.max(0, Math.min(100, Math.round(n)))}%`;
 }
 
-function showLanding(show){
-  if(!els.landingCard) return;
+function showLanding(show) {
+  if (!els.landingCard) return;
   els.landingCard.style.display = show ? "" : "none";
 }
 
-function setDetailState(mode){
-  if(!els.detailWrap) return;
+function setDetailState(mode) {
+  if (!els.detailWrap) return;
   els.detailWrap.dataset.state = mode;
   if (mode === "detail") {
     els.detailEmpty?.classList.add("hidden");
@@ -102,13 +112,13 @@ function setDetailState(mode){
   }
 }
 
-function clearOtherInputs(keep){
-  if(keep !== "en") els.enQuery.value = "";
-  if(keep !== "ar") els.arQuery.value = "";
-  if(keep !== "id") els.idQuery.value = "";
+function clearOtherInputs(keep) {
+  if (keep !== "en") els.enQuery.value = "";
+  if (keep !== "ar") els.arQuery.value = "";
+  if (keep !== "id") els.idQuery.value = "";
 }
 
-function normalizeArabic(s){
+function normalizeArabic(s) {
   return String(s || "")
     .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
     .replace(/\u0640/g, "")
@@ -120,7 +130,7 @@ function normalizeArabic(s){
     .trim();
 }
 
-function normalizeEnglish(s){
+function normalizeEnglish(s) {
   return String(s || "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
@@ -128,43 +138,43 @@ function normalizeEnglish(s){
     .trim();
 }
 
-function trigrams(token){
-  if(token.length <= 3) return [token];
+function trigrams(token) {
+  if (token.length <= 3) return [token];
   const out = [];
-  for(let i = 0; i < token.length - 2; i++) out.push(token.slice(i, i + 3));
+  for (let i = 0; i < token.length - 2; i++) out.push(token.slice(i, i + 3));
   return out;
 }
 
-function maxAllowedEdits(len){
-  if(len <= 4) return 1;
-  if(len <= 8) return 2;
+function maxAllowedEdits(len) {
+  if (len <= 4) return 1;
+  if (len <= 8) return 2;
   return 3;
 }
 
-function stemVariantsEn(token){
+function stemVariantsEn(token) {
   const vars = new Set([token]);
-  if(token.endsWith("ing") && token.length > 5) vars.add(token.slice(0, -3));
-  if(token.endsWith("ed") && token.length > 4) vars.add(token.slice(0, -2));
-  if(token.endsWith("es") && token.length > 4) vars.add(token.slice(0, -2));
-  if(token.endsWith("s") && token.length > 3) vars.add(token.slice(0, -1));
-  if(token.endsWith("ies") && token.length > 5) vars.add(token.slice(0, -3) + "y");
+  if (token.endsWith("ing") && token.length > 5) vars.add(token.slice(0, -3));
+  if (token.endsWith("ed") && token.length > 4) vars.add(token.slice(0, -2));
+  if (token.endsWith("es") && token.length > 4) vars.add(token.slice(0, -2));
+  if (token.endsWith("s") && token.length > 3) vars.add(token.slice(0, -1));
+  if (token.endsWith("ies") && token.length > 5) vars.add(token.slice(0, -3) + "y");
   return [...vars];
 }
 
-function levenshtein(a, b){
-  if(a === b) return 0;
+function levenshtein(a, b) {
+  if (a === b) return 0;
   const m = a.length, n = b.length;
-  if(m === 0) return n;
-  if(n === 0) return m;
+  if (m === 0) return n;
+  if (n === 0) return m;
 
   let prev = new Array(n + 1);
   let curr = new Array(n + 1);
-  for(let j = 0; j <= n; j++) prev[j] = j;
+  for (let j = 0; j <= n; j++) prev[j] = j;
 
-  for(let i = 1; i <= m; i++){
+  for (let i = 1; i <= m; i++) {
     curr[0] = i;
     const ca = a.charCodeAt(i - 1);
-    for(let j = 1; j <= n; j++){
+    for (let j = 1; j <= n; j++) {
       const cost = (ca === b.charCodeAt(j - 1)) ? 0 : 1;
       curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
     }
@@ -173,56 +183,56 @@ function levenshtein(a, b){
   return prev[n];
 }
 
-async function ensureSurahLoaded(surah){
+async function ensureSurahLoaded(surah) {
   surah = String(surah);
-  if(state.loadedSurahs.has(surah)) return;
+  if (state.loadedSurahs.has(surah)) return;
 
   const qPath = state.shardMapQuran[surah];
   const pPath = state.shardMapPairs[surah];
-  if(!qPath || !pPath) return;
+  if (!qPath || !pPath) return;
 
   const qShard = await fetchJson(qPath);
   const pShard = await fetchJson(pPath);
 
-  for(const rec of qShard) state.quranById.set(rec.ayah_id, rec);
-  for(const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
+  for (const rec of qShard) state.quranById.set(rec.ayah_id, rec);
+  for (const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
   state.loadedSurahs.add(surah);
 }
 
-function findHadithShardFileBySerial(serial){
-  for(const x of state.shardMapHadith){
-    if(serial >= x.start && serial <= x.end) return x.file;
+function findHadithShardFileBySerial(serial) {
+  for (const x of state.shardMapHadith) {
+    if (serial >= x.start && serial <= x.end) return x.file;
   }
   return null;
 }
 
-function hadithSerialFromId(hid){
+function hadithSerialFromId(hid) {
   const parts = String(hid).split("|");
   const s = Number(parts[parts.length - 1]);
   return Number.isFinite(s) ? s : null;
 }
 
-async function ensureHadithById(hadithId){
-  if(state.hadithById.has(hadithId)) return;
+async function ensureHadithById(hadithId) {
+  if (state.hadithById.has(hadithId)) return;
   const serial = hadithSerialFromId(hadithId);
-  if(serial == null) return;
+  if (serial == null) return;
 
   const file = findHadithShardFileBySerial(serial);
-  if(!file) return;
+  if (!file) return;
 
-  if(!state.loadedHadithShardFiles.has(file)){
+  if (!state.loadedHadithShardFiles.has(file)) {
     const shard = await fetchJson(file);
-    for(const rec of shard) state.hadithById.set(rec.hadith_id, rec);
+    for (const rec of shard) state.hadithById.set(rec.hadith_id, rec);
     state.loadedHadithShardFiles.add(file);
   }
 }
 
-async function searchByAyahId(raw){
+async function searchByAyahId(raw) {
   const norm = String(raw || "").trim();
-  if(state.searchCache.id.has(norm)) return state.searchCache.id.get(norm);
+  if (state.searchCache.id.has(norm)) return state.searchCache.id.get(norm);
 
   const m = norm.match(/^(\d+)\s*:\s*(\d+)$/);
-  if(!m) return [];
+  if (!m) return [];
 
   const id = `${Number(m[1])}:${Number(m[2])}`;
   await ensureSurahLoaded(surahFromAyahId(id));
@@ -232,42 +242,42 @@ async function searchByAyahId(raw){
   return out;
 }
 
-async function searchByArabicKeyword(raw){
+async function searchByArabicKeyword(raw) {
   const norm = normalizeArabic(raw);
-  if(!norm) return [];
-  if(state.searchCache.ar.has(norm)) return state.searchCache.ar.get(norm);
+  if (!norm) return [];
+  if (state.searchCache.ar.has(norm)) return state.searchCache.ar.get(norm);
 
   const ids = state.arTokenToAyah[norm] || [];
   const surahs = unique(ids.map(surahFromAyahId));
-  for(const s of surahs) await ensureSurahLoaded(s);
+  for (const s of surahs) await ensureSurahLoaded(s);
 
   const out = ids.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.ar.set(norm, out);
   return out;
 }
 
-async function searchByEnglishSmart(raw){
+async function searchByEnglishSmart(raw) {
   const norm = normalizeEnglish(raw);
-  if(!norm) return [];
-  if(state.searchCache.en.has(norm)) return state.searchCache.en.get(norm);
+  if (!norm) return [];
+  if (state.searchCache.en.has(norm)) return state.searchCache.en.get(norm);
 
   const toks = norm.split(" ").filter(Boolean);
-  if(!toks.length) return [];
+  if (!toks.length) return [];
 
   const matchedAyahScores = new Map();
   const matchedTokenCounts = new Map();
   let lastYield = performance.now();
 
-  for(let ti = 0; ti < toks.length; ti++){
+  for (let ti = 0; ti < toks.length; ti++) {
     const qt = toks[ti];
     const variants = stemVariantsEn(qt);
 
     const candidates = new Set();
-    for(const v of variants){
+    for (const v of variants) {
       const grams = trigrams(v);
-      for(const g of grams){
+      for (const g of grams) {
         const c = state.enTriToTokens[g] || [];
-        for(const t of c) candidates.add(t);
+        for (const t of c) candidates.add(t);
       }
     }
 
@@ -275,21 +285,21 @@ async function searchByEnglishSmart(raw){
     const good = [];
     let checked = 0;
 
-    for(const t of candidates){
+    for (const t of candidates) {
       checked++;
-      if(Math.abs(t.length - qt.length) > maxEd) continue;
+      if (Math.abs(t.length - qt.length) > maxEd) continue;
 
       let bestD = 999;
-      for(const v of variants){
+      for (const v of variants) {
         const d = levenshtein(v, t);
-        if(d < bestD) bestD = d;
-        if(bestD === 0) break;
+        if (d < bestD) bestD = d;
+        if (bestD === 0) break;
       }
-      if(bestD <= maxEd) good.push({ t, d: bestD });
+      if (bestD <= maxEd) good.push({ t, d: bestD });
 
-      if(checked % 800 === 0){
+      if (checked % 800 === 0) {
         const now = performance.now();
-        if(now - lastYield > 10){
+        if (now - lastYield > 10) {
           await sleep(0);
           lastYield = now;
         }
@@ -300,22 +310,22 @@ async function searchByEnglishSmart(raw){
     const best = good.slice(0, 12);
     const ayatMatchedThisToken = new Set();
 
-    for(const m of best){
+    for (const m of best) {
       const ids = state.enTokenToAyah[m.t] || [];
       const base = (maxEd - m.d + 1);
       const exactBonus = (m.d === 0 ? 2 : 0);
 
-      for(const id of ids){
+      for (const id of ids) {
         matchedAyahScores.set(id, (matchedAyahScores.get(id) || 0) + base + exactBonus);
         ayatMatchedThisToken.add(id);
       }
     }
 
-    for(const id of ayatMatchedThisToken){
+    for (const id of ayatMatchedThisToken) {
       matchedTokenCounts.set(id, (matchedTokenCounts.get(id) || 0) + 1);
     }
 
-    if(toks.length > 2) setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
+    if (toks.length > 2) setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
   }
 
   const minMatch = Math.max(1, Math.ceil(toks.length * 0.6));
@@ -326,31 +336,31 @@ async function searchByEnglishSmart(raw){
     .map(x => x[0]);
 
   const surahs = unique(ranked.map(surahFromAyahId));
-  for(const s of surahs) await ensureSurahLoaded(s);
+  for (const s of surahs) await ensureSurahLoaded(s);
 
   const out = ranked.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.en.set(norm, out);
   return out;
 }
 
-function rootsLineHtml(rec){
+function rootsLineHtml(rec) {
   const roots = Array.isArray(rec?.roots_ordered) ? rec.roots_ordered : [];
-  if(!roots.length) return `<div class="subtxt"><b>Root words:</b> —</div>`;
+  if (!roots.length) return `<div class="subtxt"><b>Root words:</b> —</div>`;
   return `<div class="subtxt"><b>Root words:</b> <span dir="rtl">${escapeHtml(roots.join(" • "))}</span></div>`;
 }
 
-function renderResults(list){
+function renderResults(list) {
   state.lastResults = list || [];
   els.resultsList.innerHTML = "";
 
-  if(!list.length){
+  if (!list.length) {
     els.resultsList.classList.add("empty");
     els.resultsList.textContent = "No results found.";
     return;
   }
   els.resultsList.classList.remove("empty");
 
-  for(const rec of list.slice(0, 60)){
+  for (const rec of list.slice(0, 60)) {
     const div = document.createElement("div");
     div.className = "item" + (state.selectedAyahId === rec.ayah_id ? " selected" : "");
     div.innerHTML = `
@@ -366,7 +376,7 @@ function renderResults(list){
   }
 }
 
-function setTab(name){
+function setTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   els.tabSemantic.classList.toggle("hidden", name !== "semantic");
   els.tabLexical.classList.toggle("hidden", name !== "lexical");
@@ -376,12 +386,12 @@ document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 
-function makeSharedLine(label, values){
-  if(!values || !values.length) return `<div class="small"><b>${escapeHtml(label)}:</b> —</div>`;
+function makeSharedLine(label, values) {
+  if (!values || !values.length) return `<div class="small"><b>${escapeHtml(label)}:</b> —</div>`;
   return `<div class="small"><b>${escapeHtml(label)}:</b> <span dir="rtl">${escapeHtml(values.join(" · "))}</span></div>`;
 }
 
-function renderPairList(container, items, options = {}){
+function renderPairList(container, items, options = {}) {
   const kind = options.kind || "quran";
   const emptyMessage = options.emptyMessage || "No items.";
   const sharedRootsLabel = options.sharedRootsLabel || "Shared roots";
@@ -390,26 +400,26 @@ function renderPairList(container, items, options = {}){
   const showHadithTokens = Boolean(options.showHadithTokens);
 
   container.innerHTML = "";
-  if(!items || !items.length){
+  if (!items || !items.length) {
     container.innerHTML = `<div class="empty">${escapeHtml(emptyMessage)}</div>`;
     return;
   }
 
-  for(const it of items){
+  for (const it of items) {
     const div = document.createElement("div");
     div.className = "pair";
 
     let body = "";
-    if(kind === "quran"){
+    if (kind === "quran") {
       const rec = state.quranById.get(it.id);
       body = rec
         ? `<div dir="rtl">${escapeHtml(rec.arabic || "")}</div><div class="small">${escapeHtml(rec.english || "")}</div>`
         : `<div class="small">Loading…</div>`;
     } else {
       const h = state.hadithById.get(it.id);
-      if(h){
+      if (h) {
         body = `<div dir="rtl">${escapeHtml(h.arabic || "")}</div>`;
-        if(h.english){
+        if (h.english) {
           body += `<div class="small">${escapeHtml(h.english)}</div>`;
         } else {
           body += `<div class="small">${escapeHtml(h.book || "")} — ${escapeHtml(h.reference || "")}</div>`;
@@ -420,17 +430,17 @@ function renderPairList(container, items, options = {}){
     }
 
     let sharedBlock = "";
-    if(showRootsLine){
+    if (showRootsLine) {
       const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
       sharedBlock += makeSharedLine(sharedRootsLabel, shared);
     }
-    if(showHadithTokens){
+    if (showHadithTokens) {
       const hadithTokens = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
       sharedBlock += makeSharedLine(sharedTokensLabel, hadithTokens);
     }
-    if(!showRootsLine && !showHadithTokens){
+    if (!showRootsLine && !showHadithTokens) {
       const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
-      if(shared.length){
+      if (shared.length) {
         sharedBlock += makeSharedLine(sharedTokensLabel, shared);
       }
     }
@@ -447,7 +457,7 @@ function renderPairList(container, items, options = {}){
   }
 }
 
-async function openDetail(ayahId){
+async function openDetail(ayahId) {
   state.selectedAyahId = ayahId;
   renderResults(state.lastResults);
 
@@ -455,7 +465,7 @@ async function openDetail(ayahId){
 
   const rec = state.quranById.get(ayahId);
   const pairs = state.pairsByAyah.get(ayahId);
-  if(!rec || !pairs) return;
+  if (!rec || !pairs) return;
 
   setDetailState("detail");
   els.dArabic.textContent = rec.arabic || "";
@@ -468,15 +478,15 @@ async function openDetail(ayahId){
   const lexH = pairs.lexical?.hadith_top50 || [];
 
   const neededSurahs = new Set();
-  for(const it of semQ) neededSurahs.add(surahFromAyahId(it.id));
-  for(const it of lexQ) neededSurahs.add(surahFromAyahId(it.id));
-  for(const s of neededSurahs) await ensureSurahLoaded(s);
+  for (const it of semQ) neededSurahs.add(surahFromAyahId(it.id));
+  for (const it of lexQ) neededSurahs.add(surahFromAyahId(it.id));
+  for (const s of neededSurahs) await ensureSurahLoaded(s);
 
   const preloadHadithIds = new Set([
     ...semH.slice(0, 15).map(x => x.id),
     ...lexH.slice(0, 15).map(x => x.id)
   ]);
-  for(const hid of preloadHadithIds) await ensureHadithById(hid);
+  for (const hid of preloadHadithIds) await ensureHadithById(hid);
 
   renderPairList(els.semQuran, semQ, {
     kind: "quran",
@@ -508,7 +518,7 @@ async function openDetail(ayahId){
 
   setTimeout(async () => {
     const allHadithIds = new Set([...semH.map(x => x.id), ...lexH.map(x => x.id)]);
-    for(const hid of allHadithIds) await ensureHadithById(hid);
+    for (const hid of allHadithIds) await ensureHadithById(hid);
 
     renderPairList(els.semHadith, semH, {
       kind: "hadith",
@@ -527,7 +537,7 @@ async function openDetail(ayahId){
   }, 0);
 }
 
-async function runSearch(){
+async function runSearch() {
   const en = els.enQuery.value.trim();
   const ar = els.arQuery.value.trim();
   const id = els.idQuery.value.trim();
@@ -536,35 +546,35 @@ async function runSearch(){
   state.selectedAyahId = null;
   setDetailState("empty");
 
-  if(count === 0){
+  if (count === 0) {
     setBadge("warn", "Enter a query first");
     renderResults([]);
     return;
   }
-  if(count > 1){
+  if (count > 1) {
     setBadge("warn", "Please use ONE input: English OR Arabic OR Ayah ID");
     return;
   }
 
-  try{
+  try {
     setBadge("warn", "Searching…");
     await sleep(0);
 
     let results = [];
-    if(id) results = await searchByAyahId(id);
-    else if(ar) results = await searchByArabicKeyword(ar);
-    else if(en) results = await searchByEnglishSmart(en);
+    if (id) results = await searchByAyahId(id);
+    else if (ar) results = await searchByArabicKeyword(ar);
+    else if (en) results = await searchByEnglishSmart(en);
 
     renderResults(results);
     setBadge("ok", `Found ${results.length} ayat`);
-  } catch(err){
+  } catch (err) {
     console.error(err);
     setBadge("err", "Search failed");
   }
 }
 
-async function init(){
-  try{
+async function init() {
+  try {
     const manifest = await fetchJson("data/meta/manifest.json");
     state.manifest = manifest;
 
@@ -578,7 +588,7 @@ async function init(){
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
     setDetailState("empty");
 
-    if(els.startBtn){
+    if (els.startBtn) {
       els.startBtn.addEventListener("click", () => {
         showLanding(false);
         els.enQuery.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -586,7 +596,7 @@ async function init(){
       });
     }
 
-    if(els.aboutBtn){
+    if (els.aboutBtn) {
       els.aboutBtn.addEventListener("click", () => showLanding(true));
     }
 
@@ -594,27 +604,27 @@ async function init(){
       btn.addEventListener("click", () => {
         const fill = btn.dataset.fill;
         const val = btn.dataset.value || "";
-        if(fill === "en"){ els.enQuery.value = val; clearOtherInputs("en"); }
-        if(fill === "ar"){ els.arQuery.value = val; clearOtherInputs("ar"); }
-        if(fill === "id"){ els.idQuery.value = val; clearOtherInputs("id"); }
+        if (fill === "en") { els.enQuery.value = val; clearOtherInputs("en"); }
+        if (fill === "ar") { els.arQuery.value = val; clearOtherInputs("ar"); }
+        if (fill === "id") { els.idQuery.value = val; clearOtherInputs("id"); }
         showLanding(false);
         runSearch();
       });
     });
 
-    els.enQuery.addEventListener("input", () => { if(els.enQuery.value.trim()) clearOtherInputs("en"); });
-    els.arQuery.addEventListener("input", () => { if(els.arQuery.value.trim()) clearOtherInputs("ar"); });
-    els.idQuery.addEventListener("input", () => { if(els.idQuery.value.trim()) clearOtherInputs("id"); });
+    els.enQuery.addEventListener("input", () => { if (els.enQuery.value.trim()) clearOtherInputs("en"); });
+    els.arQuery.addEventListener("input", () => { if (els.arQuery.value.trim()) clearOtherInputs("ar"); });
+    els.idQuery.addEventListener("input", () => { if (els.idQuery.value.trim()) clearOtherInputs("id"); });
 
     [els.enQuery, els.arQuery, els.idQuery].forEach(inp => {
       inp.addEventListener("keydown", e => {
-        if(e.key === "Enter"){
+        if (e.key === "Enter") {
           e.preventDefault();
           runSearch();
         }
       });
     });
-  } catch(err){
+  } catch (err) {
     console.error(err);
     setBadge("err", "Failed to load required JSON files");
   }
