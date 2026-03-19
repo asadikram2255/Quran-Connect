@@ -55,7 +55,9 @@ function sleep(ms) {
 }
 
 function resolveDataPath(path) {
-  const p = String(path || "").trim().replace(/^\.?\//, "");
+  let p = String(path || "").trim();
+  p = p.replace(/\\/g, "/");
+  p = p.replace(/^\.?\//, "");
   if (!p) return p;
   if (p.startsWith("data/")) return p;
   return `data/${p}`;
@@ -63,9 +65,19 @@ function resolveDataPath(path) {
 
 async function fetchJson(path) {
   const finalPath = resolveDataPath(path);
-  const res = await fetch(finalPath);
-  if (!res.ok) throw new Error(`Failed to fetch ${finalPath}`);
-  return res.json();
+  const res = await fetch(finalPath, { cache: "no-store" });
+  if (!res.ok) {
+    let txt = "";
+    try {
+      txt = await res.text();
+    } catch (_) {}
+    throw new Error(`HTTP ${res.status} for ${finalPath}${txt ? ` | ${txt.slice(0, 120)}` : ""}`);
+  }
+  try {
+    return await res.json();
+  } catch (err) {
+    throw new Error(`Invalid JSON at ${finalPath}: ${err.message}`);
+  }
 }
 
 function setBadge(kind, text) {
@@ -187,9 +199,11 @@ async function ensureSurahLoaded(surah) {
   surah = String(surah);
   if (state.loadedSurahs.has(surah)) return;
 
-  const qPath = state.shardMapQuran[surah];
-  const pPath = state.shardMapPairs[surah];
-  if (!qPath || !pPath) return;
+  const qPath = state.shardMapQuran?.[surah];
+  const pPath = state.shardMapPairs?.[surah];
+
+  if (!qPath) throw new Error(`No Quran shard path found for surah ${surah}`);
+  if (!pPath) throw new Error(`No pair shard path found for surah ${surah}`);
 
   const qShard = await fetchJson(qPath);
   const pShard = await fetchJson(pPath);
@@ -200,7 +214,7 @@ async function ensureSurahLoaded(surah) {
 }
 
 function findHadithShardFileBySerial(serial) {
-  for (const x of state.shardMapHadith) {
+  for (const x of state.shardMapHadith || []) {
     if (serial >= x.start && serial <= x.end) return x.file;
   }
   return null;
@@ -214,11 +228,12 @@ function hadithSerialFromId(hid) {
 
 async function ensureHadithById(hadithId) {
   if (state.hadithById.has(hadithId)) return;
+
   const serial = hadithSerialFromId(hadithId);
-  if (serial == null) return;
+  if (serial == null) throw new Error(`Could not parse hadith serial from id: ${hadithId}`);
 
   const file = findHadithShardFileBySerial(serial);
-  if (!file) return;
+  if (!file) throw new Error(`No hadith shard file found for serial ${serial} (${hadithId})`);
 
   if (!state.loadedHadithShardFiles.has(file)) {
     const shard = await fetchJson(file);
@@ -236,6 +251,7 @@ async function searchByAyahId(raw) {
 
   const id = `${Number(m[1])}:${Number(m[2])}`;
   await ensureSurahLoaded(surahFromAyahId(id));
+
   const rec = state.quranById.get(id);
   const out = rec ? [rec] : [];
   state.searchCache.id.set(norm, out);
@@ -247,9 +263,11 @@ async function searchByArabicKeyword(raw) {
   if (!norm) return [];
   if (state.searchCache.ar.has(norm)) return state.searchCache.ar.get(norm);
 
-  const ids = state.arTokenToAyah[norm] || [];
+  const ids = state.arTokenToAyah?.[norm] || [];
   const surahs = unique(ids.map(surahFromAyahId));
-  for (const s of surahs) await ensureSurahLoaded(s);
+  for (const s of surahs) {
+    await ensureSurahLoaded(s);
+  }
 
   const out = ids.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.ar.set(norm, out);
@@ -276,7 +294,7 @@ async function searchByEnglishSmart(raw) {
     for (const v of variants) {
       const grams = trigrams(v);
       for (const g of grams) {
-        const c = state.enTriToTokens[g] || [];
+        const c = state.enTriToTokens?.[g] || [];
         for (const t of c) candidates.add(t);
       }
     }
@@ -311,7 +329,7 @@ async function searchByEnglishSmart(raw) {
     const ayatMatchedThisToken = new Set();
 
     for (const m of best) {
-      const ids = state.enTokenToAyah[m.t] || [];
+      const ids = state.enTokenToAyah?.[m.t] || [];
       const base = (maxEd - m.d + 1);
       const exactBonus = (m.d === 0 ? 2 : 0);
 
@@ -325,7 +343,9 @@ async function searchByEnglishSmart(raw) {
       matchedTokenCounts.set(id, (matchedTokenCounts.get(id) || 0) + 1);
     }
 
-    if (toks.length > 2) setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
+    if (toks.length > 2) {
+      setBadge("warn", `Searching… (${ti + 1}/${toks.length})`);
+    }
   }
 
   const minMatch = Math.max(1, Math.ceil(toks.length * 0.6));
@@ -336,7 +356,9 @@ async function searchByEnglishSmart(raw) {
     .map(x => x[0]);
 
   const surahs = unique(ranked.map(surahFromAyahId));
-  for (const s of surahs) await ensureSurahLoaded(s);
+  for (const s of surahs) {
+    await ensureSurahLoaded(s);
+  }
 
   const out = ranked.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.en.set(norm, out);
@@ -486,7 +508,13 @@ async function openDetail(ayahId) {
     ...semH.slice(0, 15).map(x => x.id),
     ...lexH.slice(0, 15).map(x => x.id)
   ]);
-  for (const hid of preloadHadithIds) await ensureHadithById(hid);
+  for (const hid of preloadHadithIds) {
+    try {
+      await ensureHadithById(hid);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   renderPairList(els.semQuran, semQ, {
     kind: "quran",
@@ -515,26 +543,6 @@ async function openDetail(ayahId) {
     showHadithTokens: true,
     sharedTokensLabel: "Hadith tokens"
   });
-
-  setTimeout(async () => {
-    const allHadithIds = new Set([...semH.map(x => x.id), ...lexH.map(x => x.id)]);
-    for (const hid of allHadithIds) await ensureHadithById(hid);
-
-    renderPairList(els.semHadith, semH, {
-      kind: "hadith",
-      emptyMessage: "No context-matched Hadith passed the stricter filter.",
-      sharedTokensLabel: "Shared context cues"
-    });
-
-    renderPairList(els.lexHadith, lexH, {
-      kind: "hadith",
-      emptyMessage: "No Hadith lexical matches found.",
-      showRootsLine: true,
-      sharedRootsLabel: "Root words",
-      showHadithTokens: true,
-      sharedTokensLabel: "Hadith tokens"
-    });
-  }, 0);
 }
 
 async function runSearch() {
@@ -568,8 +576,8 @@ async function runSearch() {
     renderResults(results);
     setBadge("ok", `Found ${results.length} ayat`);
   } catch (err) {
-    console.error(err);
-    setBadge("err", "Search failed");
+    console.error("runSearch error:", err);
+    setBadge("err", String(err.message || err).slice(0, 140));
   }
 }
 
@@ -625,8 +633,8 @@ async function init() {
       });
     });
   } catch (err) {
-    console.error(err);
-    setBadge("err", "Failed to load required JSON files");
+    console.error("init error:", err);
+    setBadge("err", String(err.message || err).slice(0, 140));
   }
 }
 
