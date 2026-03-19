@@ -222,6 +222,16 @@ def find_optional_column(df: pd.DataFrame, accepted_names: list[str]) -> str | N
     return None
 
 
+def dedupe_keep_order(items: list[str]) -> list[str]:
+    seen = set()
+    out = []
+    for x in items:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
 def load_root_words_maps(path_csv: str):
     rw = read_csv_robust(path_csv)
     root_col = find_required_column(rw, ["Arabic Root Word"], "Arabic Root Word")
@@ -385,6 +395,7 @@ q["arabic_norm"] = q["arabic_text"].map(normalize_ar)
 q["arabic_tokens"] = q["arabic_text"].map(lambda t: tokenize_ar(t, stop_ar))
 q["tok_set"] = q["arabic_tokens"].map(set)
 q["tok_len"] = q["tok_set"].map(len)
+q["tokens_ordered"] = q["arabic_tokens"].map(dedupe_keep_order)
 
 h_keep["arabic_norm"] = h_keep["arabic_text"].map(normalize_ar)
 h_keep["arabic_tokens"] = h_keep["arabic_text"].map(lambda t: tokenize_ar(t, stop_ar))
@@ -398,7 +409,7 @@ print("Avg Hadith token count:", float(h_keep["tok_len"].mean()))
 ayah_to_rootset, ayah_to_rootseq = load_root_words_maps(ROOT_WORDS_PATH)
 q["root_set"] = q["ayah_id"].map(lambda aid: ayah_to_rootset.get(aid, set()))
 q["root_len"] = q["root_set"].map(len)
-q["roots_ordered"] = q["ayah_id"].map(lambda aid: ayah_to_rootseq.get(aid, []))
+q["roots_ordered"] = q["ayah_id"].map(lambda aid: dedupe_keep_order(ayah_to_rootseq.get(aid, [])))
 print("Avg Quran root count:", float(q["root_len"].mean()))
 print("Quran ayat with ZERO roots in root file:", int((q["root_len"] == 0).sum()))
 
@@ -719,6 +730,7 @@ for surah in sorted(q["surah"].unique().tolist()):
             "arabic": safe_str(row["arabic_text"]),
             "english": safe_str(row["english_text"]),
             "roots_ordered": row["roots_ordered"],
+            "tokens_ordered": row["tokens_ordered"],
             "vec_preview": row["vec_preview"],
         })
 
