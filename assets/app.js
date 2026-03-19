@@ -371,6 +371,12 @@ function rootsLineHtml(rec) {
   return `<div class="subtxt"><b>Root words:</b> <span dir="rtl">${escapeHtml(roots.join(" • "))}</span></div>`;
 }
 
+function tokensLineHtml(rec) {
+  const tokens = Array.isArray(rec?.tokens_ordered) ? rec.tokens_ordered : Array.isArray(rec?.arabic_tokens) ? rec.arabic_tokens : [];
+  if (!tokens.length) return `<div class="subtxt"><b>Tokens:</b> —</div>`;
+  return `<div class="subtxt"><b>Tokens:</b> <span dir="rtl">${escapeHtml(tokens.join(" • "))}</span></div>`;
+}
+
 function renderResults(list) {
   state.lastResults = list || [];
   els.resultsList.innerHTML = "";
@@ -391,6 +397,7 @@ function renderResults(list) {
         <div class="txt" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
         <div class="subtxt">${escapeHtml(rec.english || "")}</div>
         ${rootsLineHtml(rec)}
+        ${tokensLineHtml(rec)}
       </div>
     `;
     div.onclick = () => openDetail(rec.ayah_id);
@@ -416,10 +423,10 @@ function makeSharedLine(label, values) {
 function renderPairList(container, items, options = {}) {
   const kind = options.kind || "quran";
   const emptyMessage = options.emptyMessage || "No items.";
-  const sharedRootsLabel = options.sharedRootsLabel || "Shared roots";
+  const sharedRootsLabel = options.sharedRootsLabel || "Root words";
   const sharedTokensLabel = options.sharedTokensLabel || "Shared Arabic tokens";
   const showRootsLine = Boolean(options.showRootsLine);
-  const showHadithTokens = Boolean(options.showHadithTokens);
+  const showCommonHadithTokens = Boolean(options.showCommonHadithTokens);
 
   container.innerHTML = "";
   if (!items || !items.length) {
@@ -451,17 +458,18 @@ function renderPairList(container, items, options = {}) {
       }
     }
 
+    const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
     let sharedBlock = "";
+
     if (showRootsLine) {
-      const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
       sharedBlock += makeSharedLine(sharedRootsLabel, shared);
     }
-    if (showHadithTokens) {
-      const hadithTokens = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
-      sharedBlock += makeSharedLine(sharedTokensLabel, hadithTokens);
+
+    if (showCommonHadithTokens) {
+      sharedBlock += makeSharedLine(sharedTokensLabel, shared);
     }
-    if (!showRootsLine && !showHadithTokens) {
-      const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
+
+    if (!showRootsLine && !showCommonHadithTokens) {
       if (shared.length) {
         sharedBlock += makeSharedLine(sharedTokensLabel, shared);
       }
@@ -538,10 +546,8 @@ async function openDetail(ayahId) {
   renderPairList(els.lexHadith, lexH, {
     kind: "hadith",
     emptyMessage: "No Hadith lexical matches found.",
-    showRootsLine: true,
-    sharedRootsLabel: "Root words",
-    showHadithTokens: true,
-    sharedTokensLabel: "Hadith tokens"
+    showCommonHadithTokens: true,
+    sharedTokensLabel: "Common Hadith Tokens"
   });
 }
 

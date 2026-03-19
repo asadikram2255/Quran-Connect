@@ -79,7 +79,6 @@
 
 <body>
   <div class="app">
-    <!-- Header -->
     <div class="header">
       <div>
         <div class="h1">Quran Better For Me</div>
@@ -91,7 +90,6 @@
       </div>
     </div>
 
-    <!-- Landing / About -->
     <div id="landingCard" class="card landing">
       <div class="landingTop">
         <div>
@@ -142,7 +140,6 @@
       </div>
     </div>
 
-    <!-- Search row -->
     <div class="card stickyTop">
       <div class="grid3">
         <div>
@@ -166,11 +163,9 @@
       </div>
     </div>
 
-    <!-- Main layout -->
     <div class="results">
       <div class="layout">
 
-        <!-- Left panel -->
         <div class="panel">
           <div class="panelTitle stickyHead">Search Results</div>
           <div class="scrollBody">
@@ -178,12 +173,10 @@
           </div>
         </div>
 
-        <!-- Right panel -->
         <div class="panel">
           <div class="panelTitle stickyHead" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
             <div style="display:flex;align-items:center;gap:10px;">
               <div>Pairs</div>
-              <div class="chip" style="opacity:.9;">Quran Top 20 + Hadith Top 50</div>
             </div>
             <div class="tabs" style="margin:0;">
               <button class="tab active" data-tab="semantic">Context Match</button>
@@ -191,22 +184,18 @@
             </div>
           </div>
 
-          <!-- ✅ SINGLE STATE WRAPPER: prevents overlap forever -->
           <div id="detailWrap" class="detailWrap" data-state="empty">
 
-            <!-- Empty state (only visible when data-state="empty") -->
             <div id="detailEmpty" class="detailEmpty">
               <div class="ayahBox">
                 <div style="color:var(--muted);line-height:1.6;">
                   Select an ayah from <b>Search Results</b> to load pairings here.<br>
-                  <span class="small">Quran: Top 20 • Hadith: Top 50</span>
+                  <span class="small">Quran + Hadith</span>
                 </div>
               </div>
             </div>
 
-            <!-- Detail view (only visible when data-state="detail") -->
             <div id="detailView" class="detailView">
-              <!-- Keep for JS compatibility (but fully hidden) -->
               <div class="hiddenCompat">
                 <div id="dAyahId"></div>
                 <div id="dArabic"></div>
@@ -218,11 +207,11 @@
                 <div id="tabSemantic">
                   <div class="twoCol">
                     <div class="subpanel">
-                      <div class="subTitle">Quran (Top 20)</div>
+                      <div class="subTitle">Quran Pairs</div>
                       <div id="semQuran" class="pairsList"></div>
                     </div>
                     <div class="subpanel">
-                      <div class="subTitle">Hadith (Top 50)</div>
+                      <div class="subTitle">Hadith Pairs</div>
                       <div id="semHadith" class="pairsList"></div>
                     </div>
                   </div>
@@ -231,20 +220,18 @@
                 <div id="tabLexical" class="hidden">
                   <div class="twoCol">
                     <div class="subpanel">
-                      <div class="subTitle">Quran (Top 20)</div>
+                      <div class="subTitle">Quran Pairs</div>
                       <div id="lexQuran" class="pairsList"></div>
                     </div>
                     <div class="subpanel">
-                      <div class="subTitle">Hadith (Top 50)</div>
+                      <div class="subTitle">Hadith Pairs</div>
                       <div id="lexHadith" class="pairsList"></div>
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- /detailScroll -->
             </div>
           </div>
-          <!-- /detailWrap -->
         </div>
 
       </div>
