@@ -93,6 +93,13 @@ function showLanding(show){
 function setDetailState(mode){
   if(!els.detailWrap) return;
   els.detailWrap.dataset.state = mode;
+  if (mode === "detail") {
+    els.detailEmpty?.classList.add("hidden");
+    els.detailView?.classList.remove("hidden");
+  } else {
+    els.detailEmpty?.classList.remove("hidden");
+    els.detailView?.classList.add("hidden");
+  }
 }
 
 function clearOtherInputs(keep){
@@ -174,13 +181,8 @@ async function ensureSurahLoaded(surah){
   const pPath = state.shardMapPairs[surah];
   if(!qPath || !pPath) return;
 
-  const [qShard, pShard] = await Promise.all([
-    fetchJson(`data/${qPath.split("data/").pop()}`.replace(/^data\/data\//, "data/")),
-    fetchJson(`data/${pPath.split("data/").pop()}`.replace(/^data\/data\//, "data/"))
-  ]).catch(async () => {
-    const [qShard2, pShard2] = await Promise.all([fetchJson(qPath), fetchJson(pPath)]);
-    return [qShard2, pShard2];
-  });
+  const qShard = await fetchJson(qPath);
+  const pShard = await fetchJson(pPath);
 
   for(const rec of qShard) state.quranById.set(rec.ayah_id, rec);
   for(const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
@@ -206,14 +208,13 @@ async function ensureHadithById(hadithId){
   if(serial == null) return;
 
   const file = findHadithShardFileBySerial(serial);
-  if(!file || state.loadedHadithShardFiles.has(file)) return;
+  if(!file) return;
 
-  const shard = await fetchJson(`data/${file.split("data/").pop()}`.replace(/^data\/data\//, "data/")).catch(async () => {
-    return await fetchJson(file);
-  });
-
-  for(const rec of shard) state.hadithById.set(rec.hadith_id, rec);
-  state.loadedHadithShardFiles.add(file);
+  if(!state.loadedHadithShardFiles.has(file)){
+    const shard = await fetchJson(file);
+    for(const rec of shard) state.hadithById.set(rec.hadith_id, rec);
+    state.loadedHadithShardFiles.add(file);
+  }
 }
 
 async function searchByAyahId(raw){
@@ -376,7 +377,7 @@ document.querySelectorAll(".tab").forEach(btn => {
 });
 
 function makeSharedLine(label, values){
-  if(!values || !values.length) return "";
+  if(!values || !values.length) return `<div class="small"><b>${escapeHtml(label)}:</b> —</div>`;
   return `<div class="small"><b>${escapeHtml(label)}:</b> <span dir="rtl">${escapeHtml(values.join(" · "))}</span></div>`;
 }
 
@@ -419,18 +420,19 @@ function renderPairList(container, items, options = {}){
     }
 
     let sharedBlock = "";
-    const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
     if(showRootsLine){
+      const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
       sharedBlock += makeSharedLine(sharedRootsLabel, shared);
     }
     if(showHadithTokens){
-      if(showRootsLine){
-        sharedBlock += `<div class="small"><b>${escapeHtml(sharedRootsLabel)}:</b> —</div>`;
-      }
-      sharedBlock += makeSharedLine(sharedTokensLabel, shared);
+      const hadithTokens = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
+      sharedBlock += makeSharedLine(sharedTokensLabel, hadithTokens);
     }
-    if(!showRootsLine && !showHadithTokens && shared.length){
-      sharedBlock += makeSharedLine(sharedTokensLabel, shared);
+    if(!showRootsLine && !showHadithTokens){
+      const shared = Array.isArray(it.shared_tokens) ? it.shared_tokens : [];
+      if(shared.length){
+        sharedBlock += makeSharedLine(sharedTokensLabel, shared);
+      }
     }
 
     div.innerHTML = `
@@ -441,7 +443,6 @@ function renderPairList(container, items, options = {}){
       <div class="pairBody">${body}</div>
       ${sharedBlock}
     `;
-
     container.appendChild(div);
   }
 }
@@ -471,11 +472,11 @@ async function openDetail(ayahId){
   for(const it of lexQ) neededSurahs.add(surahFromAyahId(it.id));
   for(const s of neededSurahs) await ensureSurahLoaded(s);
 
-  const initialHadithIds = new Set([
-    ...semH.slice(0, 12).map(x => x.id),
-    ...lexH.slice(0, 12).map(x => x.id)
+  const preloadHadithIds = new Set([
+    ...semH.slice(0, 15).map(x => x.id),
+    ...lexH.slice(0, 15).map(x => x.id)
   ]);
-  for(const hid of initialHadithIds) await ensureHadithById(hid);
+  for(const hid of preloadHadithIds) await ensureHadithById(hid);
 
   renderPairList(els.semQuran, semQ, {
     kind: "quran",
