@@ -1,0 +1,13 @@
+query_or_ayah_id,pair_type,candidate_id,candidate_text_excerpt,label,confidence,reason,notes
+2:153,quran_hadith,,,,,Patience in hardship / sabr during trial,
+2:153,quran_quran,,,,,Related Quran verse about sabr and seeking help,
+2:177,quran_hadith,,,,,"Righteousness, charity, sincerity",
+2:222,quran_hadith,,,,,Repentance and purification,
+3:104,quran_hadith,,,,,Calling to good / forbidding wrong,
+4:58,quran_hadith,,,,,"Trusts, justice, fairness",
+5:8,quran_hadith,,,,,Justice even against dislike,
+9:119,quran_hadith,,,,,Truthfulness / keeping company with the truthful,
+24:22,quran_hadith,,,,,Forgiveness after personal hurt,
+39:53,quran_hadith,,,,,Hope after sin / do not despair of mercy,
+49:11,quran_hadith,,,,,"Mockery, insult, dignity of believers",
+49:12,quran_hadith,,,,,"Suspicion, spying, backbiting",
