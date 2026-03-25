@@ -7,7 +7,7 @@ from collections import defaultdict, Counter
 
 import numpy as np
 import pandas as pd
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.neighbors import NearestNeighbors
 
 print("RUNNING:", os.path.abspath(__file__))
@@ -69,21 +69,35 @@ TOPK_QURAN_SEMANTIC = 20
 TOPK_HADITH_SEMANTIC = 50
 TOPK_HADITH_LEXICAL = 50
 
-QURAN_SEMANTIC_CANDIDATES = 120
-HADITH_SEMANTIC_CANDIDATES = 220
+QURAN_SEMANTIC_CANDIDATES = 160
+HADITH_SEMANTIC_CANDIDATES = 260
 
-EMBED_MODEL_NAME = "intfloat/multilingual-e5-base"
-EMBED_BATCH_SIZE = 256
+# Retrieval model: multilingual, retrieval-focused, Arabic-friendly.
+EMBED_MODEL_NAME = "BAAI/bge-m3"
+EMBED_BATCH_SIZE = 128
 VEC_PREVIEW_DIMS = 8
 MAX_SHARED_ITEMS_STORED = 8
 
-GENERIC_TOKEN_DF_RATIO = 0.06
+# Optional second-stage reranker. This improves pertinence for top candidates.
+USE_RERANKER = True
+RERANK_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+RERANK_BATCH_SIZE = 16
+RERANK_MAX_LENGTH = 512
+QURAN_RERANK_TOPN = 10
+HADITH_RERANK_TOPN = 14
+QURAN_PREFILTER_TOPN = 24
+HADITH_PREFILTER_TOPN = 32
+
+GENERIC_TOKEN_DF_RATIO = 0.05
 GENERIC_ROOT_DF_RATIO = 0.04
 MIN_QQ_SHARED_ROOTS = 2
 MIN_QH_SHARED_TOKENS = 1
-MIN_QQ_CONTEXT_RAW = 0.26
-MIN_QH_CONTEXT_RAW = 0.33
-MIN_QH_EMBED = 0.43
+MIN_QQ_CONTEXT_RAW = 0.33
+MIN_QH_CONTEXT_RAW = 0.42
+MIN_QH_EMBED = 0.48
+VERY_HIGH_QQ_EMBED = 0.78
+VERY_HIGH_QH_EMBED = 0.66
+VERY_HIGH_RERANK = 0.72
 
 # ---------- Helpers ----------
 def safe_str(x):
@@ -306,6 +320,16 @@ def diversity_penalty(shared_terms: set[str], generic_terms: set[str]) -> float:
     return 0.25 * ratio
 
 
+def sigmoid_array(x) -> np.ndarray:
+    arr = np.asarray(x, dtype=np.float32)
+    return 1.0 / (1.0 + np.exp(-arr))
+
+
+def take_top_items(items: list[dict], n: int, score_key: str) -> list[dict]:
+    items.sort(key=lambda x: (-x[score_key], x.get("id", "")))
+    return items[:n]
+
+
 # ---------- Stopwords bootstrap ----------
 STOPWORDS_AR_TXT = os.path.join(OUT_SEARCH_DIR, "stopwords_ar.txt")
 if not os.path.exists(STOPWORDS_AR_TXT):
@@ -444,16 +468,27 @@ root_idf, root_df = build_idf_from_sets(q["root_set"].tolist())
 generic_tokens = {t for t, c in token_df.items() if c / max(1, len(all_token_sets)) >= GENERIC_TOKEN_DF_RATIO}
 generic_roots = {t for t, c in root_df.items() if c / max(1, len(q)) >= GENERIC_ROOT_DF_RATIO}
 
+# Stronger domain-specific noise handling for hadith formulae.
+extra_hadith_noise = {
+    "قال", "قالت", "قالوا", "حدثنا", "اخبرنا", "سمعت", "سمع", "عن", "ابو", "ابي", "ابن", "بنت",
+    "رسول", "النبي", "الله", "عليه", "وسلم", "صلي", "صلى", "كان", "كانت", "فقال", "فقالت", "فقالوا",
+    "رواه", "رجل", "امراه", "امرأة", "ناس", "احد", "احدى", "انه", "انها", "انهم", "هذا", "هذه"
+}
+
+generic_tokens_all = generic_tokens.union(extra_hadith_noise)
+
 print("Generic Arabic tokens penalized:", len(generic_tokens))
 print("Generic Quran roots penalized:", len(generic_roots))
+print("Extra hadith-noise tokens penalized:", len(extra_hadith_noise))
 
 # ---------- Embeddings ----------
-model = SentenceTransformer(EMBED_MODEL_NAME)
+print("Loading embedding model:", EMBED_MODEL_NAME)
+model = SentenceTransformer(EMBED_MODEL_NAME, trust_remote_code=True)
 
 
 def embed_passages(texts: list[str]) -> np.ndarray:
     emb = model.encode(
-        [f"passage: {t}" for t in texts],
+        texts,
         batch_size=EMBED_BATCH_SIZE,
         show_progress_bar=True,
         normalize_embeddings=True,
@@ -465,9 +500,35 @@ q_emb = embed_passages(q["arabic_norm"].tolist())
 h_emb = embed_passages(h_keep["arabic_norm"].tolist())
 print("Embeddings shapes:", q_emb.shape, h_emb.shape)
 
+# ---------- Optional reranker ----------
+reranker = None
+if USE_RERANKER:
+    try:
+        print("Loading reranker model:", RERANK_MODEL_NAME)
+        reranker = CrossEncoder(RERANK_MODEL_NAME, max_length=RERANK_MAX_LENGTH)
+    except Exception as e:
+        print("WARNING: Failed to load reranker. Continuing without it.")
+        print("Reranker error:", repr(e))
+        reranker = None
+
+
+def rerank_pair_scores(pairs: list[tuple[str, str]]) -> np.ndarray:
+    if reranker is None or not pairs:
+        return np.zeros(len(pairs), dtype=np.float32)
+    scores = reranker.predict(pairs, batch_size=RERANK_BATCH_SIZE, show_progress_bar=False)
+    scores = np.asarray(scores, dtype=np.float32).reshape(-1)
+    if len(scores) == 0:
+        return scores
+    if np.min(scores) < 0.0 or np.max(scores) > 1.0:
+        scores = sigmoid_array(scores)
+    return np.clip(scores, 0.0, 1.0)
+
+
 # ---------- Candidate retrieval ----------
 q_ids = q["ayah_id"].tolist()
 h_ids = h_keep["hadith_id"].tolist()
+q_norm_texts = q["arabic_norm"].tolist()
+h_norm_texts = h_keep["arabic_norm"].tolist()
 
 nn_q = NearestNeighbors(n_neighbors=QURAN_SEMANTIC_CANDIDATES + 1, metric="cosine", algorithm="brute")
 nn_q.fit(q_emb)
@@ -485,10 +546,24 @@ q_tok_lens = q["tok_len"].to_numpy()
 h_tok_lens = h_keep["tok_len"].to_numpy()
 
 
+def score_shared_terms(terms: set[str], weights: dict[str, float]) -> float:
+    return float(sum(weights.get(t, 1.0) for t in terms))
+
+
+def sort_display_terms(roots: set[str], tokens: set[str]) -> list[str]:
+    ranked_roots = sorted(list(roots), key=lambda r: (-root_idf.get(r, 1.0), r))
+    ranked_tokens = sorted(list(tokens), key=lambda t: (-token_idf.get(t, 1.0), t))
+    display = ranked_roots[:MAX_SHARED_ITEMS_STORED]
+    if len(display) < MAX_SHARED_ITEMS_STORED:
+        need = MAX_SHARED_ITEMS_STORED - len(display)
+        display.extend(ranked_tokens[:need])
+    return display[:MAX_SHARED_ITEMS_STORED]
+
+
 def rerank_quran_quran(i: int):
     base_tok = q_tok_sets[i]
     base_root = q_root_sets[i]
-    out = []
+    provisional = []
 
     for d, j in zip(dist_qq[i].tolist(), ind_qq[i].tolist()):
         if j == i:
@@ -501,61 +576,106 @@ def rerank_quran_quran(i: int):
         shared_tok, tok_inter, _, tok_recall, tok_jacc = weighted_overlap(base_tok, other_tok, token_idf)
         shared_roots, root_inter, _, root_recall, root_jacc = weighted_overlap(base_root, other_root, root_idf)
 
+        if root_inter <= 0 and tok_inter <= 0:
+            continue
+
+        meaningful_roots = {r for r in shared_roots if r not in generic_roots}
+        meaningful_tokens = {t for t in shared_tok if t not in generic_tokens}
+        meaningful_root_weight = score_shared_terms(meaningful_roots, root_idf)
+        meaningful_token_weight = score_shared_terms(meaningful_tokens, token_idf)
+
         length_ratio = min(q_tok_lens[i], q_tok_lens[j]) / max(1, max(q_tok_lens[i], q_tok_lens[j]))
         generic_pen = diversity_penalty(shared_tok, generic_tokens) + diversity_penalty(shared_roots, generic_roots)
 
-        semantic_core = minmax01(embed_sim, 0.42, 0.90)
-        token_core = minmax01(tok_jacc, 0.00, 0.40)
-        root_core = minmax01(root_jacc, 0.00, 0.55)
-        token_recall_core = minmax01(tok_recall, 0.00, 0.75)
-        root_recall_core = minmax01(root_recall, 0.00, 0.85)
-        len_core = minmax01(length_ratio, 0.25, 1.00)
+        semantic_core = minmax01(embed_sim, 0.48, 0.92)
+        token_core = minmax01(tok_jacc, 0.00, 0.34)
+        root_core = minmax01(root_jacc, 0.00, 0.58)
+        token_recall_core = minmax01(tok_recall, 0.00, 0.80)
+        root_recall_core = minmax01(root_recall, 0.00, 0.90)
+        len_core = minmax01(length_ratio, 0.20, 1.00)
+        support_bonus = minmax01(meaningful_root_weight + 0.65 * meaningful_token_weight, 0.0, 8.0)
 
-        raw = (
-            0.38 * semantic_core +
-            0.14 * token_core +
-            0.12 * token_recall_core +
-            0.20 * root_core +
-            0.12 * root_recall_core +
+        pre_raw = (
+            0.45 * semantic_core +
+            0.16 * root_core +
+            0.10 * root_recall_core +
+            0.11 * token_core +
+            0.06 * token_recall_core +
+            0.08 * support_bonus +
             0.04 * len_core -
             generic_pen
         )
 
-        if root_inter <= 0 and tok_inter <= 0:
+        if not meaningful_roots and meaningful_token_weight < 1.0 and embed_sim < VERY_HIGH_QQ_EMBED:
+            continue
+        if meaningful_root_weight <= 0 and meaningful_token_weight <= 0 and embed_sim < VERY_HIGH_QQ_EMBED:
+            continue
+
+        provisional.append({
+            "j": j,
+            "id": q_ids[j],
+            "embed_sim": embed_sim,
+            "shared_roots": meaningful_roots,
+            "shared_tokens": meaningful_tokens,
+            "all_shared_tokens": shared_tok,
+            "all_shared_roots": shared_roots,
+            "pre_raw": float(pre_raw),
+            "semantic_core": semantic_core,
+            "token_core": token_core,
+            "token_recall_core": token_recall_core,
+            "root_core": root_core,
+            "root_recall_core": root_recall_core,
+            "len_core": len_core,
+            "support_bonus": support_bonus,
+        })
+
+    provisional = take_top_items(provisional, QURAN_PREFILTER_TOPN, "pre_raw")
+    rerank_subset = provisional[:QURAN_RERANK_TOPN]
+    rerank_scores = {}
+    if rerank_subset:
+        pairs = [(q_norm_texts[i], q_norm_texts[item["j"]]) for item in rerank_subset]
+        scores = rerank_pair_scores(pairs)
+        rerank_scores = {item["j"]: float(score) for item, score in zip(rerank_subset, scores)}
+
+    out = []
+    for item in provisional:
+        rerank_score = rerank_scores.get(item["j"], 0.0)
+        rerank_core = minmax01(rerank_score, 0.45, 0.92) if reranker is not None else 0.0
+        raw = (
+            0.24 * item["semantic_core"] +
+            0.12 * rerank_core +
+            0.16 * item["token_core"] +
+            0.10 * item["token_recall_core"] +
+            0.22 * item["root_core"] +
+            0.10 * item["root_recall_core"] +
+            0.03 * item["len_core"] +
+            0.03 * item["support_bonus"]
+        )
+
+        if not item["shared_roots"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QQ_EMBED:
             continue
         if raw < MIN_QQ_CONTEXT_RAW:
             continue
 
-        score = calibrated_percentage(raw, 0.22, 0.88, power=1.25)
-        shared_for_display = sorted(
-            list(shared_roots),
-            key=lambda r: (-root_idf.get(r, 1.0), r)
-        )[:MAX_SHARED_ITEMS_STORED]
-
-        if not shared_for_display:
-            shared_for_display = sorted(
-                list(shared_tok),
-                key=lambda t: (-token_idf.get(t, 1.0), t)
-            )[:MAX_SHARED_ITEMS_STORED]
+        score = calibrated_percentage(raw, 0.28, 0.88, power=1.18)
+        display_shared = sort_display_terms(item["shared_roots"], item["shared_tokens"])
+        if not display_shared:
+            display_shared = sort_display_terms(item["all_shared_roots"], item["all_shared_tokens"])
 
         out.append({
-            "id": q_ids[j],
+            "id": item["id"],
             "score": score,
-            "shared_tokens": shared_for_display,
+            "shared_tokens": display_shared,
             "raw_score": round(float(raw), 6),
-            "embed_similarity": round(embed_sim, 6),
         })
 
     out.sort(key=lambda x: (-x["score"], -x["raw_score"], x["id"]))
-    return [{k: v for k, v in item.items() if k not in {"raw_score", "embed_similarity"}} for item in out[:TOPK_QURAN_SEMANTIC]]
-
-
-extra_hadith_noise = {"قال", "رسول", "النبي", "الله", "عليه", "وسلم", "كان", "ان", "قالت", "قالوا"}
+    return [{k: v for k, v in item.items() if k != "raw_score"} for item in out[:TOPK_QURAN_SEMANTIC]]
 
 
 def rerank_quran_hadith(i: int):
     base_tok = q_tok_sets[i]
-    out = []
+    provisional = []
 
     for d, j in zip(dist_qh[i].tolist(), ind_qh[i].tolist()):
         embed_sim = float(1.0 - d)
@@ -564,57 +684,99 @@ def rerank_quran_hadith(i: int):
 
         other_tok = h_tok_sets[j]
         shared_tok, _, _, tok_recall, tok_jacc = weighted_overlap(base_tok, other_tok, token_idf)
-        filtered_shared = {t for t in shared_tok if t not in generic_tokens and t not in extra_hadith_noise}
-        filtered_tok_inter = sum(token_idf.get(t, 1.0) for t in filtered_shared)
+        filtered_shared = {t for t in shared_tok if t not in generic_tokens_all}
+        filtered_tok_inter = score_shared_terms(filtered_shared, token_idf)
 
         length_ratio = min(q_tok_lens[i], h_tok_lens[j]) / max(1, max(q_tok_lens[i], h_tok_lens[j]))
-        generic_pen = diversity_penalty(shared_tok, generic_tokens.union(extra_hadith_noise))
+        generic_pen = diversity_penalty(shared_tok, generic_tokens_all)
         support_bonus = minmax01(filtered_tok_inter, 0.0, 8.0)
 
-        semantic_core = minmax01(embed_sim, 0.46, 0.88)
-        token_core = minmax01(tok_jacc, 0.00, 0.28)
-        token_recall_core = minmax01(tok_recall, 0.00, 0.70)
-        len_core = minmax01(length_ratio, 0.12, 0.95)
+        semantic_core = minmax01(embed_sim, 0.52, 0.92)
+        token_core = minmax01(tok_jacc, 0.00, 0.18)
+        token_recall_core = minmax01(tok_recall, 0.00, 0.45)
+        len_core = minmax01(length_ratio, 0.08, 0.95)
 
-        raw = (
-            0.54 * semantic_core +
-            0.14 * token_core +
-            0.12 * token_recall_core +
-            0.12 * support_bonus +
-            0.08 * len_core -
+        pre_raw = (
+            0.62 * semantic_core +
+            0.10 * token_core +
+            0.08 * token_recall_core +
+            0.14 * support_bonus +
+            0.06 * len_core -
             generic_pen
         )
 
-        if filtered_tok_inter < 0.90 and embed_sim < 0.58:
+        if filtered_tok_inter < 1.10 and embed_sim < VERY_HIGH_QH_EMBED:
+            continue
+
+        provisional.append({
+            "j": j,
+            "id": h_ids[j],
+            "embed_sim": embed_sim,
+            "filtered_shared": filtered_shared,
+            "all_shared_tokens": shared_tok,
+            "filtered_tok_inter": filtered_tok_inter,
+            "semantic_core": semantic_core,
+            "token_core": token_core,
+            "token_recall_core": token_recall_core,
+            "len_core": len_core,
+            "support_bonus": support_bonus,
+            "pre_raw": float(pre_raw),
+        })
+
+    provisional = take_top_items(provisional, HADITH_PREFILTER_TOPN, "pre_raw")
+    rerank_subset = provisional[:HADITH_RERANK_TOPN]
+    rerank_scores = {}
+    if rerank_subset:
+        pairs = [(q_norm_texts[i], h_norm_texts[item["j"]]) for item in rerank_subset]
+        scores = rerank_pair_scores(pairs)
+        rerank_scores = {item["j"]: float(score) for item, score in zip(rerank_subset, scores)}
+
+    out = []
+    for item in provisional:
+        rerank_score = rerank_scores.get(item["j"], 0.0)
+        rerank_core = minmax01(rerank_score, 0.44, 0.92) if reranker is not None else 0.0
+        raw = (
+            0.28 * item["semantic_core"] +
+            0.28 * rerank_core +
+            0.10 * item["token_core"] +
+            0.10 * item["token_recall_core"] +
+            0.16 * item["support_bonus"] +
+            0.08 * item["len_core"]
+        )
+
+        if not item["filtered_shared"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QH_EMBED:
+            continue
+        if item["filtered_tok_inter"] < 1.40 and rerank_score < 0.60 and item["embed_sim"] < 0.62:
             continue
         if raw < MIN_QH_CONTEXT_RAW:
             continue
 
-        score = calibrated_percentage(raw, 0.28, 0.86, power=1.18)
+        score = calibrated_percentage(raw, 0.34, 0.90, power=1.08)
         display_shared = sorted(
-            list(filtered_shared if filtered_shared else shared_tok),
+            list(item["filtered_shared"] if item["filtered_shared"] else item["all_shared_tokens"]),
             key=lambda t: (-token_idf.get(t, 1.0), t)
         )[:MAX_SHARED_ITEMS_STORED]
 
         out.append({
-            "id": h_ids[j],
+            "id": item["id"],
             "score": score,
             "shared_tokens": display_shared,
             "raw_score": round(float(raw), 6),
-            "embed_similarity": round(embed_sim, 6),
         })
 
     out.sort(key=lambda x: (-x["score"], -x["raw_score"], x["id"]))
-    return [{k: v for k, v in item.items() if k not in {"raw_score", "embed_similarity"}} for item in out[:TOPK_HADITH_SEMANTIC]]
+    return [{k: v for k, v in item.items() if k != "raw_score"} for item in out[:TOPK_HADITH_SEMANTIC]]
 
 
 semantic_pairs_quran = {}
 semantic_pairs_hadith = {}
 for i, ayah_id in enumerate(q_ids):
+    if (i + 1) % 250 == 0 or i == 0:
+        print(f"Semantic pairing progress: {i + 1}/{len(q_ids)}")
     semantic_pairs_quran[ayah_id] = rerank_quran_quran(i)
     semantic_pairs_hadith[ayah_id] = rerank_quran_hadith(i)
 
-print("Semantic pairing done with embedding retrieval + context-aware reranking.")
+print("Semantic pairing done with embedding retrieval + stronger filtering + optional reranker.")
 
 # ---------- Lexical pairing ----------
 post_q_roots = defaultdict(list)
@@ -714,6 +876,27 @@ print("Lexical pairing done.")
 print("Quran-Quran lexical now includes ALL ayat with >= 2 shared roots.")
 print("Quran-Hadith lexical includes shared Arabic tokens for display.")
 
+# ---------- Diagnostics ----------
+diagnostics = {
+    "embedding_model": EMBED_MODEL_NAME,
+    "reranker_model": RERANK_MODEL_NAME if reranker is not None else None,
+    "avg_quran_semantic_pairs": round(float(np.mean([len(v) for v in semantic_pairs_quran.values()])), 3),
+    "avg_hadith_semantic_pairs": round(float(np.mean([len(v) for v in semantic_pairs_hadith.values()])), 3),
+    "min_qq_context_raw": MIN_QQ_CONTEXT_RAW,
+    "min_qh_context_raw": MIN_QH_CONTEXT_RAW,
+    "min_qh_embed": MIN_QH_EMBED,
+    "candidate_counts": {
+        "quran_semantic_candidates": QURAN_SEMANTIC_CANDIDATES,
+        "hadith_semantic_candidates": HADITH_SEMANTIC_CANDIDATES,
+        "quran_prefilter_topn": QURAN_PREFILTER_TOPN,
+        "hadith_prefilter_topn": HADITH_PREFILTER_TOPN,
+        "quran_rerank_topn": QURAN_RERANK_TOPN,
+        "hadith_rerank_topn": HADITH_RERANK_TOPN,
+    },
+}
+write_json(os.path.join(OUT_META_DIR, "pairing_diagnostics.json"), diagnostics)
+print("Wrote diagnostics:", os.path.join(OUT_META_DIR, "pairing_diagnostics.json"))
+
 # ---------- Quran text shards ----------
 q["vec_preview"] = [np.round(v[:VEC_PREVIEW_DIMS], 4).tolist() for v in q_emb]
 
@@ -802,7 +985,7 @@ print("Wrote pair shards:", len(shard_map_pairs))
 
 # ---------- Manifest ----------
 manifest = {
-    "version": 2,
+    "version": 3,
     "counts": {
         "quran_ayat": int(len(q)),
         "hadith": int(len(h_sorted)),
@@ -816,11 +999,14 @@ manifest = {
         "english_token_to_ayahids": "data/search_index/english_token_to_ayahids.json",
         "english_trigram_to_tokens": "data/search_index/english_trigram_to_tokens.json",
         "arabic_token_to_ayahids": "data/search_index/arabic_token_to_ayahids.json",
+        "pairing_diagnostics": "data/meta/pairing_diagnostics.json",
     },
     "pairing": {
-        "context_match": "embedding retrieval + context-aware reranking + stricter filtering + calibrated percentage scores",
+        "context_match": "embedding retrieval + stricter filtering + lexical/root support + optional reranker + calibrated percentage scores",
         "lexical_quran_rule": "all Quran ayat with at least 2 shared roots",
         "lexical_hadith_rule": "top 50 hadith by shared Arabic token overlap",
+        "semantic_embedding_model": EMBED_MODEL_NAME,
+        "semantic_reranker_model": RERANK_MODEL_NAME if reranker is not None else None,
     },
 }
 
