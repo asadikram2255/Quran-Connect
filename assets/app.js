@@ -36,18 +36,28 @@ const state = {
   enTokenToAyah: null,
   enTriToTokens: null,
   arTokenToAyah: null,
+
   loadedSurahs: new Set(),
   loadedHadithShardFiles: new Set(),
+
   quranById: new Map(),
   pairsByAyah: new Map(),
   hadithById: new Map(),
+
   selectedAyahId: null,
   lastResults: [],
+
   searchCache: {
     id: new Map(),
     ar: new Map(),
     en: new Map()
-  }
+  },
+
+  // performance
+  jsonCache: new Map(),
+  pendingJson: new Map(),
+  searchInFlight: false,
+  detailToken: 0
 };
 
 function sleep(ms) {
@@ -65,19 +75,41 @@ function resolveDataPath(path) {
 
 async function fetchJson(path) {
   const finalPath = resolveDataPath(path);
-  const res = await fetch(finalPath, { cache: "no-store" });
-  if (!res.ok) {
-    let txt = "";
+
+  if (state.jsonCache.has(finalPath)) {
+    return state.jsonCache.get(finalPath);
+  }
+  if (state.pendingJson.has(finalPath)) {
+    return state.pendingJson.get(finalPath);
+  }
+
+  const p = (async () => {
+    const res = await fetch(finalPath, { cache: "force-cache" });
+    if (!res.ok) {
+      let txt = "";
+      try {
+        txt = await res.text();
+      } catch (_) {}
+      throw new Error(`HTTP ${res.status} for ${finalPath}${txt ? ` | ${txt.slice(0, 120)}` : ""}`);
+    }
+
+    let data;
     try {
-      txt = await res.text();
-    } catch (_) {}
-    throw new Error(`HTTP ${res.status} for ${finalPath}${txt ? ` | ${txt.slice(0, 120)}` : ""}`);
-  }
-  try {
-    return await res.json();
-  } catch (err) {
-    throw new Error(`Invalid JSON at ${finalPath}: ${err.message}`);
-  }
+      data = await res.json();
+    } catch (err) {
+      throw new Error(`Invalid JSON at ${finalPath}: ${err.message}`);
+    }
+
+    state.jsonCache.set(finalPath, data);
+    state.pendingJson.delete(finalPath);
+    return data;
+  })().catch(err => {
+    state.pendingJson.delete(finalPath);
+    throw err;
+  });
+
+  state.pendingJson.set(finalPath, p);
+  return p;
 }
 
 function setBadge(kind, text) {
@@ -205,8 +237,10 @@ async function ensureSurahLoaded(surah) {
   if (!qPath) throw new Error(`No Quran shard path found for surah ${surah}`);
   if (!pPath) throw new Error(`No pair shard path found for surah ${surah}`);
 
-  const qShard = await fetchJson(qPath);
-  const pShard = await fetchJson(pPath);
+  const [qShard, pShard] = await Promise.all([
+    fetchJson(qPath),
+    fetchJson(pPath)
+  ]);
 
   for (const rec of qShard) state.quranById.set(rec.ayah_id, rec);
   for (const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
@@ -242,6 +276,26 @@ async function ensureHadithById(hadithId) {
   }
 }
 
+async function loadSurahsParallel(surahs) {
+  const uniq = unique((surahs || []).map(String).filter(Boolean));
+  if (!uniq.length) return;
+  await Promise.all(uniq.map(s => ensureSurahLoaded(s)));
+}
+
+async function preloadHadithIds(ids) {
+  const uniq = unique((ids || []).filter(Boolean));
+  if (!uniq.length) return;
+  await Promise.all(
+    uniq.map(async hid => {
+      try {
+        await ensureHadithById(hid);
+      } catch (err) {
+        console.error(err);
+      }
+    })
+  );
+}
+
 async function searchByAyahId(raw) {
   const norm = String(raw || "").trim();
   if (state.searchCache.id.has(norm)) return state.searchCache.id.get(norm);
@@ -265,9 +319,8 @@ async function searchByArabicKeyword(raw) {
 
   const ids = state.arTokenToAyah?.[norm] || [];
   const surahs = unique(ids.map(surahFromAyahId));
-  for (const s of surahs) {
-    await ensureSurahLoaded(s);
-  }
+
+  await loadSurahsParallel(surahs);
 
   const out = ids.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.ar.set(norm, out);
@@ -290,14 +343,25 @@ async function searchByEnglishSmart(raw) {
     const qt = toks[ti];
     const variants = stemVariantsEn(qt);
 
-    const candidates = new Set();
+    const candidateScores = new Map();
+
     for (const v of variants) {
       const grams = trigrams(v);
       for (const g of grams) {
         const c = state.enTriToTokens?.[g] || [];
-        for (const t of c) candidates.add(t);
+        for (const t of c) {
+          candidateScores.set(t, (candidateScores.get(t) || 0) + 1);
+        }
       }
     }
+
+    let candidates = Array.from(candidateScores.entries())
+      .sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1];
+        return a[0].length - b[0].length;
+      })
+      .slice(0, 1200)
+      .map(x => x[0]);
 
     const maxEd = maxAllowedEdits(qt.length);
     const good = [];
@@ -313,9 +377,11 @@ async function searchByEnglishSmart(raw) {
         if (d < bestD) bestD = d;
         if (bestD === 0) break;
       }
-      if (bestD <= maxEd) good.push({ t, d: bestD });
+      if (bestD <= maxEd) {
+        good.push({ t, d: bestD, trigramScore: candidateScores.get(t) || 0 });
+      }
 
-      if (checked % 800 === 0) {
+      if (checked % 500 === 0) {
         const now = performance.now();
         if (now - lastYield > 10) {
           await sleep(0);
@@ -324,7 +390,11 @@ async function searchByEnglishSmart(raw) {
       }
     }
 
-    good.sort((a, b) => a.d - b.d);
+    good.sort((a, b) => {
+      if (a.d !== b.d) return a.d - b.d;
+      return (b.trigramScore || 0) - (a.trigramScore || 0);
+    });
+
     const best = good.slice(0, 12);
     const ayatMatchedThisToken = new Set();
 
@@ -356,9 +426,7 @@ async function searchByEnglishSmart(raw) {
     .map(x => x[0]);
 
   const surahs = unique(ranked.map(surahFromAyahId));
-  for (const s of surahs) {
-    await ensureSurahLoaded(s);
-  }
+  await loadSurahsParallel(surahs);
 
   const out = ranked.map(id => state.quranById.get(id)).filter(Boolean);
   state.searchCache.en.set(norm, out);
@@ -488,10 +556,12 @@ function renderPairList(container, items, options = {}) {
 }
 
 async function openDetail(ayahId) {
+  const myToken = ++state.detailToken;
   state.selectedAyahId = ayahId;
   renderResults(state.lastResults);
 
   await ensureSurahLoaded(surahFromAyahId(ayahId));
+  if (myToken !== state.detailToken) return;
 
   const rec = state.quranById.get(ayahId);
   const pairs = state.pairsByAyah.get(ayahId);
@@ -506,23 +576,6 @@ async function openDetail(ayahId) {
   const semH = pairs.semantic?.hadith_top50 || [];
   const lexQ = pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [];
   const lexH = pairs.lexical?.hadith_top50 || [];
-
-  const neededSurahs = new Set();
-  for (const it of semQ) neededSurahs.add(surahFromAyahId(it.id));
-  for (const it of lexQ) neededSurahs.add(surahFromAyahId(it.id));
-  for (const s of neededSurahs) await ensureSurahLoaded(s);
-
-  const preloadHadithIds = new Set([
-    ...semH.slice(0, 15).map(x => x.id),
-    ...lexH.slice(0, 15).map(x => x.id)
-  ]);
-  for (const hid of preloadHadithIds) {
-    try {
-      await ensureHadithById(hid);
-    } catch (err) {
-      console.error(err);
-    }
-  }
 
   renderPairList(els.semQuran, semQ, {
     kind: "quran",
@@ -549,28 +602,100 @@ async function openDetail(ayahId) {
     showCommonHadithTokens: true,
     sharedTokensLabel: "Common Hadith Tokens"
   });
+
+  const neededSurahs = new Set();
+  for (const it of semQ) neededSurahs.add(surahFromAyahId(it.id));
+  for (const it of lexQ) neededSurahs.add(surahFromAyahId(it.id));
+
+  const quranLoadPromise = loadSurahsParallel([...neededSurahs]);
+
+  const firstHadithIds = unique([
+    ...semH.slice(0, 8).map(x => x.id),
+    ...lexH.slice(0, 8).map(x => x.id)
+  ]);
+  const restHadithIds = unique([
+    ...semH.slice(8, 15).map(x => x.id),
+    ...lexH.slice(8, 15).map(x => x.id)
+  ]);
+
+  const firstHadithPromise = preloadHadithIds(firstHadithIds);
+
+  await Promise.all([quranLoadPromise, firstHadithPromise]);
+  if (myToken !== state.detailToken) return;
+
+  renderPairList(els.semQuran, semQ, {
+    kind: "quran",
+    emptyMessage: "No context-matched Quran ayat passed the reranking filter.",
+    sharedTokensLabel: "Shared context cues"
+  });
+
+  renderPairList(els.semHadith, semH, {
+    kind: "hadith",
+    emptyMessage: "No context-matched Hadith passed the stricter filter.",
+    sharedTokensLabel: "Shared context cues"
+  });
+
+  renderPairList(els.lexQuran, lexQ, {
+    kind: "quran",
+    emptyMessage: "No Quran ayat share at least 2 root words with this ayah.",
+    showRootsLine: true,
+    sharedRootsLabel: "Root words"
+  });
+
+  renderPairList(els.lexHadith, lexH, {
+    kind: "hadith",
+    emptyMessage: "No Hadith lexical matches found.",
+    showCommonHadithTokens: true,
+    sharedTokensLabel: "Common Hadith Tokens"
+  });
+
+  preloadHadithIds(restHadithIds).then(() => {
+    if (myToken !== state.detailToken) return;
+
+    renderPairList(els.semHadith, semH, {
+      kind: "hadith",
+      emptyMessage: "No context-matched Hadith passed the stricter filter.",
+      sharedTokensLabel: "Shared context cues"
+    });
+
+    renderPairList(els.lexHadith, lexH, {
+      kind: "hadith",
+      emptyMessage: "No Hadith lexical matches found.",
+      showCommonHadithTokens: true,
+      sharedTokensLabel: "Common Hadith Tokens"
+    });
+  });
+}
+
+function warmPreloadTopResults(results) {
+  const top = (results || []).slice(0, 8);
+  const surahs = unique(top.map(rec => surahFromAyahId(rec.ayah_id)));
+  loadSurahsParallel(surahs).catch(err => console.error("warm preload error:", err));
 }
 
 async function runSearch() {
-  const en = els.enQuery.value.trim();
-  const ar = els.arQuery.value.trim();
-  const id = els.idQuery.value.trim();
-  const count = [en, ar, id].filter(Boolean).length;
-
-  state.selectedAyahId = null;
-  setDetailState("empty");
-
-  if (count === 0) {
-    setBadge("warn", "Enter a query first");
-    renderResults([]);
-    return;
-  }
-  if (count > 1) {
-    setBadge("warn", "Please use ONE input: English OR Arabic OR Ayah ID");
-    return;
-  }
+  if (state.searchInFlight) return;
+  state.searchInFlight = true;
 
   try {
+    const en = els.enQuery.value.trim();
+    const ar = els.arQuery.value.trim();
+    const id = els.idQuery.value.trim();
+    const count = [en, ar, id].filter(Boolean).length;
+
+    state.selectedAyahId = null;
+    setDetailState("empty");
+
+    if (count === 0) {
+      setBadge("warn", "Enter a query first");
+      renderResults([]);
+      return;
+    }
+    if (count > 1) {
+      setBadge("warn", "Please use ONE input: English OR Arabic OR Ayah ID");
+      return;
+    }
+
     setBadge("warn", "Searching…");
     await sleep(0);
 
@@ -580,10 +705,13 @@ async function runSearch() {
     else if (en) results = await searchByEnglishSmart(en);
 
     renderResults(results);
+    warmPreloadTopResults(results);
     setBadge("ok", `Found ${results.length} ayat`);
   } catch (err) {
     console.error("runSearch error:", err);
     setBadge("err", String(err.message || err).slice(0, 140));
+  } finally {
+    state.searchInFlight = false;
   }
 }
 
@@ -592,12 +720,28 @@ async function init() {
     const manifest = await fetchJson("data/meta/manifest.json");
     state.manifest = manifest;
 
-    state.shardMapQuran = await fetchJson(manifest.paths.shard_map_quran);
-    state.shardMapPairs = await fetchJson(manifest.paths.shard_map_pairs);
-    state.shardMapHadith = await fetchJson(manifest.paths.shard_map_hadith);
-    state.enTokenToAyah = await fetchJson(manifest.paths.english_token_to_ayahids);
-    state.enTriToTokens = await fetchJson(manifest.paths.english_trigram_to_tokens);
-    state.arTokenToAyah = await fetchJson(manifest.paths.arabic_token_to_ayahids);
+    const [
+      shardMapQuran,
+      shardMapPairs,
+      shardMapHadith,
+      enTokenToAyah,
+      enTriToTokens,
+      arTokenToAyah
+    ] = await Promise.all([
+      fetchJson(manifest.paths.shard_map_quran),
+      fetchJson(manifest.paths.shard_map_pairs),
+      fetchJson(manifest.paths.shard_map_hadith),
+      fetchJson(manifest.paths.english_token_to_ayahids),
+      fetchJson(manifest.paths.english_trigram_to_tokens),
+      fetchJson(manifest.paths.arabic_token_to_ayahids)
+    ]);
+
+    state.shardMapQuran = shardMapQuran;
+    state.shardMapPairs = shardMapPairs;
+    state.shardMapHadith = shardMapHadith;
+    state.enTokenToAyah = enTokenToAyah;
+    state.enTriToTokens = enTriToTokens;
+    state.arTokenToAyah = arTokenToAyah;
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
     setDetailState("empty");
@@ -652,6 +796,7 @@ els.clearBtn.onclick = () => {
 
   state.selectedAyahId = null;
   state.lastResults = [];
+  state.detailToken++;
 
   renderResults([]);
   setDetailState("empty");
