@@ -53,7 +53,6 @@ const state = {
     en: new Map()
   },
 
-  // performance
   jsonCache: new Map(),
   pendingJson: new Map(),
   searchInFlight: false,
@@ -92,17 +91,15 @@ async function fetchJson(path) {
       } catch (_) {}
       throw new Error(`HTTP ${res.status} for ${finalPath}${txt ? ` | ${txt.slice(0, 120)}` : ""}`);
     }
-
-    let data;
     try {
-      data = await res.json();
+      const data = await res.json();
+      state.jsonCache.set(finalPath, data);
+      state.pendingJson.delete(finalPath);
+      return data;
     } catch (err) {
+      state.pendingJson.delete(finalPath);
       throw new Error(`Invalid JSON at ${finalPath}: ${err.message}`);
     }
-
-    state.jsonCache.set(finalPath, data);
-    state.pendingJson.delete(finalPath);
-    return data;
   })().catch(err => {
     state.pendingJson.delete(finalPath);
     throw err;
@@ -355,7 +352,7 @@ async function searchByEnglishSmart(raw) {
       }
     }
 
-    let candidates = Array.from(candidateScores.entries())
+    const candidates = Array.from(candidateScores.entries())
       .sort((a, b) => {
         if (b[1] !== a[1]) return b[1] - a[1];
         return a[0].length - b[0].length;
@@ -435,14 +432,14 @@ async function searchByEnglishSmart(raw) {
 
 function rootsLineHtml(rec) {
   const roots = Array.isArray(rec?.roots_ordered) ? rec.roots_ordered : [];
-  if (!roots.length) return `<div class="subtxt"><b>Root words:</b> —</div>`;
-  return `<div class="subtxt"><b>Root words:</b> <span dir="rtl">${escapeHtml(roots.join(" • "))}</span></div>`;
+  if (!roots.length) return `<div class="subtxt"><b>Quran root words:</b> —</div>`;
+  return `<div class="subtxt"><b>Quran root words:</b> <span dir="rtl">${escapeHtml(roots.join(" • "))}</span></div>`;
 }
 
 function tokensLineHtml(rec) {
   const tokens = Array.isArray(rec?.tokens_ordered) ? rec.tokens_ordered : Array.isArray(rec?.arabic_tokens) ? rec.arabic_tokens : [];
-  if (!tokens.length) return `<div class="subtxt"><b>Tokens:</b> —</div>`;
-  return `<div class="subtxt"><b>Tokens:</b> <span dir="rtl">${escapeHtml(tokens.join(" • "))}</span></div>`;
+  if (!tokens.length) return `<div class="subtxt"><b>Arabic words:</b> —</div>`;
+  return `<div class="subtxt"><b>Arabic words:</b> <span dir="rtl">${escapeHtml(tokens.join(" • "))}</span></div>`;
 }
 
 function renderResults(list) {
@@ -491,8 +488,8 @@ function makeSharedLine(label, values) {
 function renderPairList(container, items, options = {}) {
   const kind = options.kind || "quran";
   const emptyMessage = options.emptyMessage || "No items.";
-  const sharedRootsLabel = options.sharedRootsLabel || "Root words";
-  const sharedTokensLabel = options.sharedTokensLabel || "Shared Arabic tokens";
+  const sharedRootsLabel = options.sharedRootsLabel || "Shared root words";
+  const sharedTokensLabel = options.sharedTokensLabel || "Shared Arabic words";
   const showRootsLine = Boolean(options.showRootsLine);
   const showCommonHadithTokens = Boolean(options.showCommonHadithTokens);
 
@@ -579,28 +576,28 @@ async function openDetail(ayahId) {
 
   renderPairList(els.semQuran, semQ, {
     kind: "quran",
-    emptyMessage: "No context-matched Quran ayat passed the reranking filter.",
-    sharedTokensLabel: "Shared context cues"
+    emptyMessage: "No meaning-based Quran matches passed the reranking filter.",
+    sharedTokensLabel: "Shared meaning cues"
   });
 
   renderPairList(els.semHadith, semH, {
     kind: "hadith",
-    emptyMessage: "No context-matched Hadith passed the stricter filter.",
-    sharedTokensLabel: "Shared context cues"
+    emptyMessage: "No meaning-based Hadith matches passed the stricter filter.",
+    sharedTokensLabel: "Shared meaning cues"
   });
 
   renderPairList(els.lexQuran, lexQ, {
     kind: "quran",
-    emptyMessage: "No Quran ayat share at least 2 root words with this ayah.",
+    emptyMessage: "No Quran passages share at least 2 root words with this ayah.",
     showRootsLine: true,
-    sharedRootsLabel: "Root words"
+    sharedRootsLabel: "Shared root words"
   });
 
   renderPairList(els.lexHadith, lexH, {
     kind: "hadith",
-    emptyMessage: "No Hadith lexical matches found.",
+    emptyMessage: "No word-based Hadith matches found.",
     showCommonHadithTokens: true,
-    sharedTokensLabel: "Common Hadith Tokens"
+    sharedTokensLabel: "Shared Arabic words"
   });
 
   const neededSurahs = new Set();
@@ -625,28 +622,28 @@ async function openDetail(ayahId) {
 
   renderPairList(els.semQuran, semQ, {
     kind: "quran",
-    emptyMessage: "No context-matched Quran ayat passed the reranking filter.",
-    sharedTokensLabel: "Shared context cues"
+    emptyMessage: "No meaning-based Quran matches passed the reranking filter.",
+    sharedTokensLabel: "Shared meaning cues"
   });
 
   renderPairList(els.semHadith, semH, {
     kind: "hadith",
-    emptyMessage: "No context-matched Hadith passed the stricter filter.",
-    sharedTokensLabel: "Shared context cues"
+    emptyMessage: "No meaning-based Hadith matches passed the stricter filter.",
+    sharedTokensLabel: "Shared meaning cues"
   });
 
   renderPairList(els.lexQuran, lexQ, {
     kind: "quran",
-    emptyMessage: "No Quran ayat share at least 2 root words with this ayah.",
+    emptyMessage: "No Quran passages share at least 2 root words with this ayah.",
     showRootsLine: true,
-    sharedRootsLabel: "Root words"
+    sharedRootsLabel: "Shared root words"
   });
 
   renderPairList(els.lexHadith, lexH, {
     kind: "hadith",
-    emptyMessage: "No Hadith lexical matches found.",
+    emptyMessage: "No word-based Hadith matches found.",
     showCommonHadithTokens: true,
-    sharedTokensLabel: "Common Hadith Tokens"
+    sharedTokensLabel: "Shared Arabic words"
   });
 
   preloadHadithIds(restHadithIds).then(() => {
@@ -654,15 +651,15 @@ async function openDetail(ayahId) {
 
     renderPairList(els.semHadith, semH, {
       kind: "hadith",
-      emptyMessage: "No context-matched Hadith passed the stricter filter.",
-      sharedTokensLabel: "Shared context cues"
+      emptyMessage: "No meaning-based Hadith matches passed the stricter filter.",
+      sharedTokensLabel: "Shared meaning cues"
     });
 
     renderPairList(els.lexHadith, lexH, {
       kind: "hadith",
-      emptyMessage: "No Hadith lexical matches found.",
+      emptyMessage: "No word-based Hadith matches found.",
       showCommonHadithTokens: true,
-      sharedTokensLabel: "Common Hadith Tokens"
+      sharedTokensLabel: "Shared Arabic words"
     });
   });
 }

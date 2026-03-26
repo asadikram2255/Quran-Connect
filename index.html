@@ -107,7 +107,7 @@
           <div class="landingH">What problems it solves</div>
           <ul class="landingList">
             <li>Find ayat related to a topic (English or Arabic keyword).</li>
-            <li>See “Context Match” and “Root Words Match” connections instantly.</li>
+            <li>See meaning-based and word-based connections instantly.</li>
             <li>View related Qur’an ayat + Hadith side-by-side to learn context.</li>
           </ul>
         </div>
@@ -179,8 +179,22 @@
               <div>Pairs</div>
             </div>
             <div class="tabs" style="margin:0;">
-              <button class="tab active" data-tab="semantic">Context-Based Matches</button>
-              <button class="tab" data-tab="lexical" title="Quran pairs use shared root words, Hadith pairs use shared Arabic words">Word-Based Matches</button>  
+              <button
+                class="tab active"
+                data-tab="semantic"
+                title="Matches based on overall meaning and context, not only on shared words."
+                type="button"
+              >
+                Meaning-Based Matches
+              </button>
+              <button
+                class="tab"
+                data-tab="lexical"
+                title="Quran pairs use shared root words. Hadith pairs use shared Arabic words."
+                type="button"
+              >
+                Word-Based Matches
+              </button>
             </div>
           </div>
 
@@ -207,11 +221,11 @@
                 <div id="tabSemantic">
                   <div class="twoCol">
                     <div class="subpanel">
-                      <div class="subTitle">Quran Pairs</div>
+                      <div class="subTitle">Related Quran Passages</div>
                       <div id="semQuran" class="pairsList"></div>
                     </div>
                     <div class="subpanel">
-                      <div class="subTitle">Hadith Pairs</div>
+                      <div class="subTitle">Related Hadith Passages</div>
                       <div id="semHadith" class="pairsList"></div>
                     </div>
                   </div>
@@ -220,15 +234,16 @@
                 <div id="tabLexical" class="hidden">
                   <div class="twoCol">
                     <div class="subpanel">
-                      <div class="subTitle">Quran Pairs</div>
+                      <div class="subTitle">Related Quran Passages</div>
                       <div id="lexQuran" class="pairsList"></div>
                     </div>
                     <div class="subpanel">
-                      <div class="subTitle">Hadith Pairs</div>
+                      <div class="subTitle">Related Hadith Passages</div>
                       <div id="lexHadith" class="pairsList"></div>
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
