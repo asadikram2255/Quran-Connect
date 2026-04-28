@@ -95,16 +95,16 @@ RERANK_BATCH_SIZE = int(os.getenv("RERANK_BATCH_SIZE", "8"))
 RERANK_MAX_LENGTH = int(os.getenv("RERANK_MAX_LENGTH", "384"))
 QURAN_RERANK_TOPN = 8
 HADITH_RERANK_TOPN = 10
-QURAN_PREFILTER_TOPN = 24
-HADITH_PREFILTER_TOPN = 28
+QURAN_PREFILTER_TOPN = 40
+HADITH_PREFILTER_TOPN = 80
 
 GENERIC_TOKEN_DF_RATIO = 0.05
 GENERIC_ROOT_DF_RATIO = 0.04
 MIN_QQ_SHARED_ROOTS = 2
 MIN_QH_SHARED_TOKENS = 1
 MIN_QQ_CONTEXT_RAW = 0.33
-MIN_QH_CONTEXT_RAW = 0.38
-MIN_QH_EMBED = 0.42
+MIN_QH_CONTEXT_RAW = 0.28
+MIN_QH_EMBED = 0.40
 VERY_HIGH_QQ_EMBED = 0.78
 VERY_HIGH_QH_EMBED = 0.68
 VERY_HIGH_RERANK = 0.72
@@ -865,8 +865,11 @@ def rerank_quran_hadith(i: int):
 
     for j, d, tfidf_sim in zip(candidate_js, candidate_dists, tfidf_scores.tolist()):
         ar_sim = float(1.0 - d)
-        en_sim = float(np.dot(q_en_emb[i], h_en_emb[j]))
-        embed_sim = 0.70 * ar_sim + 0.30 * en_sim
+        if h_en_texts[j].strip():
+            en_sim = float(np.dot(q_en_emb[i], h_en_emb[j]))
+            embed_sim = 0.70 * ar_sim + 0.30 * en_sim
+        else:
+            embed_sim = ar_sim
         if embed_sim < MIN_QH_EMBED and tfidf_sim < 0.08:
             continue
 
@@ -883,7 +886,7 @@ def rerank_quran_hadith(i: int):
         generic_pen = diversity_penalty(shared_tok, generic_tokens_all) + diversity_penalty(shared_lemmas, generic_lemmas_all)
         support_bonus = minmax01(0.55 * filtered_tok_inter + 1.00 * filtered_lemma_inter, 0.0, 9.0)
 
-        semantic_core = minmax01(embed_sim, 0.52, 0.92)
+        semantic_core = minmax01(embed_sim, 0.40, 0.92)
         tfidf_core = minmax01(float(tfidf_sim), 0.02, 0.42)
         token_core = minmax01(tok_jacc, 0.00, 0.18)
         lemma_core = minmax01(lemma_jacc, 0.00, 0.22)
@@ -950,9 +953,9 @@ def rerank_quran_hadith(i: int):
             0.03 * item["len_core"]
         )
 
-        if not item["filtered_shared"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QH_EMBED and item["tfidf_sim"] < 0.20:
+        if not item["filtered_shared"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QH_EMBED and item["tfidf_sim"] < 0.15:
             continue
-        if item["filtered_lemma_inter"] < 0.90 and item["filtered_tok_inter"] < 1.10 and rerank_score < 0.60 and item["embed_sim"] < 0.58 and item["tfidf_sim"] < 0.20:
+        if item["filtered_lemma_inter"] < 0.70 and item["filtered_tok_inter"] < 0.80 and rerank_score < 0.60 and item["embed_sim"] < 0.55 and item["tfidf_sim"] < 0.15:
             continue
         if raw < MIN_QH_CONTEXT_RAW:
             continue
