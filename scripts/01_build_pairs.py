@@ -75,8 +75,8 @@ TOPK_QURAN_SEMANTIC = 20
 TOPK_HADITH_SEMANTIC = 50
 TOPK_HADITH_LEXICAL = 50
 
-QURAN_SEMANTIC_CANDIDATES = 140
-HADITH_SEMANTIC_CANDIDATES = 180
+QURAN_SEMANTIC_CANDIDATES = 200
+HADITH_SEMANTIC_CANDIDATES = 350
 
 # Retrieval model: multilingual, retrieval-focused, Arabic-friendly.
 # Lighter multilingual retrieval model that is much more feasible on CPU/16 GB RAM.
@@ -103,8 +103,8 @@ GENERIC_ROOT_DF_RATIO = 0.04
 MIN_QQ_SHARED_ROOTS = 2
 MIN_QH_SHARED_TOKENS = 1
 MIN_QQ_CONTEXT_RAW = 0.33
-MIN_QH_CONTEXT_RAW = 0.44
-MIN_QH_EMBED = 0.50
+MIN_QH_CONTEXT_RAW = 0.38
+MIN_QH_EMBED = 0.42
 VERY_HIGH_QQ_EMBED = 0.78
 VERY_HIGH_QH_EMBED = 0.68
 VERY_HIGH_RERANK = 0.72
@@ -171,6 +171,22 @@ def normalize_en(text: str) -> str:
     text = safe_str(text).lower()
     text = EN_PUNCT_RE.sub(" ", text)
     text = EN_MULTI_SPACE_RE.sub(" ", text).strip()
+    return text
+
+
+_MATN_MARKERS = [
+    "قال رسول الله", "قال النبي", "أن النبي", "أن رسول الله",
+    "عن النبي قال", "عن رسول الله قال",
+]
+
+def extract_matn(text: str) -> str:
+    """Remove leading isnad chain, keep the matn (content part of hadith)."""
+    text = safe_str(text)
+    cutoff = int(len(text) * 0.65)
+    for marker in _MATN_MARKERS:
+        idx = text.find(marker)
+        if idx != -1 and idx < cutoff:
+            return text[idx:]
     return text
 
 
@@ -544,11 +560,15 @@ generic_tokens = {t for t, c in token_df.items() if c / max(1, len(all_token_set
 generic_lemmas = {t for t, c in lemma_df.items() if c / max(1, len(all_lemma_sets)) >= GENERIC_TOKEN_DF_RATIO}
 generic_roots = {t for t, c in root_df.items() if c / max(1, len(q)) >= GENERIC_ROOT_DF_RATIO}
 
-# Stronger domain-specific noise handling for hadith formulae.
+# Isnad-formula noise only — topic terms like رسول/النبي/الله are kept
+# because they are genuine subject signals (e.g. an ayah about obeying the
+# Prophet should match hadiths that mention the Prophet).
 extra_hadith_noise = {
-    "قال", "قالت", "قالوا", "حدثنا", "اخبرنا", "سمعت", "سمع", "عن", "ابو", "ابي", "ابن", "بنت",
-    "رسول", "النبي", "الله", "عليه", "وسلم", "صلي", "صلى", "كان", "كانت", "فقال", "فقالت", "فقالوا",
-    "رواه", "رجل", "امراه", "امرأة", "ناس", "احد", "احدى", "انه", "انها", "انهم", "هذا", "هذه"
+    "حدثنا", "اخبرنا", "سمعت", "سمع", "رواه",
+    "قال", "قالت", "قالوا", "فقال", "فقالت", "فقالوا",
+    "ابو", "ابي", "ابن", "بنت",
+    "رجل", "امراه", "امرأة", "ناس", "احد", "احدى",
+    "انه", "انها", "انهم", "هذا", "هذه",
 }
 
 generic_tokens_all = generic_tokens.union(extra_hadith_noise)
@@ -580,9 +600,18 @@ def embed_passages(texts: list[str]) -> np.ndarray:
     return np.asarray(emb, dtype=np.float32)
 
 
-q_emb = embed_passages(q["arabic_norm"].tolist())
-h_emb = embed_passages(h_keep["arabic_norm"].tolist())
+q_emb = embed_passages(q["lemma_text"].tolist())
+
+h_keep["matn_norm"] = h_keep["arabic_text"].map(extract_matn).map(normalize_ar)
+h_emb = embed_passages(h_keep["matn_norm"].tolist())
 print("Embeddings shapes:", q_emb.shape, h_emb.shape)
+
+# English embeddings — used only for Quran-Hadith blending (not Quran-Quran).
+print("Building English embeddings for Quran-Hadith cross-lingual signal...")
+q_en_emb = embed_passages(q["english_text"].map(normalize_en).tolist())
+h_en_texts = h_keep["english_text"].map(lambda t: normalize_en(t) if normalize_en(t).strip() else " ").tolist()
+h_en_emb = embed_passages(h_en_texts)
+print("English embedding shapes:", q_en_emb.shape, h_en_emb.shape)
 
 # ---------- TF-IDF on lemmatized Arabic ----------
 TFIDF_MIN_DF = max(2, int(os.getenv("TFIDF_MIN_DF", "2")))
@@ -835,7 +864,9 @@ def rerank_quran_hadith(i: int):
     provisional = []
 
     for j, d, tfidf_sim in zip(candidate_js, candidate_dists, tfidf_scores.tolist()):
-        embed_sim = float(1.0 - d)
+        ar_sim = float(1.0 - d)
+        en_sim = float(np.dot(q_en_emb[i], h_en_emb[j]))
+        embed_sim = 0.70 * ar_sim + 0.30 * en_sim
         if embed_sim < MIN_QH_EMBED and tfidf_sim < 0.08:
             continue
 
@@ -872,7 +903,7 @@ def rerank_quran_hadith(i: int):
             generic_pen
         )
 
-        if filtered_lemma_inter < 1.10 and filtered_tok_inter < 1.10 and embed_sim < VERY_HIGH_QH_EMBED and tfidf_sim < 0.18:
+        if filtered_lemma_inter < 0.80 and filtered_tok_inter < 0.80 and embed_sim < VERY_HIGH_QH_EMBED and tfidf_sim < 0.18:
             continue
 
         provisional.append({
@@ -921,7 +952,7 @@ def rerank_quran_hadith(i: int):
 
         if not item["filtered_shared"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QH_EMBED and item["tfidf_sim"] < 0.20:
             continue
-        if item["filtered_lemma_inter"] < 1.20 and item["filtered_tok_inter"] < 1.40 and rerank_score < 0.60 and item["embed_sim"] < 0.62 and item["tfidf_sim"] < 0.20:
+        if item["filtered_lemma_inter"] < 0.90 and item["filtered_tok_inter"] < 1.10 and rerank_score < 0.60 and item["embed_sim"] < 0.58 and item["tfidf_sim"] < 0.20:
             continue
         if raw < MIN_QH_CONTEXT_RAW:
             continue
