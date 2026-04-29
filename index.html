@@ -134,9 +134,22 @@
             <div id="detailView" class="detailView">
 
               <div class="anchorCard">
-                <div class="anchorId" id="dAyahId"></div>
+                <div class="anchorIdRow">
+                  <div class="anchorId" id="dAyahId"></div>
+                  <button id="wordsToggleBtn" class="btn ghost smallBtn" type="button">Words &amp; Roots</button>
+                </div>
                 <div class="anchorArabic" id="dArabic" dir="rtl"></div>
                 <div class="anchorEnglish" id="dEnglish"></div>
+                <div id="anchorWordsPanel" class="anchorWordsPanel hidden">
+                  <div class="anchorWordsSection">
+                    <div class="anchorWordsLabel">Root Words</div>
+                    <div id="dRoots" class="chipGroup"></div>
+                  </div>
+                  <div class="anchorWordsSection">
+                    <div class="anchorWordsLabel">Arabic Words</div>
+                    <div id="dTokens" class="chipGroup"></div>
+                  </div>
+                </div>
               </div>
 
               <div class="detail detailScroll">

@@ -48,6 +48,10 @@ const els = {
   dAyahId:  document.getElementById("dAyahId"),
   dArabic:  document.getElementById("dArabic"),
   dEnglish: document.getElementById("dEnglish"),
+  dRoots:   document.getElementById("dRoots"),
+  dTokens:  document.getElementById("dTokens"),
+  wordsToggleBtn:   document.getElementById("wordsToggleBtn"),
+  anchorWordsPanel: document.getElementById("anchorWordsPanel"),
 
   semQuran:  document.getElementById("semQuran"),
   semHadith: document.getElementById("semHadith"),
@@ -461,6 +465,11 @@ document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 
+function makeWordChips(values) {
+  if (!values || !values.length) return `<span class="small">—</span>`;
+  return values.map(v => `<span class="rootChip" dir="rtl">${escapeHtml(v)}</span>`).join("");
+}
+
 function makeSharedChips(label, values) {
   if (!values || !values.length) return "";
   const chips = values.map(v => `<span class="rootChip" dir="rtl">${escapeHtml(v)}</span>`).join("");
@@ -565,6 +574,12 @@ async function openDetail(ayahId) {
   els.dArabic.textContent  = rec.arabic  || "";
   els.dEnglish.textContent = rec.english || "";
 
+  // Words & Roots panel — reset to hidden on each new selection
+  if (els.anchorWordsPanel) els.anchorWordsPanel.classList.add("hidden");
+  if (els.wordsToggleBtn)   els.wordsToggleBtn.textContent = "Words & Roots";
+  if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
+  if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
+
   const semQ = pairs.semantic?.quran_top20   || [];
   const semH = pairs.semantic?.hadith_top50  || [];
   const lexQ = pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [];
@@ -662,6 +677,13 @@ if (els.clearBtn) els.clearBtn.onclick = () => {
 if (els.mainQuery) els.mainQuery.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); runSearch(); }
 });
+
+if (els.wordsToggleBtn) els.wordsToggleBtn.onclick = () => {
+  const panel = els.anchorWordsPanel;
+  if (!panel) return;
+  const open = panel.classList.toggle("hidden") === false;
+  els.wordsToggleBtn.textContent = open ? "Hide Words" : "Words & Roots";
+};
 
 if (els.fontIncBtn) els.fontIncBtn.onclick = () => {
   state.arabicFontSize = Math.min(30, state.arabicFontSize + 2);
