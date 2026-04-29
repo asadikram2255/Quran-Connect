@@ -74,6 +74,8 @@ const els = {
 
   fontIncBtn: document.getElementById("fontIncBtn"),
   fontDecBtn: document.getElementById("fontDecBtn"),
+  engFontIncBtn: document.getElementById("engFontIncBtn"),
+  engFontDecBtn: document.getElementById("engFontDecBtn"),
 };
 
 const state = {
@@ -104,6 +106,7 @@ const state = {
   detailToken: 0,
 
   arabicFontSize: 18,
+  englishFontSize: 13,
 };
 
 // ── Helpers ────────────────────────────────────────────────
@@ -692,6 +695,15 @@ if (els.fontIncBtn) els.fontIncBtn.onclick = () => {
 if (els.fontDecBtn) els.fontDecBtn.onclick = () => {
   state.arabicFontSize = Math.max(13, state.arabicFontSize - 2);
   document.documentElement.style.setProperty("--arabic-font-size", state.arabicFontSize + "px");
+};
+
+if (els.engFontIncBtn) els.engFontIncBtn.onclick = () => {
+  state.englishFontSize = Math.min(24, state.englishFontSize + 1);
+  document.documentElement.style.setProperty("--english-font-size", state.englishFontSize + "px");
+};
+if (els.engFontDecBtn) els.engFontDecBtn.onclick = () => {
+  state.englishFontSize = Math.max(10, state.englishFontSize - 1);
+  document.documentElement.style.setProperty("--english-font-size", state.englishFontSize + "px");
 };
 
 // ── Init ────────────────────────────────────────────────────
