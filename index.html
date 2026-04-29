@@ -4,68 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Quran Better For Me</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css" />
-  <style>
-    .app{
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-    }
-    .results{
-      flex:1 1 auto;
-      min-height:0;
-    }
-    .layout{
-      height:100%;
-    }
-    .panel{
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-    }
-    .scrollBody{
-      flex:1 1 auto;
-      min-height: 0;
-      overflow: auto;
-      padding-right: 4px;
-    }
-    .detail{
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    .detailScroll{
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: auto;
-      padding-right: 4px;
-    }
-    .twoCol{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-    .list .item.selected{
-      outline: 2px solid rgba(80, 220, 255, 0.35);
-      background: rgba(80, 220, 255, 0.08);
-      border-radius: 12px;
-    }
-    .list .item{ padding: 12px 12px; }
-    .txt[dir="rtl"], .pairBody [dir="rtl"]{ line-height: 1.9; }
-    .tabs{ white-space: nowrap; }
-    @media (max-width: 1100px){
-      body{ overflow: auto; }
-      .app{ height: auto; }
-      .layout{ grid-template-columns: 1fr; }
-      .twoCol{ grid-template-columns: 1fr; }
-      .card.stickyTop{ position: static; }
-    }
-  </style>
 </head>
 
 <body>
@@ -74,7 +16,7 @@
     <div class="header">
       <div>
         <div class="h1">Quran Better For Me</div>
-        <div class="sub">Explore meaning connections across the Qur'an &amp; Hadith — An Effort by Muhammad Asad Ikram</div>
+        <div class="sub">Explore meaning connections across the Qur'an and authentic Hadith — by Muhammad Asad Ikram</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <button id="aboutBtn" class="btn ghost smallBtn" type="button">About</button>
@@ -82,14 +24,13 @@
       </div>
     </div>
 
-    <!-- Landing card -->
     <div id="landingCard" class="card landing">
       <div class="landingTop">
         <div>
           <div class="landingTitle">Why this exists</div>
           <div class="landingText">
             Many people want to understand the Qur'an more deeply, but it's hard to connect related meanings across different ayahs and authentic ahadiths.
-            This tool helps you explore those connections — by meaning and by shared root words — quickly, in one place.
+            This tool helps you explore those connections — through meaning, shared root words, and Hadith context — all in one place.
           </div>
         </div>
         <button id="startBtn" class="btn startBtn" type="button">Start Exploring</button>
@@ -99,139 +40,115 @@
         <div class="landingBox">
           <div class="landingH">What it does</div>
           <ul class="landingList">
-            <li>Find ayat related to a topic in English or Arabic.</li>
-            <li>See <b>meaning-based</b> connections (semantic similarity).</li>
-            <li>See <b>word-based</b> connections (shared Arabic root words).</li>
-            <li>Dive deeper — click any related ayah to explore its own pairs.</li>
+            <li>Find ayat related to a topic (English or Arabic keyword).</li>
+            <li>See <b>meaning-based</b> and <b>root word</b> connections side-by-side.</li>
+            <li>Dive deeper — click any paired ayah to explore its own connections.</li>
           </ul>
         </div>
 
         <div class="landingBox">
           <div class="landingH">How to use</div>
           <ol class="landingList">
-            <li>Choose a search type: <b>English</b>, <b>Arabic</b>, or <b>Ayah ID</b>.</li>
+            <li>Pick input type: <b>English</b>, <b>Arabic</b>, or <b>Ayah ID</b>.</li>
             <li>Type your query and press <b>Search</b> (or <b>Enter</b>).</li>
-            <li>Click an ayah in results to see its related pairs.</li>
-            <li>Click any related Quran ayah to keep exploring.</li>
+            <li>Click an ayah in results to load its pairs.</li>
+            <li>Click any <b>paired ayah</b> to keep exploring deeper.</li>
           </ol>
           <div class="landingNote">
-            Results are <b>AI-suggested links</b> to aid study. Always verify with trusted tafseer and scholars.
+            Results are <b>suggested links</b> to aid study. Always verify with trusted tafseer and scholars.
           </div>
         </div>
 
         <div class="landingBox">
           <div class="landingH">Examples to try</div>
           <div class="examples">
-            <button class="chip exampleBtn" data-type="en" data-value="justice" type="button">justice</button>
             <button class="chip exampleBtn" data-type="en" data-value="patience" type="button">patience</button>
+            <button class="chip exampleBtn" data-type="en" data-value="justice" type="button">justice</button>
             <button class="chip exampleBtn" data-type="en" data-value="forgiveness" type="button">forgiveness</button>
-            <button class="chip exampleBtn" data-type="ar" data-value="عدل" type="button">عدل</button>
             <button class="chip exampleBtn" data-type="ar" data-value="صبر" type="button">صبر</button>
+            <button class="chip exampleBtn" data-type="ar" data-value="عدل" type="button">عدل</button>
             <button class="chip exampleBtn" data-type="id" data-value="2:177" type="button">2:177</button>
+            <button class="chip exampleBtn" data-type="id" data-value="49:12" type="button">49:12</button>
           </div>
-          <div class="landingSmall">
-            Still improving — suggestions are welcome.
-          </div>
+          <div class="landingSmall">Still improving — suggestions are welcome.</div>
         </div>
       </div>
     </div>
 
-    <!-- Smart search card -->
     <div class="card stickyTop">
-      <div class="searchTypeRow">
-        <button class="typeBtn active" data-type="en" type="button">English</button>
-        <button class="typeBtn" data-type="ar" type="button">Arabic &nbsp;عربي</button>
-        <button class="typeBtn" data-type="id" type="button">Ayah ID</button>
-      </div>
-      <div class="searchInputRow">
-        <input id="smartQuery" type="text" placeholder="e.g. justice, mercy, patience…" autocomplete="off" />
+      <div class="searchRow">
+        <div class="typeToggle">
+          <button class="typeBtn active" data-type="en" type="button">English</button>
+          <button class="typeBtn" data-type="ar" type="button">Arabic</button>
+          <button class="typeBtn" data-type="id" type="button">Ayah ID</button>
+        </div>
+        <input id="mainQuery" type="text" placeholder="e.g. patience" autocomplete="off" spellcheck="false" />
         <button id="searchBtn" class="btn" type="button">Search</button>
         <button id="clearBtn" class="btn ghost" type="button">Clear</button>
       </div>
-      <div class="hint">Tip: results are suggested links — always verify with trusted tafseer.</div>
+      <div class="searchHint" id="searchHint">Tip: type a concept in English and press Enter</div>
     </div>
 
-    <!-- Main results layout -->
     <div class="results">
       <div class="layout">
 
-        <!-- Left: search results -->
         <div class="panel">
           <div class="panelTitle stickyHead">
-            Search Results <span id="resultCount" class="countBadge"></span>
+            Search Results <span id="resultsCount" class="countBadge"></span>
           </div>
           <div class="scrollBody">
             <div id="resultsList" class="list empty">Search results will appear here.</div>
           </div>
         </div>
 
-        <!-- Right: pairs -->
         <div class="panel">
-          <div class="panelTitle stickyHead" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div>
+          <div class="panelTitle stickyHead pairsPanelTitle">
+            <div style="display:flex;align-items:center;gap:10px;">
               <span>Pairs</span>
-              <span id="pairsForLabel" class="pairsForLabel"></span>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <button id="fontDecBtn" class="fontBtn" title="Smaller Arabic text" type="button">A−</button>
-              <button id="fontIncBtn" class="fontBtn" title="Larger Arabic text" type="button">A+</button>
-              <div class="tabs" style="margin:0;">
-                <button
-                  class="tab active"
-                  data-tab="semantic"
-                  title="Matches based on overall meaning and context."
-                  type="button"
-                >
-                  Meaning-Based <span id="countSemantic" class="tabCount"></span>
-                </button>
-                <button
-                  class="tab"
-                  data-tab="lexical"
-                  title="Quran pairs share root words. Hadith pairs share Arabic words."
-                  type="button"
-                >
-                  Word-Based <span id="countLexical" class="tabCount"></span>
-                </button>
+              <div class="fontSizeCtrl">
+                <button id="fontDecBtn" class="fontBtn" title="Decrease Arabic text size" type="button">A−</button>
+                <button id="fontIncBtn" class="fontBtn" title="Increase Arabic text size" type="button">A+</button>
               </div>
+            </div>
+            <div class="tabs">
+              <button class="tab active" data-tab="semantic" title="Matches based on overall meaning and context." type="button">
+                Meaning-Based <span id="semCount" class="countBadge"></span>
+              </button>
+              <button class="tab" data-tab="lexical" title="Quran pairs share root words. Hadith pairs share Arabic words." type="button">
+                Word-Based <span id="lexCount" class="countBadge"></span>
+              </button>
             </div>
           </div>
 
           <div id="detailWrap" class="detailWrap" data-state="empty">
 
-            <!-- Empty state -->
             <div id="detailEmpty" class="detailEmpty">
               <div class="ayahBox">
                 <div style="color:var(--muted);line-height:1.7;">
                   Select an ayah from <b>Search Results</b> to load its pairs here.<br>
-                  <span class="small">Quran + Hadith — Meaning-Based &amp; Word-Based</span>
+                  <span class="small">Quran + Hadith connections, by meaning and root words.</span>
                 </div>
               </div>
             </div>
 
-            <!-- Detail view -->
             <div id="detailView" class="detailView">
 
-              <!-- Anchor card: shows the selected ayah at top -->
-              <div id="anchorCard" class="anchorCard hidden">
-                <div class="anchorHeader">
-                  <div id="dAyahId" class="anchorId"></div>
-                  <div class="anchorHint">Click any related Quran ayah below to explore its pairs</div>
-                </div>
-                <div id="dArabic" class="anchorArabic ar" dir="rtl"></div>
-                <div id="dEnglish" class="anchorEnglish"></div>
+              <div class="anchorCard">
+                <div class="anchorId" id="dAyahId"></div>
+                <div class="anchorArabic" id="dArabic" dir="rtl"></div>
+                <div class="anchorEnglish" id="dEnglish"></div>
               </div>
 
-              <!-- Scrollable pairs content -->
-              <div id="pairsScroll" class="detail detailScroll">
+              <div class="detail detailScroll">
 
                 <div id="tabSemantic">
                   <div class="twoCol">
                     <div class="subpanel">
-                      <div class="subTitle">Related Quran Passages</div>
+                      <div class="subTitle">Related Quran Passages <span class="subNote">click to explore</span></div>
                       <div id="semQuran" class="pairsList"></div>
                     </div>
                     <div class="subpanel">
-                      <div class="subTitle">Related Hadith Passages</div>
+                      <div class="subTitle">Related Hadith</div>
                       <div id="semHadith" class="pairsList"></div>
                     </div>
                   </div>
@@ -240,11 +157,11 @@
                 <div id="tabLexical" class="hidden">
                   <div class="twoCol">
                     <div class="subpanel">
-                      <div class="subTitle">Related Quran Passages</div>
+                      <div class="subTitle">Related Quran Passages <span class="subNote">click to explore</span></div>
                       <div id="lexQuran" class="pairsList"></div>
                     </div>
                     <div class="subpanel">
-                      <div class="subTitle">Related Hadith Passages</div>
+                      <div class="subTitle">Related Hadith</div>
                       <div id="lexHadith" class="pairsList"></div>
                     </div>
                   </div>
@@ -259,10 +176,11 @@
     </div>
 
     <div class="footer">
-      Arabic + English embeddings for semantic matching · Root words &amp; token overlap for lexical matching · Results are AI-suggested — always verify with trusted tafseer and scholars.
+      Meaning matches use Arabic + English embeddings &amp; root words. Word matches use shared Arabic root overlap.
+      Results are suggestions — always verify with trusted tafseer and scholars.
     </div>
-  </div>
 
+  </div>
   <script src="assets/app.js"></script>
 </body>
 </html>
