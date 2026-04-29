@@ -644,23 +644,12 @@ async function runSearch() {
   }
 }
 
-// ── Font size controls ──────────────────────────────────────
-
-els.fontIncBtn.onclick = () => {
-  state.arabicFontSize = Math.min(30, state.arabicFontSize + 2);
-  document.documentElement.style.setProperty("--arabic-font-size", state.arabicFontSize + "px");
-};
-els.fontDecBtn.onclick = () => {
-  state.arabicFontSize = Math.max(13, state.arabicFontSize - 2);
-  document.documentElement.style.setProperty("--arabic-font-size", state.arabicFontSize + "px");
-};
-
 // ── Buttons & key bindings ──────────────────────────────────
 
-els.searchBtn.onclick = runSearch;
+if (els.searchBtn) els.searchBtn.onclick = runSearch;
 
-els.clearBtn.onclick = () => {
-  els.mainQuery.value = "";
+if (els.clearBtn) els.clearBtn.onclick = () => {
+  if (els.mainQuery) els.mainQuery.value = "";
   state.selectedAyahId = null;
   state.lastResults = [];
   state.detailToken++;
@@ -670,9 +659,18 @@ els.clearBtn.onclick = () => {
   setBadge("ok", "Ready");
 };
 
-els.mainQuery.addEventListener("keydown", e => {
+if (els.mainQuery) els.mainQuery.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); runSearch(); }
 });
+
+if (els.fontIncBtn) els.fontIncBtn.onclick = () => {
+  state.arabicFontSize = Math.min(30, state.arabicFontSize + 2);
+  document.documentElement.style.setProperty("--arabic-font-size", state.arabicFontSize + "px");
+};
+if (els.fontDecBtn) els.fontDecBtn.onclick = () => {
+  state.arabicFontSize = Math.max(13, state.arabicFontSize - 2);
+  document.documentElement.style.setProperty("--arabic-font-size", state.arabicFontSize + "px");
+};
 
 // ── Init ────────────────────────────────────────────────────
 
