@@ -53,6 +53,12 @@ const els = {
   wordsToggleBtn:   document.getElementById("wordsToggleBtn"),
   anchorWordsPanel: document.getElementById("anchorWordsPanel"),
 
+  wordModal:      document.getElementById("wordModal"),
+  wordModalTitle: document.getElementById("wordModalTitle"),
+  wordModalSub:   document.getElementById("wordModalSub"),
+  wordModalBody:  document.getElementById("wordModalBody"),
+  wordModalClose: document.getElementById("wordModalClose"),
+
   semQuran:  document.getElementById("semQuran"),
   semHadith: document.getElementById("semHadith"),
   lexQuran:  document.getElementById("lexQuran"),
@@ -107,6 +113,8 @@ const state = {
 
   arabicFontSize: 18,
   englishFontSize: 13,
+
+  rootToAyahIds: null,
 };
 
 // ── Helpers ────────────────────────────────────────────────
@@ -556,6 +564,106 @@ function renderPairList(container, items, options = {}) {
   }
 }
 
+// ── Word / Root modal ───────────────────────────────────────
+
+function sortAyahIds(ids) {
+  return [...ids].sort((a, b) => {
+    const [as, aa] = a.split(":").map(Number);
+    const [bs, ba] = b.split(":").map(Number);
+    return as !== bs ? as - bs : aa - ba;
+  });
+}
+
+function groupBySurah(ayahIds) {
+  const groups = new Map();
+  for (const id of ayahIds) {
+    const s = surahFromAyahId(id);
+    if (!groups.has(s)) groups.set(s, []);
+    groups.get(s).push(id);
+  }
+  return groups;
+}
+
+function closeWordModal() {
+  if (els.wordModal) els.wordModal.classList.add("hidden");
+}
+
+async function openWordModal(word, kind) {
+  // kind: "root" | "token"
+  let ayahIds;
+  if (kind === "root") {
+    ayahIds = state.rootToAyahIds?.[word] || [];
+  } else {
+    const norm = normalizeArabic(word);
+    ayahIds = state.arTokenToAyah?.[norm] || [];
+    ayahIds = sortAyahIds(ayahIds);
+  }
+
+  const count = ayahIds.length;
+  if (!count) return;
+
+  const kindLabel = kind === "root" ? "Root Word" : "Arabic Word";
+  els.wordModalTitle.textContent = word;
+  els.wordModalSub.textContent   = `${kindLabel} · appears ${count} time${count !== 1 ? "s" : ""} in the Quran`;
+  els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
+  els.wordModal.classList.remove("hidden");
+
+  const groups   = groupBySurah(ayahIds);
+  const surahs   = [...groups.keys()];
+
+  // Load all needed surahs in parallel (cached shards serve instantly)
+  await Promise.all(surahs.map(s => ensureSurahLoaded(s).catch(() => {})));
+
+  // Render grouped by surah
+  els.wordModalBody.innerHTML = "";
+  for (const surahNum of surahs) {
+    const surahNm  = SURAH_NAMES[Number(surahNum)] || "";
+    const groupEl  = document.createElement("div");
+    groupEl.className = "wordModalGroup";
+
+    const titleEl = document.createElement("div");
+    titleEl.className   = "wordModalGroupTitle";
+    titleEl.textContent = `Surah ${surahNum}${surahNm ? " — " + surahNm : ""}`;
+    groupEl.appendChild(titleEl);
+
+    for (const id of groups.get(surahNum)) {
+      const rec  = state.quranById.get(id);
+      const item = document.createElement("div");
+      item.className = "wordModalItem";
+      item.innerHTML = `
+        <div class="wordModalItemId">${escapeHtml(fmtAyahId(id))}</div>
+        ${rec
+          ? `<div class="wordModalItemAr" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
+             <div class="wordModalItemEn">${escapeHtml(rec.english || "")}</div>`
+          : `<div class="wordModalLoading">Unavailable</div>`}
+      `;
+      item.onclick = () => { closeWordModal(); openDetail(id); };
+      groupEl.appendChild(item);
+    }
+
+    els.wordModalBody.appendChild(groupEl);
+  }
+}
+
+// Wire modal close
+if (els.wordModalClose) els.wordModalClose.onclick = closeWordModal;
+if (els.wordModal) els.wordModal.addEventListener("click", e => {
+  if (e.target === els.wordModal) closeWordModal();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeWordModal();
+});
+
+// Chip click delegation on the Words & Roots panel
+if (els.dRoots) els.dRoots.addEventListener("click", e => {
+  const chip = e.target.closest(".rootChip");
+  if (chip) openWordModal(chip.textContent.trim(), "root");
+});
+if (els.dTokens) els.dTokens.addEventListener("click", e => {
+  const chip = e.target.closest(".rootChip");
+  if (chip) openWordModal(chip.textContent.trim(), "token");
+});
+
 // ── Open detail ─────────────────────────────────────────────
 
 async function openDetail(ayahId) {
@@ -713,7 +821,7 @@ async function init() {
     const manifest = await fetchJson("data/meta/manifest.json");
     state.manifest = manifest;
 
-    const [shardMapQuran, shardMapPairs, shardMapHadith, enTokenToAyah, enTriToTokens, arTokenToAyah] =
+    const [shardMapQuran, shardMapPairs, shardMapHadith, enTokenToAyah, enTriToTokens, arTokenToAyah, rootToAyahIds] =
       await Promise.all([
         fetchJson(manifest.paths.shard_map_quran),
         fetchJson(manifest.paths.shard_map_pairs),
@@ -721,6 +829,7 @@ async function init() {
         fetchJson(manifest.paths.english_token_to_ayahids),
         fetchJson(manifest.paths.english_trigram_to_tokens),
         fetchJson(manifest.paths.arabic_token_to_ayahids),
+        fetchJson(manifest.paths.root_to_ayahids),
       ]);
 
     state.shardMapQuran   = shardMapQuran;
@@ -729,6 +838,7 @@ async function init() {
     state.enTokenToAyah   = enTokenToAyah;
     state.enTriToTokens   = enTriToTokens;
     state.arTokenToAyah   = arTokenToAyah;
+    state.rootToAyahIds   = rootToAyahIds;
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
     setDetailState("empty");

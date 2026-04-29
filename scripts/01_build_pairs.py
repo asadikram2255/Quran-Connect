@@ -549,6 +549,13 @@ write_json(os.path.join(OUT_SEARCH_DIR, "english_trigram_to_tokens.json"), trigr
 write_json(os.path.join(OUT_SEARCH_DIR, "arabic_token_to_ayahids.json"), arabic_token_to_ayah)
 print("English vocab:", len(english_token_to_ayah), "Arabic vocab:", len(arabic_token_to_ayah))
 
+root_to_ayahids = defaultdict(list)
+for ayah_id, rset in zip(q["ayah_id"], q["roots_ordered"]):
+    for root in rset:
+        root_to_ayahids[root].append(ayah_id)
+write_json(os.path.join(OUT_SEARCH_DIR, "root_to_ayahids.json"), root_to_ayahids)
+print("Root vocab:", len(root_to_ayahids))
+
 # ---------- Weights / document frequencies ----------
 all_token_sets = q["tok_set"].tolist() + h_keep["tok_set"].tolist()
 all_lemma_sets = q["lemma_set"].tolist() + h_keep["lemma_set"].tolist()
@@ -1216,6 +1223,7 @@ manifest = {
         "english_token_to_ayahids": "data/search_index/english_token_to_ayahids.json",
         "english_trigram_to_tokens": "data/search_index/english_trigram_to_tokens.json",
         "arabic_token_to_ayahids": "data/search_index/arabic_token_to_ayahids.json",
+        "root_to_ayahids": "data/search_index/root_to_ayahids.json",
         "pairing_diagnostics": "data/meta/pairing_diagnostics.json",
     },
     "pairing": {
