@@ -82,7 +82,7 @@ HADITH_SEMANTIC_CANDIDATES = 350
 # Lighter multilingual retrieval model that is much more feasible on CPU/16 GB RAM.
 # You can override with an environment variable if you want to experiment later.
 EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "Alibaba-NLP/gte-multilingual-base")
-EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "32"))
+EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "16"))
 VEC_PREVIEW_DIMS = 8
 MAX_SHARED_ITEMS_STORED = 8
 
