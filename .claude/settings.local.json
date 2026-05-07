@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(dir \"D:\\\\Users\\\\asadi\\\\Documents\\\\GitHub\" /AD /B)",
+      "Bash(dir \"D:\\\\Users\\\\asadi\\\\Documents\\\\GitHub\\\\quran-better-for-me\" /b /s)",
+      "Bash(findstr /i \"sample\\\\|root\")",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Users\\\\asadi\\\\Documents\\\\GitHub\\\\quran-better-for-me\" -Recurse | Select-Object FullName | Where-Object { $_.FullName -notmatch \"\\\\.git|node_modules\" })",
+      "Bash(python scripts/compare_roots.py)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "WebFetch(domain:corpus.quran.com)"
     ]
   }
 }
