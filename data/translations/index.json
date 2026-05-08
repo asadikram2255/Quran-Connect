@@ -1,0 +1,62 @@
+[
+  {
+    "id": "en_sahih",
+    "edition": "en.sahih",
+    "lang": "en",
+    "name": "Sahih International",
+    "author": "Saheeh International",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_sahih.json"
+  },
+  {
+    "id": "en_yusuf_ali",
+    "edition": "en.yusufali",
+    "lang": "en",
+    "name": "Yusuf Ali",
+    "author": "Abdullah Yusuf Ali",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_yusuf_ali.json"
+  },
+  {
+    "id": "ur_maududi",
+    "edition": "ur.maududi",
+    "lang": "ur",
+    "name": "Maududi (Tafheem)",
+    "author": "Abul A'la Maududi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_maududi.json"
+  },
+  {
+    "id": "ur_junagarhi",
+    "edition": "ur.junagarhi",
+    "lang": "ur",
+    "name": "Junagarhi",
+    "author": "Muhammad Junagarhi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_junagarhi.json"
+  },
+  {
+    "id": "ur_jalandhri",
+    "edition": "ur.jalandhry",
+    "lang": "ur",
+    "name": "Fateh Muhammad Jalandhri",
+    "author": "Fateh Muhammad Jalandhri",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_jalandhri.json"
+  },
+  {
+    "id": "ur_ahmedali",
+    "edition": "ur.ahmedali",
+    "lang": "ur",
+    "name": "Ahmed Ali",
+    "author": "Ahmed Ali",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_ahmedali.json"
+  }
+]

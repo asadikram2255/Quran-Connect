@@ -82,6 +82,7 @@ const els = {
   fontDecBtn: document.getElementById("fontDecBtn"),
   engFontIncBtn: document.getElementById("engFontIncBtn"),
   engFontDecBtn: document.getElementById("engFontDecBtn"),
+  transSel: document.getElementById("transSel"),
 };
 
 const state = {
@@ -115,7 +116,76 @@ const state = {
   englishFontSize: 13,
 
   rootToAyahIds: null,
+
+  // Translation system
+  activeTranslation: "en_default",
+  translationData: new Map(),       // id → {ayah_id: text}
+  urHadithShardMap: null,
+  urHadithShardCache: new Map(),    // file → {serial: text}
 };
+
+// ── Translation options ────────────────────────────────────
+
+const TRANSLATION_OPTIONS = [
+  { id: "en_default",   name: "English (Default)",       lang: "en" },
+  { id: "en_sahih",     name: "Sahih International",     lang: "en", path: "data/translations/en_sahih.json" },
+  { id: "en_yusuf_ali", name: "Yusuf Ali",               lang: "en", path: "data/translations/en_yusuf_ali.json" },
+  { id: "ur_maududi",   name: "مودودی (تفہیم)",          lang: "ur", path: "data/translations/ur_maududi.json" },
+  { id: "ur_junagarhi", name: "جونا گڑھی",              lang: "ur", path: "data/translations/ur_junagarhi.json" },
+  { id: "ur_jalandhri", name: "جالندھری",               lang: "ur", path: "data/translations/ur_jalandhri.json" },
+  { id: "ur_ahmedali",  name: "احمد علی",               lang: "ur", path: "data/translations/ur_ahmedali.json" },
+];
+
+function isUrduActive() {
+  return TRANSLATION_OPTIONS.find(o => o.id === state.activeTranslation)?.lang === "ur";
+}
+
+function getQuranTranslation(ayahId) {
+  const id = state.activeTranslation;
+  if (id === "en_default") return null;
+  return state.translationData.get(id)?.[ayahId] ?? null;
+}
+
+function getHadithUrduText(hadithId) {
+  if (!isUrduActive()) return null;
+  const serial = hadithSerialFromId(hadithId);
+  if (!serial) return null;
+  for (const shard of state.urHadithShardCache.values()) {
+    const t = shard[String(serial)];
+    if (t) return t;
+  }
+  return null;
+}
+
+async function loadTranslation(id) {
+  if (id === "en_default" || state.translationData.has(id)) return;
+  const opt = TRANSLATION_OPTIONS.find(o => o.id === id);
+  if (!opt?.path) return;
+  const data = await fetchJson(opt.path);
+  state.translationData.set(id, data);
+}
+
+function findUrHadithShardFile(serial) {
+  for (const x of state.urHadithShardMap || [])
+    if (serial >= x.start && serial <= x.end) return x.file;
+  return null;
+}
+
+async function preloadUrHadithShards(hadithIds) {
+  if (!isUrduActive() || !state.urHadithShardMap) return;
+  const files = new Set();
+  for (const hid of hadithIds) {
+    const serial = hadithSerialFromId(hid);
+    if (!serial) continue;
+    const file = findUrHadithShardFile(serial);
+    if (file && !state.urHadithShardCache.has(file)) files.add(file);
+  }
+  if (!files.size) return;
+  await Promise.all([...files].map(async file => {
+    const data = await fetchJson(file);
+    state.urHadithShardCache.set(file, data);
+  }));
+}
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -446,9 +516,12 @@ function renderResults(list) {
   }
   els.resultsList.classList.remove("empty");
 
+  const urdu = isUrduActive();
   for (const rec of list.slice(0, 60)) {
     const surahNum  = Number(surahFromAyahId(rec.ayah_id));
     const surahNm   = SURAH_NAMES[surahNum] || "";
+    const transText = getQuranTranslation(rec.ayah_id);
+    const displayEn = transText || rec.english || "";
     const div = document.createElement("div");
     div.className = "item" + (state.selectedAyahId === rec.ayah_id ? " selected" : "");
     div.innerHTML = `
@@ -458,7 +531,7 @@ function renderResults(list) {
       </div>
       <div>
         <div class="txt" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
-        <div class="subtxt">${escapeHtml(rec.english || "")}</div>
+        <div class="subtxt${urdu ? " urdu-text" : ""}">${escapeHtml(displayEn)}</div>
       </div>
     `;
     div.onclick = () => openDetail(rec.ayah_id);
@@ -521,19 +594,26 @@ function renderPairList(container, items, options = {}) {
          </div>`
       : `<div class="pairIdBlock"><div class="pairNum">${escapeHtml(it.id)}</div></div>`;
 
+    const urdu = isUrduActive();
     let body = "";
     if (isQuranPair) {
       const rec = state.quranById.get(it.id);
-      body = rec
-        ? `<div class="pairBody"><div dir="rtl">${escapeHtml(rec.arabic || "")}</div></div>
-           <div class="pairBodySmall">${escapeHtml(rec.english || "")}</div>`
-        : `<div class="pairBodySmall">Loading…</div>`;
+      if (rec) {
+        const transText = getQuranTranslation(it.id);
+        const displayEn = transText || rec.english || "";
+        body = `<div class="pairBody"><div dir="rtl">${escapeHtml(rec.arabic || "")}</div></div>
+           <div class="pairBodySmall${urdu ? " urdu-text" : ""}">${escapeHtml(displayEn)}</div>`;
+      } else {
+        body = `<div class="pairBodySmall">Loading…</div>`;
+      }
     } else {
       const h = state.hadithById.get(it.id);
       if (h) {
+        const urText = getHadithUrduText(it.id);
+        const displayText = urText || h.english || "";
         body = `<div class="pairBody"><div dir="rtl">${escapeHtml(h.arabic || "")}</div></div>`;
-        if (h.english) {
-          body += `<div class="pairBodySmall">${escapeHtml(h.english)}</div>`;
+        if (displayText) {
+          body += `<div class="pairBodySmall${urdu && urText ? " urdu-text" : ""}">${escapeHtml(displayText)}</div>`;
         } else {
           body += `<div class="pairBodySmall">${escapeHtml(h.book || "")} — ${escapeHtml(h.reference || "")}</div>`;
         }
@@ -630,11 +710,14 @@ async function openWordModal(word, kind) {
       const rec  = state.quranById.get(id);
       const item = document.createElement("div");
       item.className = "wordModalItem";
+      const modalUrdu = isUrduActive();
+      const modalTrans = getQuranTranslation(id);
+      const modalDisplayEn = modalTrans || (rec?.english ?? "");
       item.innerHTML = `
         <div class="wordModalItemId">${escapeHtml(fmtAyahId(id))}</div>
         ${rec
           ? `<div class="wordModalItemAr" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
-             <div class="wordModalItemEn">${escapeHtml(rec.english || "")}</div>`
+             <div class="wordModalItemEn${modalUrdu ? " urdu-text" : ""}">${escapeHtml(modalDisplayEn)}</div>`
           : `<div class="wordModalLoading">Unavailable</div>`}
       `;
       item.onclick = () => { closeWordModal(); openDetail(id); };
@@ -683,7 +766,9 @@ async function openDetail(ayahId) {
   // Populate anchor card
   els.dAyahId.textContent  = fmtAyahId(ayahId);
   els.dArabic.textContent  = rec.arabic  || "";
-  els.dEnglish.textContent = rec.english || "";
+  const anchorTrans = getQuranTranslation(ayahId);
+  els.dEnglish.textContent = anchorTrans || rec.english || "";
+  els.dEnglish.className   = "anchorEnglish" + (isUrduActive() ? " urdu-text" : "");
 
   // Words & Roots panel — reset to hidden on each new selection
   if (els.anchorWordsPanel) els.anchorWordsPanel.classList.add("hidden");
@@ -711,7 +796,11 @@ async function openDetail(ayahId) {
   const firstHadithIds = unique([...semH.slice(0,8).map(x=>x.id), ...lexH.slice(0,8).map(x=>x.id)]);
   const restHadithIds  = unique([...semH.slice(8,20).map(x=>x.id),...lexH.slice(8,20).map(x=>x.id)]);
 
-  await Promise.all([loadSurahsParallel([...neededSurahs]), preloadHadithIds(firstHadithIds)]);
+  await Promise.all([
+    loadSurahsParallel([...neededSurahs]),
+    preloadHadithIds(firstHadithIds),
+    preloadUrHadithShards(firstHadithIds),
+  ]);
   if (myToken !== state.detailToken) return;
 
   renderPairList(els.semQuran, semQ, { kind:"quran",  emptyMessage:"No meaning-based Quran matches found.", sharedTokensLabel:"Shared meaning cues" });
@@ -842,6 +931,37 @@ async function init() {
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
     setDetailState("empty");
+
+    // Enable translation selector and load Urdu hadith shard map in background
+    if (els.transSel) els.transSel.disabled = false;
+    if (manifest.paths.ur_hadith_shard_map) {
+      fetchJson(manifest.paths.ur_hadith_shard_map)
+        .then(sm => { state.urHadithShardMap = sm; })
+        .catch(err => console.warn("Urdu hadith shard map load failed:", err));
+    }
+
+    // Translation switch handler
+    if (els.transSel) {
+      els.transSel.addEventListener("change", async () => {
+        const newId = els.transSel.value;
+        if (newId === state.activeTranslation) return;
+        state.activeTranslation = newId;
+        // Load translation data if not cached
+        if (newId !== "en_default") {
+          setBadge("warn", "Loading translation…");
+          try {
+            await loadTranslation(newId);
+          } catch (err) {
+            setBadge("err", `Translation load failed: ${err.message}`);
+            return;
+          }
+        }
+        setBadge("ok", "Translation applied");
+        // Re-render everything visible
+        renderResults(state.lastResults);
+        if (state.selectedAyahId) openDetail(state.selectedAyahId);
+      });
+    }
 
     // Type toggle buttons
     document.querySelectorAll(".typeBtn").forEach(btn => {

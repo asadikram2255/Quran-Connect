@@ -6,7 +6,7 @@
   <title>Quran Better For Me</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 
@@ -18,7 +18,18 @@
         <div class="h1">Quran Better For Me</div>
         <div class="sub">Explore meaning connections across the Qur'an and authentic Hadith — by Muhammad Asad Ikram</div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <select id="transSel" class="transSel" title="Select translation" disabled>
+          <option value="en_default">English (Default)</option>
+          <option value="en_sahih">Sahih International</option>
+          <option value="en_yusuf_ali">Yusuf Ali</option>
+          <optgroup label="اردو ترجمے">
+            <option value="ur_maududi">اردو — مودودی (تفہیم)</option>
+            <option value="ur_junagarhi">اردو — جونا گڑھی</option>
+            <option value="ur_jalandhri">اردو — جالندھری</option>
+            <option value="ur_ahmedali">اردو — احمد علی</option>
+          </optgroup>
+        </select>
         <button id="aboutBtn" class="btn ghost smallBtn" type="button">About</button>
         <div id="statusBadge" class="badge warn">Loading…</div>
       </div>
