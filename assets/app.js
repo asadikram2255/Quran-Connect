@@ -932,8 +932,7 @@ async function init() {
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
     setDetailState("empty");
 
-    // Enable translation selector and load Urdu hadith shard map in background
-    if (els.transSel) els.transSel.disabled = false;
+    // Load Urdu hadith shard map in background
     if (manifest.paths.ur_hadith_shard_map) {
       fetchJson(manifest.paths.ur_hadith_shard_map)
         .then(sm => { state.urHadithShardMap = sm; })
@@ -945,6 +944,7 @@ async function init() {
       els.transSel.addEventListener("change", async () => {
         const newId = els.transSel.value;
         if (newId === state.activeTranslation) return;
+        if (!state.shardMapQuran) { els.transSel.value = state.activeTranslation; return; } // not ready yet
         state.activeTranslation = newId;
         // Load translation data if not cached
         if (newId !== "en_default") {
