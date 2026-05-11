@@ -161,7 +161,12 @@ async function loadTranslation(id) {
   if (id === "en_default" || state.translationData.has(id)) return;
   const opt = TRANSLATION_OPTIONS.find(o => o.id === id);
   if (!opt?.path) return;
-  const data = await fetchJson(opt.path);
+  // Use cache:"no-cache" so the browser always validates against the server,
+  // preventing stale cached translation files from being served.
+  const fp = resolveDataPath(opt.path);
+  const res = await fetch(fp, { cache: "no-cache" });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${fp}`);
+  const data = await res.json();
   state.translationData.set(id, data);
 }
 
@@ -182,7 +187,10 @@ async function preloadUrHadithShards(hadithIds) {
   }
   if (!files.size) return;
   await Promise.all([...files].map(async file => {
-    const data = await fetchJson(file);
+    const fp = resolveDataPath(file);
+    const res = await fetch(fp, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${fp}`);
+    const data = await res.json();
     state.urHadithShardCache.set(file, data);
   }));
 }
@@ -945,19 +953,27 @@ async function init() {
         const newId = els.transSel.value;
         if (newId === state.activeTranslation) return;
         if (!state.shardMapQuran) { els.transSel.value = state.activeTranslation; return; } // not ready yet
+
+        const prevId = state.activeTranslation;
         state.activeTranslation = newId;
-        // Load translation data if not cached
-        if (newId !== "en_default") {
+
+        // Load translation data if not already cached
+        if (newId !== "en_default" && !state.translationData.has(newId)) {
           setBadge("warn", "Loading translation…");
           try {
             await loadTranslation(newId);
           } catch (err) {
-            setBadge("err", `Translation load failed: ${err.message}`);
+            console.error("Translation load error:", err);
+            // Roll back — revert to previous translation
+            state.activeTranslation = prevId;
+            els.transSel.value = prevId;
+            setBadge("err", "Translation failed to load — check network");
             return;
           }
         }
+
         setBadge("ok", "Translation applied");
-        // Re-render everything visible
+        // Re-render everything currently visible with new translation
         renderResults(state.lastResults);
         if (state.selectedAyahId) openDetail(state.selectedAyahId);
       });

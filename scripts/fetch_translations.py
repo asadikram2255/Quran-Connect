@@ -52,7 +52,9 @@ def fetch_quran_translation(t):
     for surah in surahs:
         s_num = surah['number']
         for ayah in surah['ayahs']:
-            a_num = ayah['number']   # number within surah
+            # IMPORTANT: 'number' is the absolute number across the whole Quran (1-6236).
+            # 'numberInSurah' is the position within the surah — this is what we need.
+            a_num = ayah['numberInSurah']
             ayah_id = f"{s_num}:{a_num}"
             result[ayah_id] = ayah['text']
 
