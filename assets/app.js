@@ -161,9 +161,9 @@ async function loadTranslation(id) {
   if (id === "en_default" || state.translationData.has(id)) return;
   const opt = TRANSLATION_OPTIONS.find(o => o.id === id);
   if (!opt?.path) return;
-  // Use cache:"no-cache" so the browser always validates against the server,
-  // preventing stale cached translation files from being served.
-  const fp = resolveDataPath(opt.path);
+  // Append ?v=3 so any browser-cached old translation file (with wrong keys)
+  // is bypassed — the versioned URL is treated as a fresh resource.
+  const fp = resolveDataPath(opt.path) + "?v=3";
   const res = await fetch(fp, { cache: "no-cache" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${fp}`);
   const data = await res.json();
