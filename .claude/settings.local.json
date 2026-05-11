@@ -28,7 +28,9 @@
       "Bash(python scripts/deep_verify_translations.py)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "WebFetch(domain:asadikram2255.github.io)",
+      "Bash(node -e ' *)"
     ]
   }
 }
