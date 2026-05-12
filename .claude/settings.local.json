@@ -46,7 +46,8 @@
       "Bash(node -e \"const fs=require\\('fs'\\);let c=fs.readFileSync\\('D:/Users/asadi/Documents/GitHub/quran-better-for-me/assets/app.js','utf8'\\);const bad=\\(c.match\\(/\\\\]\\\\\\)\\\\]\\\\},/g\\)||[]\\).length;console.log\\('bad:',bad\\);\")",
       "Bash(node --check \"D:/Users/asadi/Documents/GitHub/quran-better-for-me/assets/app.js\")",
       "Bash(gh run *)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(node scripts/fetch_prophet_ayahs.js)"
     ]
   }
 }
