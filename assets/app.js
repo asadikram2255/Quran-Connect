@@ -83,6 +83,11 @@ const els = {
   engFontIncBtn: document.getElementById("engFontIncBtn"),
   engFontDecBtn: document.getElementById("engFontDecBtn"),
   transSel: document.getElementById("transSel"),
+
+  feelingsBtn:        document.getElementById("feelingsBtn"),
+  feelingsModal:      document.getElementById("feelingsModal"),
+  feelingsModalClose: document.getElementById("feelingsModalClose"),
+  feelingsBody:       document.getElementById("feelingsBody"),
 };
 
 const state = {
@@ -135,6 +140,205 @@ const TRANSLATION_OPTIONS = [
   { id: "ur_jalandhri", name: "جالندھری",               lang: "ur", path: "data/translations/ur_jalandhri.json" },
   { id: "ur_ahmedali",  name: "احمد علی",               lang: "ur", path: "data/translations/ur_ahmedali.json" },
 ];
+
+// ── "What Am I Feeling" — Topic data ──────────────────────
+
+const TOPIC_CATEGORIES = [
+  {
+    label: "💚 Heart & Emotions",
+    topics: [
+      "Anxiety & Fear", "Patience (Sabr)", "Hope", "Gratitude (Shukr)",
+      "Happiness & Contentment", "Grief & Loss", "Controlling Anger", "Not Giving Up"
+    ]
+  },
+  {
+    label: "🤲 Connection with Allah",
+    topics: [
+      "Trust in Allah (Tawakkul)", "Remembrance of Allah (Dhikr)", "Supplication (Dua)",
+      "Repentance (Tawbah)", "Seeking Forgiveness", "Allah's Mercy", "Guidance", "Taqwa"
+    ]
+  },
+  {
+    label: "🕌 Acts of Worship",
+    topics: [
+      "Prayer (Salah)", "Fasting (Sawm)", "Charity (Sadaqah)", "Zakat",
+      "Hajj & Pilgrimage", "The Quran"
+    ]
+  },
+  {
+    label: "✨ Character & Ethics",
+    topics: [
+      "Justice (Adl)", "Honesty & Truthfulness", "Kindness to Others",
+      "Humility", "Wisdom", "Forgiving Others", "Arrogance & Pride",
+      "Respecting Others", "Lying & Deception"
+    ]
+  },
+  {
+    label: "👨‍👩‍👧 Family & Society",
+    topics: [
+      "Marriage & Love", "Parents & Mothers", "Family & Kinship",
+      "Brotherhood & Unity", "Helping Others", "Good Deeds"
+    ]
+  },
+  {
+    label: "🌍 Life & the World",
+    topics: [
+      "Death & Afterlife", "Day of Judgement", "Jannah (Paradise)",
+      "Nature & Creation", "Wealth & Provision", "Health & Body",
+      "Difficulties & Trials", "Knowledge & Learning"
+    ]
+  },
+  {
+    label: "⚖️ Islamic Law & Society",
+    topics: [
+      "Hijab & Modesty", "Halal (Permissible)", "Haram (Forbidden)",
+      "Alcohol & Intoxicants", "Peace", "Dawah (Calling to Islam)",
+      "Compulsion in Religion"
+    ]
+  },
+  {
+    label: "🌟 Theology & Belief",
+    topics: [
+      "Prophets & Messengers", "Angels", "Shaitan (Satan)",
+      "Shirk (Polytheism)", "Disbelievers", "People of the Book"
+    ]
+  }
+];
+
+const TOPIC_VERSES = {
+  "Anxiety & Fear":            ["2:38","2:112","2:277","3:170","3:173","4:147","6:48","10:62","10:63","41:30","58:22","65:3"],
+  "Patience (Sabr)":           ["2:45","2:153","2:155","2:156","2:157","2:177","3:120","3:200","8:46","16:96","16:126","39:10","70:5","103:3"],
+  "Hope":                      ["3:139","12:87","15:56","39:53","47:35","65:3","93:5","94:5","94:6"],
+  "Gratitude (Shukr)":         ["2:152","2:172","14:7","16:18","27:40","31:12","34:13","54:35"],
+  "Happiness & Contentment":   ["10:64","13:28","16:97","3:170","98:8"],
+  "Grief & Loss":              ["2:155","2:156","2:157","2:286","3:145","57:22","57:23"],
+  "Controlling Anger":         ["3:133","3:134","7:199","41:34","42:37"],
+  "Not Giving Up":             ["3:139","12:87","39:53","47:35","94:5","94:6"],
+
+  "Trust in Allah (Tawakkul)": ["3:159","3:173","8:49","9:129","11:123","12:67","39:38","65:3"],
+  "Remembrance of Allah (Dhikr)": ["2:152","2:186","3:41","13:28","33:35","33:41","62:10","76:25"],
+  "Supplication (Dua)":        ["2:186","3:38","7:55","17:11","21:83","21:87","27:62","40:60"],
+  "Repentance (Tawbah)":       ["2:222","3:135","4:17","4:110","9:112","11:3","39:53","66:8"],
+  "Seeking Forgiveness":       ["2:199","3:31","3:135","4:110","11:90","42:25","71:10"],
+  "Allah's Mercy":             ["2:143","6:12","7:156","12:87","21:107","27:46","39:9","39:53"],
+  "Guidance":                  ["1:5","1:6","1:7","2:2","2:5","2:186","17:9"],
+  "Taqwa":                     ["2:2","2:177","2:183","3:102","4:131","49:13","65:2","65:3"],
+
+  "Prayer (Salah)":            ["2:3","2:43","2:45","2:238","4:103","11:114","20:130","23:9","70:23","70:34"],
+  "Fasting (Sawm)":            ["2:183","2:184","2:185","2:187"],
+  "Charity (Sadaqah)":         ["2:177","2:261","2:262","2:274","3:92","57:7","63:10"],
+  "Zakat":                     ["2:43","2:110","2:177","9:60","9:103","23:4"],
+  "Hajj & Pilgrimage":         ["2:196","2:197","2:203","3:97","22:27","22:28"],
+  "The Quran":                 ["2:2","2:185","4:82","10:57","12:2","15:9","17:9","17:82","41:44"],
+
+  "Justice (Adl)":             ["4:58","4:135","5:8","6:152","7:29","16:90","42:15","49:9","57:25"],
+  "Honesty & Truthfulness":    ["3:17","5:8","9:119","33:70","33:71","39:33","56:88"],
+  "Kindness to Others":        ["2:195","2:263","3:134","4:36","6:54","16:128","28:77"],
+  "Humility":                  ["7:199","17:37","25:63","25:64","31:18","31:19","57:23"],
+  "Wisdom":                    ["2:269","3:190","3:191","31:12","59:21"],
+  "Forgiving Others":          ["2:237","3:134","4:149","24:22","42:37","42:40","64:14"],
+  "Arrogance & Pride":         ["4:36","7:13","16:23","17:37","31:18","35:43","39:60","40:35"],
+  "Respecting Others":         ["4:36","6:108","17:53","49:11","49:12"],
+  "Lying & Deception":         ["3:61","3:78","4:105","9:43","22:30","39:3"],
+
+  "Marriage & Love":           ["2:187","4:34","25:74","30:21","33:35","35:11"],
+  "Parents & Mothers":         ["2:83","2:215","2:233","4:36","6:151","17:23","17:24","19:32","29:8","31:14","31:15","46:15"],
+  "Family & Kinship":          ["2:177","2:215","4:1","4:11","13:25","16:90","47:22"],
+  "Brotherhood & Unity":       ["3:103","49:10","49:11","49:12","59:9"],
+  "Helping Others":            ["2:177","2:261","3:92","4:36","5:2","9:71","28:77"],
+  "Good Deeds":                ["2:177","2:195","3:92","3:133","16:97","18:30","99:7"],
+
+  "Death & Afterlife":         ["2:28","2:156","3:145","3:185","4:78","16:61","23:15","39:42","56:60"],
+  "Day of Judgement":          ["2:48","4:87","7:8","21:47","22:7","56:1","75:1","82:1","84:1","99:1"],
+  "Jannah (Paradise)":         ["2:25","3:15","3:133","3:198","13:35","22:14","47:15","55:46","55:48","56:15","57:21"],
+  "Nature & Creation":         ["2:164","3:190","3:191","13:3","16:65","30:22","30:24","55:5","55:6"],
+  "Wealth & Provision":        ["2:261","11:6","17:29","17:30","51:22","65:3","87:16"],
+  "Health & Body":             ["2:195","5:1","7:31","16:69","17:70","21:35"],
+  "Difficulties & Trials":     ["2:155","2:156","2:157","2:286","65:7","94:5","94:6"],
+  "Knowledge & Learning":      ["2:31","20:114","39:9","58:11","96:1","96:3","96:4","96:5"],
+
+  "Hijab & Modesty":           ["24:31","33:53","33:59"],
+  "Halal (Permissible)":       ["2:168","2:172","5:1","5:88","16:114"],
+  "Haram (Forbidden)":         ["2:173","5:3","6:151","16:115","17:32","17:33"],
+  "Alcohol & Intoxicants":     ["2:219","4:43","5:90","5:91"],
+  "Peace":                     ["2:208","4:90","4:128","5:32","8:61","49:9"],
+  "Dawah (Calling to Islam)":  ["3:104","3:110","6:108","12:108","16:125","41:33"],
+  "Compulsion in Religion":    ["2:256","10:99","18:29","88:21","88:22"],
+
+  "Prophets & Messengers":     ["2:136","2:253","3:84","4:163","4:164","6:83","7:59","21:73"],
+  "Angels":                    ["2:30","2:98","4:136","6:61","13:11","16:2","32:11","82:10"],
+  "Shaitan (Satan)":           ["2:36","2:208","4:76","7:12","12:5","14:22","17:53","36:60"],
+  "Shirk (Polytheism)":        ["2:22","4:36","4:48","4:116","6:148","31:13","39:65"],
+  "Disbelievers":              ["2:6","2:7","3:116","9:23","47:7","98:6"],
+  "People of the Book":        ["2:62","3:110","4:131","5:5","5:69","29:46","57:29"]
+};
+
+// ── Feelings modal ─────────────────────────────────────────
+
+function buildFeelingsModal() {
+  if (!els.feelingsBody) return;
+  els.feelingsBody.innerHTML = "";
+  for (const cat of TOPIC_CATEGORIES) {
+    const catEl = document.createElement("div");
+    catEl.className = "feelingsCat";
+
+    const labelEl = document.createElement("div");
+    labelEl.className = "feelingsCatLabel";
+    labelEl.textContent = cat.label;
+    catEl.appendChild(labelEl);
+
+    const chipsEl = document.createElement("div");
+    chipsEl.className = "feelingsChips";
+    for (const topic of cat.topics) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "feelingsChip";
+      chip.textContent = topic;
+      chip.addEventListener("click", () => selectTopic(topic));
+      chipsEl.appendChild(chip);
+    }
+    catEl.appendChild(chipsEl);
+    els.feelingsBody.appendChild(catEl);
+  }
+}
+
+function openFeelingsModal() {
+  if (!els.feelingsModal) return;
+  buildFeelingsModal();
+  els.feelingsModal.classList.remove("hidden");
+}
+
+function closeFeelingsModal() {
+  if (els.feelingsModal) els.feelingsModal.classList.add("hidden");
+}
+
+async function selectTopic(topicName) {
+  closeFeelingsModal();
+  showLanding(false);
+
+  const ayahIds = TOPIC_VERSES[topicName] || [];
+  if (!ayahIds.length) return;
+
+  setBadge("warn", `Loading "${topicName}"…`);
+
+  // Load all required surahs in parallel
+  const surahs = [...new Set(ayahIds.map(id => id.split(":")[0]))];
+  try {
+    await Promise.all(surahs.map(s => ensureSurahLoaded(s).catch(() => {})));
+  } catch (_) {}
+
+  // Build result records — preserve topic order
+  const records = ayahIds.map(id => state.quranById.get(id)).filter(Boolean);
+
+  // Show in search results panel
+  if (els.mainQuery) els.mainQuery.value = topicName;
+  state.selectedAyahId = null;
+  setDetailState("empty");
+  updateTabCounts(0, 0, 0, 0);
+  renderResults(records);
+  if (els.searchHint) els.searchHint.textContent = `Showing ${records.length} verses on "${topicName}"`;
+  setBadge("ok", `${records.length} verses · ${topicName}`);
+}
 
 function isUrduActive() {
   return TRANSLATION_OPTIONS.find(o => o.id === state.activeTranslation)?.lang === "ur";
@@ -994,6 +1198,18 @@ async function init() {
     if (els.aboutBtn) {
       els.aboutBtn.addEventListener("click", () => showLanding(true));
     }
+
+    // Feelings modal
+    if (els.feelingsBtn) els.feelingsBtn.addEventListener("click", openFeelingsModal);
+    if (els.feelingsModalClose) els.feelingsModalClose.addEventListener("click", closeFeelingsModal);
+    if (els.feelingsModal) {
+      els.feelingsModal.addEventListener("click", e => {
+        if (e.target === els.feelingsModal) closeFeelingsModal();
+      });
+    }
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") { closeFeelingsModal(); closeWordModal(); }
+    });
 
     // Example chips
     document.querySelectorAll(".exampleBtn").forEach(btn => {
