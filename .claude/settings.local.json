@@ -39,7 +39,8 @@
       "Bash(dir \"D:\\\\Users\\\\asadi\\\\Documents\\\\GitHub\\\\quran-better-for-me\\\\temp_topic_data.js\")",
       "mcp__Claude_in_Chrome__navigate",
       "Bash(python scripts/generate_topic_verses.py)",
-      "WebFetch(domain:qurananalysis.com)"
+      "WebFetch(domain:qurananalysis.com)",
+      "Bash(wc -l \"/mnt/d/Users/asadi/Documents/GitHub/quran-better-for-me/assets/styles.css\")"
     ]
   }
 }
