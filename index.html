@@ -34,6 +34,7 @@
           </optgroup>
         </select>
         <button id="feelingsBtn" class="btn feelingsBtn" type="button">What Am I Feeling?</button>
+        <button id="statsBtn" class="btn statsBtn" type="button">📊 Quran Statistics</button>
         <button id="aboutBtn" class="btn ghost smallBtn" type="button">About</button>
         <div id="statusBadge" class="badge warn">Loading…</div>
       </div>
@@ -246,6 +247,25 @@
         <button id="feelingsModalClose" class="wordModalClose" type="button" aria-label="Close">✕</button>
       </div>
       <div id="feelingsBody" class="feelingsBody"></div>
+    </div>
+  </div>
+
+  <!-- ── Quran Statistics modal ──────────────────────────────── -->
+  <div id="statsModal" class="statsOverlay hidden" role="dialog" aria-modal="true">
+    <div class="statsPanel">
+      <div class="statsHeader">
+        <div>
+          <div class="statsTitle">📊 Quran Statistics</div>
+          <div class="statsSub">Numerical facts about the Holy Qur'an · <a href="https://qurananalysis.com/analysis/basic-statistics.php?lang=EN" target="_blank" rel="noopener" class="statsCredit">Data via qurananalysis.com</a></div>
+        </div>
+        <button id="statsModalClose" class="wordModalClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="statsTabBar">
+        <button class="statsTab active" data-stab="numbers" type="button">🔢 By the Numbers</button>
+        <button class="statsTab" data-stab="words" type="button">📝 Word Frequency</button>
+        <button class="statsTab" data-stab="history" type="button">🕰️ Revelation &amp; History</button>
+      </div>
+      <div id="statsBody" class="statsBody"></div>
     </div>
   </div>
 

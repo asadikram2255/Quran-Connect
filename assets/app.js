@@ -88,6 +88,11 @@ const els = {
   feelingsModal:      document.getElementById("feelingsModal"),
   feelingsModalClose: document.getElementById("feelingsModalClose"),
   feelingsBody:       document.getElementById("feelingsBody"),
+
+  statsBtn:           document.getElementById("statsBtn"),
+  statsModal:         document.getElementById("statsModal"),
+  statsModalClose:    document.getElementById("statsModalClose"),
+  statsBody:          document.getElementById("statsBody"),
 };
 
 const state = {
@@ -513,6 +518,232 @@ const TOPIC_VERSES = {
   "Prophet Idris (as)": ["19:56", "19:58", "21:85", "38:48", "21:89", "38:49"],
   "Prophet Isaac (as)": ["2:133", "2:136", "2:140", "2:260", "3:84", "4:163", "5:69", "2:62", "6:84", "6:87", "11:71", "12:6", "12:38", "14:39", "19:49", "21:72", "21:73", "29:27", "37:112", "51:28", "15:53", "37:113", "38:45", "51:2"]
 };
+
+// ── Quran Statistics modal ─────────────────────────────────
+
+const QURAN_STATS = {
+  hero: [
+    { num: "114",       label: "Surahs" },
+    { num: "6,236",     label: "Ayat" },
+    { num: "157,935",   label: "Words" },
+    { num: "5,277",     label: "Unique Words" },
+    { num: "668,684",   label: "Letters" },
+  ],
+  structure: [
+    { num: "30",   label: "Juz (Parts)",          note: "" },
+    { num: "86",   label: "Meccan Surahs",         note: "Revealed before Hijrah" },
+    { num: "28",   label: "Madinan Surahs",         note: "Revealed after Hijrah" },
+    { num: "14",   label: "Sajdah (Prostration) Verses", note: "" },
+    { num: "7",    label: "Oft-Repeated Verses",   note: "Surah Al-Fatiha" },
+  ],
+  length: [
+    { num: "286",  label: "Longest Surah (ayat)",  note: "Al-Baqarah (2)" },
+    { num: "3",    label: "Shortest Surah (ayat)", note: "Al-Kawthar (108)" },
+    { num: "256",  label: "Longest Ayah (words)",  note: "2:282 — The Debt Verse" },
+    { num: "25.49",label: "Avg Ayah Length",       note: "words per ayah" },
+    { num: "4.23", label: "Avg Word Length",       note: "letters per word" },
+    { num: "17",   label: "Longest Word (letters)",note: "" },
+  ],
+  // Miraculous pairs: same count
+  pairs: [
+    { ar1: "الدُّنيا", en1: "Dunia (World)",      ar2: "الآخرة", en2: "Akhira (Hereafter)", count: "115" },
+    { ar1: "الحياة",   en1: "Hayat (Life)",        ar2: "الموت",  en2: "Mawt (Death)",       count: "145" },
+    { ar1: "الملائكة", en1: "Angels",              ar2: "الشياطين",en2:"Devils",              count: "88"  },
+    { ar1: "الرجل",    en1: "Man",                 ar2: "المرأة", en2: "Woman",               count: "24"  },
+    { ar1: "الشهر",    en1: "Shahr (Month)",       ar2: "١٢",    en2: "Months in a year",    count: "12"  },
+    { ar1: "يوم",      en1: "Yawm (Day)",          ar2: "٣٦٥",   en2: "Days in a year",      count: "365" },
+  ],
+  // Most mentioned words (frequency)
+  freq: [
+    { ar: "الله",    en: "Allah",            count: 2699, max: 2699 },
+    { ar: "رب",      en: "Rabb (Lord)",      count: 970,  max: 2699 },
+    { ar: "قال",     en: "Qaala (Said/Say)", count: 529,  max: 2699 },
+    { ar: "إن",      en: "Inna (Indeed)",    count: 512,  max: 2699 },
+    { ar: "رحمن",    en: "Rahman (Merciful)",count: 57,   max: 2699 },
+    { ar: "صلاة",    en: "Salah (Prayer)",   count: 67,   max: 2699 },
+    { ar: "زكاة",    en: "Zakah",            count: 32,   max: 2699 },
+    { ar: "عقل",     en: "Aql (Reason)",     count: 49,   max: 2699 },
+  ],
+  // Most mentioned Prophets
+  prophets: [
+    { name: "Musa (Moses)",     count: 136 },
+    { name: "Ibrahim (Abraham)",count: 69  },
+    { name: "Nuh (Noah)",       count: 43  },
+    { name: "Lut (Lot)",        count: 27  },
+    { name: "Isa (Jesus)",      count: 25  },
+    { name: "Adam",             count: 25  },
+    { name: "Yusuf (Joseph)",   count: 27  },
+    { name: "Muhammad ﷺ",       count: 4   },
+  ],
+  history: [
+    { label: "Period of Revelation", value: "610 CE – 632 CE",       note: "Over 23 years" },
+    { label: "First Word Revealed",  value: "اقرأ (Iqra — Read!)",  note: "Surah Al-Alaq 96:1" },
+    { label: "First Surah Revealed", value: "Al-Alaq (96)",          note: "First 5 ayat in Cave Hira" },
+    { label: "Last Ayah Revealed",   value: "Al-Ma'idah 5:3",        note: "On the day of Arafah" },
+    { label: "Last Surah Revealed",  value: "Al-Nasr (110)",         note: "Shortly before the Prophet ﷺ passed" },
+    { label: "Language",             value: "Classical Arabic",       note: "~1,682 unique root words" },
+    { label: "First Compilation",    value: "Abu Bakr era (632–634 CE)", note: "On request of Umar ibn al-Khattab" },
+    { label: "Standardisation",      value: "Uthman era (~650 CE)",  note: "Copies sent to all provinces" },
+  ],
+  timeline: [
+    { year: "610 CE", text: "First revelation — Surah Al-Alaq 96:1–5 in Cave Hira", note: "Prophet Muhammad ﷺ was 40 years old" },
+    { year: "610–622 CE", text: "Meccan period — 86 surahs revealed", note: "Focus on Tawhid, prophethood, afterlife" },
+    { year: "622 CE", text: "Hijrah — Migration to Madinah", note: "Marks start of Islamic calendar" },
+    { year: "622–632 CE", text: "Madinan period — 28 surahs revealed", note: "Laws, community, family guidance" },
+    { year: "632 CE", text: "Last ayah revealed — 5:3 on day of Arafah", note: "\"Today I have perfected your religion…\"" },
+    { year: "632–634 CE", text: "First compilation by Abu Bakr (ra)", note: "Preserved on parchments & palm leaves" },
+    { year: "~650 CE", text: "Uthman's (ra) standardised Mushaf", note: "Sent to Mecca, Basra, Kufa, Syria & Madinah" },
+    { year: "Today", text: "Over 1 billion copies — most memorised book on Earth", note: "Unchanged since revelation" },
+  ],
+};
+
+let _statsActiveTab = "numbers";
+
+function buildStatsTab(tab) {
+  const s = QURAN_STATS;
+  const el = els.statsBody;
+  el.innerHTML = "";
+
+  if (tab === "numbers") {
+    // Hero row
+    const hero = document.createElement("div");
+    hero.className = "statsHero";
+    s.hero.forEach(({ num, label }) => {
+      hero.innerHTML += `<div class="statsHeroCard"><div class="statsHeroNum">${num}</div><div class="statsHeroLabel">${label}</div></div>`;
+    });
+    el.appendChild(hero);
+
+    // Meccan / Madinan split bar
+    const split = document.createElement("div");
+    split.className = "splitBar";
+    split.innerHTML = `
+      <div class="splitBarLabel">Meccan vs Madinan Surahs</div>
+      <div class="splitBarTrack">
+        <div class="splitBarA" style="width:75.4%">75.4%</div>
+        <div class="splitBarB">24.6%</div>
+      </div>
+      <div class="splitBarLegend">
+        <span><span class="splitDot" style="background:#38bdf8"></span>Meccan — 86 surahs</span>
+        <span><span class="splitDot" style="background:#c084f5"></span>Madinan — 28 surahs</span>
+      </div>`;
+    el.appendChild(split);
+
+    // Structure cards
+    const sec1 = document.createElement("div");
+    sec1.className = "statsSection";
+    sec1.innerHTML = `<div class="statsSectionTitle">Structure</div><div class="statsCardGrid">` +
+      s.structure.map(({ num, label, note }) =>
+        `<div class="statsCard"><div class="statsCardNum">${num}</div><div class="statsCardLabel">${label}</div>${note ? `<div class="statsCardNote">${note}</div>` : ""}</div>`
+      ).join("") + `</div>`;
+    el.appendChild(sec1);
+
+    // Length stats
+    const sec2 = document.createElement("div");
+    sec2.className = "statsSection";
+    sec2.innerHTML = `<div class="statsSectionTitle">Length & Size</div><div class="statsCardGrid">` +
+      s.length.map(({ num, label, note }) =>
+        `<div class="statsCard"><div class="statsCardNum">${num}</div><div class="statsCardLabel">${label}</div>${note ? `<div class="statsCardNote">${note}</div>` : ""}</div>`
+      ).join("") + `</div>`;
+    el.appendChild(sec2);
+
+  } else if (tab === "words") {
+    // Miraculous pairs
+    const pairSec = document.createElement("div");
+    pairSec.className = "statsSection";
+    pairSec.innerHTML = `<div class="statsSectionTitle">✨ Miraculous Word Pairs — Same Count</div>
+      <div class="pairGrid">` +
+      s.pairs.map(({ ar1, en1, ar2, en2, count }) => `
+        <div class="pairCard">
+          <div class="pairSide">
+            <div class="pairAr">${ar1}</div>
+            <div class="pairEn">${en1}</div>
+          </div>
+          <div class="pairDivider"></div>
+          <div style="text-align:center;flex-shrink:0">
+            <div class="pairCount">${count}</div>
+            <div class="pairEq">times each</div>
+          </div>
+          <div class="pairDivider"></div>
+          <div class="pairSide">
+            <div class="pairAr">${ar2}</div>
+            <div class="pairEn">${en2}</div>
+          </div>
+        </div>`).join("") +
+      `</div>
+      <div class="earthFact">🌍 The words <strong>Bahr (Sea)</strong> appear <strong>32 times</strong> and <strong>Barr (Land)</strong> appear <strong>13 times</strong> — a ratio of <strong>71.1% sea : 28.9% land</strong>, exactly matching the Earth's surface composition.</div>`;
+    el.appendChild(pairSec);
+
+    // Most mentioned words
+    const freqSec = document.createElement("div");
+    freqSec.className = "statsSection";
+    freqSec.innerHTML = `<div class="statsSectionTitle">Most Mentioned Words</div><div class="freqList">` +
+      s.freq.map(({ ar, en, count, max }, i) => `
+        <div class="freqItem">
+          <div class="freqRank">${i + 1}</div>
+          <div class="freqAr">${ar}</div>
+          <div class="freqEn">${en}</div>
+          <div class="freqBar" style="width:${Math.round((count / max) * 140)}px"></div>
+          <div class="freqNum">${count.toLocaleString()}</div>
+        </div>`).join("") +
+      `</div>`;
+    el.appendChild(freqSec);
+
+    // Most mentioned Prophets
+    const propMax = s.prophets[0].count;
+    const propSec = document.createElement("div");
+    propSec.className = "statsSection";
+    propSec.innerHTML = `<div class="statsSectionTitle">Most Mentioned Prophets</div><div class="freqList">` +
+      s.prophets.map(({ name, count }, i) => `
+        <div class="freqItem">
+          <div class="freqRank">${i + 1}</div>
+          <div class="freqEn" style="width:160px;flex:none">${name}</div>
+          <div class="freqBar" style="width:${Math.round((count / propMax) * 120)}px"></div>
+          <div class="freqNum">${count}×</div>
+        </div>`).join("") +
+      `</div>`;
+    el.appendChild(propSec);
+
+  } else if (tab === "history") {
+    // Key facts grid
+    const factSec = document.createElement("div");
+    factSec.className = "statsSection";
+    factSec.innerHTML = `<div class="statsSectionTitle">Key Facts</div><div class="historyGrid">` +
+      s.history.map(({ label, value, note }) => `
+        <div class="histCard">
+          <div class="histLabel">${label}</div>
+          <div class="histValue">${value}</div>
+          ${note ? `<div class="histNote">${note}</div>` : ""}
+        </div>`).join("") +
+      `</div>`;
+    el.appendChild(factSec);
+
+    // Timeline
+    const tlSec = document.createElement("div");
+    tlSec.className = "statsSection";
+    tlSec.innerHTML = `<div class="statsSectionTitle">Timeline of Revelation</div>
+      <div class="timeline">` +
+      s.timeline.map(({ year, text, note }) => `
+        <div class="tlItem">
+          <div class="tlDot"></div>
+          <div class="tlYear">${year}</div>
+          <div class="tlText">${text}</div>
+          ${note ? `<div class="tlNote">${note}</div>` : ""}
+        </div>`).join("") +
+      `</div>`;
+    el.appendChild(tlSec);
+  }
+}
+
+function openStatsModal() {
+  if (!els.statsModal) return;
+  _statsActiveTab = "numbers";
+  document.querySelectorAll(".statsTab").forEach(t => t.classList.toggle("active", t.dataset.stab === "numbers"));
+  buildStatsTab("numbers");
+  els.statsModal.classList.remove("hidden");
+}
+function closeStatsModal() {
+  if (els.statsModal) els.statsModal.classList.add("hidden");
+}
 
 // ── Feelings modal ─────────────────────────────────────────
 
@@ -1448,8 +1679,26 @@ async function init() {
         if (e.target === els.feelingsModal) closeFeelingsModal();
       });
     }
+
+    // Stats modal
+    if (els.statsBtn) els.statsBtn.addEventListener("click", openStatsModal);
+    if (els.statsModalClose) els.statsModalClose.addEventListener("click", closeStatsModal);
+    if (els.statsModal) {
+      els.statsModal.addEventListener("click", e => {
+        if (e.target === els.statsModal) closeStatsModal();
+      });
+    }
+    document.querySelectorAll(".statsTab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.stab;
+        _statsActiveTab = tab;
+        document.querySelectorAll(".statsTab").forEach(t => t.classList.toggle("active", t === btn));
+        buildStatsTab(tab);
+      });
+    });
+
     document.addEventListener("keydown", e => {
-      if (e.key === "Escape") { closeFeelingsModal(); closeWordModal(); }
+      if (e.key === "Escape") { closeFeelingsModal(); closeStatsModal(); closeWordModal(); }
     });
 
     // Example chips
