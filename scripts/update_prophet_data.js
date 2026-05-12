@@ -1,0 +1,406 @@
+/**
+ * update_prophet_data.js
+ *
+ * Replaces the PROPHET_DATA block in assets/app.js with a comprehensive,
+ * carefully curated ayah list for each of the 25 Quranic prophets.
+ *
+ * Each list covers:
+ *  - All ayahs where the prophet is mentioned by name
+ *  - The full story passages (even ayahs before/after the name appears)
+ *  - Combined with TOPIC_VERSES[key] from myislam.org where available
+ *
+ * Run with:  node scripts/update_prophet_data.js
+ */
+
+const fs   = require("fs");
+const path = require("path");
+
+function u(arr) { // unique + sort by surah:ayah
+  return [...new Set(arr)].sort((a, b) => {
+    const [as2, av] = a.split(":").map(Number);
+    const [bs2, bv] = b.split(":").map(Number);
+    return as2 !== bs2 ? as2 - bs2 : av - bv;
+  });
+}
+
+function r(n)  { return Array.from({length: n}, (_, i) => i + 1); }  // [1..n]
+function sr(s, from, to) { return r(to - from + 1).map(v => `${s}:${v}`); }   // surah range
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROPHET DATA  (key · name · arabic · surah · topicVersesKey · ayahs)
+// ─────────────────────────────────────────────────────────────────────────────
+const PROPHETS = [
+
+  // 1. Adam (as) — ~25 direct mentions, creation & fall narrative
+  { key:"adam", name:"Adam (as)", arabic:"آدَم", surah:null,
+    tv:"Prophet Adam (as)",
+    ayahs: u([
+      // direct name mentions
+      "2:31","2:33","2:35","2:37","3:33","3:59","5:27","5:28","5:30","5:31",
+      "7:11","7:19","7:20","7:22","7:26","7:27","7:31","7:35","17:61","17:70",
+      "18:50","19:58","20:115","20:116","20:117","20:120","20:121","36:60",
+      // creation / fall narrative (unnamed but directly about Adam)
+      "2:30","2:32","2:34","2:36","2:38","7:12","7:13","7:14","7:15","7:16",
+      "7:17","7:18","7:23","7:24","7:25","7:28","7:29","7:30","7:32","7:33",
+      "7:34","15:26","15:27","15:28","15:29","15:30","15:31","15:32","15:33",
+      "15:34","15:35","15:36","15:37","15:38","15:39","15:40","15:41","15:42",
+      "17:62","17:63","17:64","17:65","38:71","38:72","38:73","38:74","38:75",
+      "38:76","38:77","38:78","38:79","38:80","38:81","38:82","38:83","38:84","38:85",
+    ]) },
+
+  // 2. Idris (as) — 2 direct mentions
+  { key:"idris", name:"Idris (as)", arabic:"إِدْرِيس", surah:null,
+    tv:"Prophet Idris (as)",
+    ayahs: u(["19:56","19:57","21:85","21:86"]) },
+
+  // 3. Nuh / Noah (as) — 43 direct mentions + story passages + full Surah 71
+  { key:"nuh", name:"Nuh / Noah (as)", arabic:"نُوح", surah:"71",
+    tv:"Prophet Nuh (as)",
+    ayahs: u([
+      // direct name mentions across Quran
+      "3:33","4:163","6:84","7:59","9:70","10:71","11:25","11:32","11:36",
+      "11:42","11:45","11:46","11:47","11:48","11:89","14:9","17:3","17:17",
+      "19:58","21:76","22:42","23:23","25:37","26:105","29:14","33:7","37:75",
+      "38:12","40:5","40:31","42:13","50:12","51:46","53:52","54:9","57:26",
+      "66:10","69:11",
+      // full story passages
+      ...sr(7,59,64), ...sr(10,71,73), ...sr(11,25,49),
+      ...sr(23,23,30), ...sr(26,105,122), ...sr(37,75,82),
+      ...sr(54,9,16), ...sr(71,1,28),
+    ]) },
+
+  // 4. Hud (as) — 7 direct mentions + ʿĀd story passages
+  { key:"hud", name:"Hud (as)", arabic:"هُود", surah:null,
+    tv:"Prophet Hud (as)",
+    ayahs: u([
+      "7:65","11:50","11:53","11:58","11:60","26:124","46:21",
+      // story passages
+      ...sr(7,65,72), ...sr(11,50,60),
+      ...sr(26,123,140), ...sr(46,21,26),
+      "41:13","41:14","41:15","41:16",
+      "51:41","51:42","54:18","54:19","54:20","54:21",
+      "69:6","69:7","69:8","89:6","89:7","89:8",
+    ]) },
+
+  // 5. Salih (as) — 9 direct mentions + Thamud story passages
+  { key:"salih", name:"Salih (as)", arabic:"صَالِح", surah:null,
+    tv:null,
+    ayahs: u([
+      "7:73","7:75","7:77","11:61","11:62","11:64","11:66","11:89","26:142","27:45",
+      // story passages
+      ...sr(7,73,79), ...sr(11,61,68),
+      ...sr(26,141,158), ...sr(27,45,53),
+      "54:23","54:24","54:25","54:26","54:27","54:28","54:29","54:30","54:31",
+      "91:11","91:12","91:13","91:14",
+    ]) },
+
+  // 6. Ibrahim / Abraham (as) — 69 direct mentions
+  { key:"ibrahim", name:"Ibrahim / Abraham (as)", arabic:"إِبْرَاهِيم", surah:null,
+    tv:"Prophet Ibrahim (as)",
+    ayahs: u([
+      // name mentions
+      "2:124","2:125","2:127","2:130","2:132","2:133","2:135","2:136","2:140",
+      "2:258","2:260","3:33","3:65","3:67","3:68","3:84","3:95","3:97","4:54",
+      "4:125","4:163","6:74","6:75","6:83","6:84","6:161","9:70","9:114",
+      "11:69","11:74","11:75","11:76","12:6","12:38","14:35","15:51",
+      "16:120","16:121","16:122","16:123","19:41","19:46","19:58","21:51",
+      "21:60","21:62","21:68","21:69","22:26","22:43","22:78","26:69","29:16",
+      "29:25","29:26","29:31","33:7","37:83","37:104","37:109","38:45",
+      "42:13","43:26","51:24","53:37","57:26","60:4","87:19",
+      // story passages
+      ...sr(2,124,132), "2:258","2:260",
+      ...sr(6,74,83), ...sr(11,69,76),
+      ...sr(14,35,41), ...sr(15,51,58),
+      ...sr(19,41,49), ...sr(21,51,73),
+      "22:26","22:27","22:28","22:29","22:30",
+      ...sr(26,69,89), ...sr(29,16,27),
+      ...sr(37,83,113), ...sr(51,24,28),
+      "60:4","60:5",
+    ]) },
+
+  // 7. Lut / Lot (as) — ~27 direct mentions
+  { key:"lut", name:"Lut / Lot (as)", arabic:"لُوط", surah:null,
+    tv:"Prophet Lut (as)",
+    ayahs: u([
+      "6:86","7:80","11:70","11:74","11:77","11:80","11:89","15:59","21:71",
+      "21:74","26:161","27:54","29:26","29:32","37:133","38:13","50:13","54:33","66:10",
+      // story passages
+      ...sr(7,80,84), ...sr(11,70,83), ...sr(15,57,74),
+      "21:75",
+      ...sr(26,160,173), ...sr(27,54,58), ...sr(29,28,35),
+      ...sr(37,133,137), ...sr(51,31,37), ...sr(54,33,38),
+    ]) },
+
+  // 8. Ismail / Ishmael (as) — ~12 direct mentions
+  { key:"ismail", name:"Ismail / Ishmael (as)", arabic:"إِسْمَاعِيل", surah:null,
+    tv:null,
+    ayahs: u([
+      "2:125","2:127","2:133","2:136","2:140","3:84","4:163","6:86",
+      "14:39","19:54","19:55","21:85","21:86","38:48",
+      // Ka'bah building narrative
+      ...sr(2,125,132),
+    ]) },
+
+  // 9. Ishaq / Isaac (as) — ~17 direct mentions
+  { key:"ishaq", name:"Ishaq / Isaac (as)", arabic:"إِسْحَاق", surah:null,
+    tv:"Prophet Isaac (as)",
+    ayahs: u([
+      "2:133","2:136","2:140","3:84","4:163","6:84","11:71","12:6","12:38",
+      "14:39","19:49","21:72","21:73","29:27","37:112","37:113","38:45","51:28",
+    ]) },
+
+  // 10. Yaqub / Jacob (as) — ~16 direct mentions + Surah 12 passages
+  { key:"yaqub", name:"Yaqub / Jacob (as)", arabic:"يَعْقُوب", surah:null,
+    tv:"Prophet Yaqub (as)",
+    ayahs: u([
+      "2:132","2:133","2:136","2:140","3:84","4:163","6:84","11:71",
+      "12:6","12:38","12:65","12:68","19:6","19:49","21:72","29:27","38:45",
+      // Surah 12 passages where Yaqub features
+      "12:4","12:7","12:8","12:11","12:13","12:16","12:17","12:18",
+      "12:29","12:58","12:63","12:67","12:69","12:79","12:80","12:84",
+      "12:87","12:93","12:94","12:96","12:99","12:100",
+    ]) },
+
+  // 11. Yusuf / Joseph (as) — 27 mentions, entire Surah 12
+  { key:"yusuf", name:"Yusuf / Joseph (as)", arabic:"يُوسُف", surah:"12",
+    tv:"Prophet Yusuf (as)",
+    ayahs: u([
+      ...sr(12,1,111),   // full Surah 12
+      "6:84","40:34",
+    ]) },
+
+  // 12. Shuaib (as) — ~11 direct mentions + Madyan story passages
+  { key:"shuaib", name:"Shuaib (as)", arabic:"شُعَيْب", surah:null,
+    tv:"Prophet Shuaib (as)",
+    ayahs: u([
+      "7:85","7:88","7:90","7:92","11:84","11:87","11:91","11:94","26:177","29:36",
+      // story passages
+      ...sr(7,85,93), ...sr(11,84,95), ...sr(26,176,191), "29:37",
+    ]) },
+
+  // 13. Ayyub / Job (as) — 4 direct mentions + story passages
+  { key:"ayyub", name:"Ayyub / Job (as)", arabic:"أَيُّوب", surah:null,
+    tv:"Prophet Ayyub (as)",
+    ayahs: u([
+      "4:163","6:84","21:83","21:84","38:41","38:42","38:43","38:44",
+    ]) },
+
+  // 14. Musa / Moses (as) — ~136 direct mentions (most-mentioned prophet)
+  { key:"musa", name:"Musa / Moses (as)", arabic:"مُوسَى", surah:null,
+    tv:"Prophet Musa (as)",
+    ayahs: u([
+      // Surah 2
+      ...sr(2,51,61), ...sr(2,67,73),
+      "2:87","2:92","2:108","2:136","2:246","2:248",
+      // Surah 3-6
+      "3:84","4:153","4:163","4:164",
+      ...sr(5,20,26), "6:84","6:91","6:154","6:155",
+      // Surah 7 — full Musa narrative
+      ...sr(7,103,162),
+      // Surah 10-11
+      ...sr(10,75,93), "11:96","11:97","11:98","11:99","11:110",
+      // Surah 13-14
+      "13:43","14:5","14:6","14:7","14:8",
+      // Surah 17-20
+      "17:2",...sr(17,101,103),
+      ...sr(18,60,82), "19:51","19:52","19:53",
+      ...sr(20,9,98),
+      // Surah 21-29
+      "21:48","22:44",
+      "23:45","23:46","23:47","23:48","23:49",
+      "25:35","25:36",
+      ...sr(26,10,68),
+      "27:7","27:8","27:9","27:10","27:11","27:12","27:13","27:14",
+      ...sr(28,3,46), "29:39",
+      // Surah 32-33
+      "32:23","32:24","32:25","33:7","33:69",
+      // Surah 37-44
+      ...sr(37,114,120),
+      ...sr(40,23,55), "41:45","42:13",
+      ...sr(43,46,55), ...sr(44,17,33),
+      "45:16","45:17","46:12",
+      // Surah 51-79
+      "51:38","51:39","51:40","53:36","61:5","66:11",
+      ...sr(79,15,26), "87:19",
+    ]) },
+
+  // 15. Harun / Aaron (as) — ~20 direct mentions
+  { key:"harun", name:"Harun / Aaron (as)", arabic:"هَارُون", surah:null,
+    tv:"Prophet Harun (as)",
+    ayahs: u([
+      "4:163","6:84","7:122","7:142","7:150","7:151","10:75",
+      "19:28","19:53","20:29","20:30","20:31","20:32","20:36",
+      "20:70","20:90","20:91","20:92","20:93","20:94",
+      "21:48","23:45","25:35",
+      "26:13","26:48","26:53",
+      "28:34","28:35",
+      ...sr(37,114,120),
+    ]) },
+
+  // 16. Dhul-Kifl (as) — 2 direct mentions
+  { key:"dhulkifl", name:"Dhul-Kifl (as)", arabic:"ذُو الْكِفْل", surah:null,
+    tv:"Prophet Dhul Kifl (as)",
+    ayahs: u(["21:85","21:86","38:48"]) },
+
+  // 17. Dawud / David (as) — ~16 direct mentions + story passages
+  { key:"dawud", name:"Dawud / David (as)", arabic:"دَاوُود", surah:null,
+    tv:"Prophet Dawud (as)",
+    ayahs: u([
+      "2:251","4:163","5:78","6:84","17:55","21:78","21:79","21:80",
+      "27:15","27:16","27:17","34:10","34:11","34:12","34:13",
+      ...sr(38,17,26),
+      // Saul/Goliath context leading to Dawud
+      ...sr(2,246,251),
+    ]) },
+
+  // 18. Sulaiman / Solomon (as) — ~17 direct mentions + story passages
+  { key:"sulaiman", name:"Sulaiman / Solomon (as)", arabic:"سُلَيْمَان", surah:null,
+    tv:"Prophet Sulaiman (as)",
+    ayahs: u([
+      "2:102","4:163","6:84","21:78","21:79","21:81","21:82",
+      ...sr(27,15,45),      // Sulaiman & Bilqis narrative
+      "34:12","34:13","34:14",
+      ...sr(38,30,40),
+    ]) },
+
+  // 19. Ilyas / Elijah (as) — 2 direct mentions + passage
+  { key:"ilyas", name:"Ilyas / Elijah (as)", arabic:"إِلْيَاس", surah:null,
+    tv:"Prophet Ilyas (as)",
+    ayahs: u([
+      "6:85",
+      ...sr(37,123,130),
+    ]) },
+
+  // 20. Al-Yasa / Elisha (as) — 2 direct mentions
+  { key:"alyasa", name:"Al-Yasa / Elisha (as)", arabic:"الْيَسَع", surah:null,
+    tv:null,
+    ayahs: u(["6:86","38:48"]) },
+
+  // 21. Yunus / Jonah (as) — 4 direct mentions + story passages
+  { key:"yunus", name:"Yunus / Jonah (as)", arabic:"يُونُس", surah:"10",
+    tv:"Prophet Yunus (as)",
+    ayahs: u([
+      "4:163","6:86","10:98","21:87","21:88","37:139",
+      ...sr(37,139,148), "68:48","68:49",
+    ]) },
+
+  // 22. Zakariya (as) — ~7 direct mentions + birth-of-Yahya passage
+  { key:"zakariya", name:"Zakariya (as)", arabic:"زَكَرِيَّا", surah:null,
+    tv:"Prophet Zakariya (as)",
+    ayahs: u([
+      "3:37","3:38","6:85","19:2","21:89","21:90",
+      ...sr(3,37,41), ...sr(19,2,11),
+    ]) },
+
+  // 23. Yahya / John (as) — 4 direct mentions + passage
+  { key:"yahya", name:"Yahya / John (as)", arabic:"يَحْيَى", surah:null,
+    tv:"Prophet Yahya (as)",
+    ayahs: u([
+      "3:39","6:85","19:7","19:12","19:13","19:14","19:15","21:90",
+    ]) },
+
+  // 24. Isa / Jesus (as) — ~25 direct mentions + story passages
+  { key:"isa", name:"Isa / Jesus (as)", arabic:"عِيسَى", surah:null,
+    tv:"Prophet Jesus (as)",
+    ayahs: u([
+      // name mentions
+      "2:87","2:136","2:253","3:45","3:52","3:55","3:59","3:84",
+      "4:157","4:163","4:171","5:46","5:72","5:75","5:110","5:112",
+      "5:114","5:116","6:85","9:31","19:34","23:50","33:7",
+      "42:13","43:57","43:63","57:27","61:6","61:14",
+      // story passages
+      ...sr(3,45,56), "3:84",
+      "4:157","4:158","4:159","4:160","4:172",
+      ...sr(5,72,75), ...sr(5,110,118),
+      ...sr(19,16,37), "21:91",
+      ...sr(43,57,65),
+    ]) },
+
+  // 25. Muhammad ﷺ — 4 mentions by name (محمد) + 1 as Ahmad (أحمد)
+  //     + extensive revelation passages
+  { key:"muhammad", name:"Muhammad ﷺ", arabic:"مُحَمَّد", surah:null,
+    tv:null,
+    ayahs: u([
+      // By name
+      "3:144","33:40","47:2","48:29","61:6",
+      // Key revelation & character passages
+      "2:119","2:143","2:144","2:151","3:20","3:31","3:32","3:68",
+      "3:128","3:132","3:159","3:161",
+      "4:64","4:65","4:69","4:80","4:113",
+      "5:41","5:67","5:99",
+      "6:50","7:157","7:158","7:203",
+      "8:1","8:20","8:24","8:27","8:46","8:64","8:65","8:70",
+      "9:61","9:103","9:104","9:128","9:129",
+      "10:2","11:2","12:108","13:30","13:40","14:52",
+      "15:94","15:97","17:73","17:74","17:79","17:93",
+      "18:6","21:107","22:49","24:54","25:1","25:56",
+      "26:214","27:91","27:92","27:93","28:85",
+      "29:50","29:51",
+      "33:1","33:2","33:6","33:21","33:28","33:29","33:45","33:46",
+      "33:50","33:53","33:56","33:57",
+      "34:28","34:46","36:2","36:3",
+      "38:65","38:67","38:68","39:41","40:66","41:6","42:7","46:9",
+      "48:8","48:9","48:10",
+      "49:1","49:2","49:7",
+      ...sr(53,1,18),  // Surah An-Najm — the revelation of Mi'raj
+      "66:1","68:2","68:3","68:4",
+      ...sr(73,1,5),   // Surah Al-Muzzammil
+      ...sr(74,1,7),   // Surah Al-Muddaththir
+      ...sr(93,1,11),  // Surah Ad-Duha
+      ...sr(94,1,8),   // Surah Ash-Sharh
+      "108:1","108:2","108:3",
+    ]) },
+
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generate JS and inject into app.js
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildProphetDataJS() {
+  let js = "const PROPHET_DATA = [\n";
+  for (const p of PROPHETS) {
+    const ayahsJson = JSON.stringify(p.ayahs);
+    js += `  {\n`;
+    js += `    key: ${JSON.stringify(p.key)}, name: ${JSON.stringify(p.name)}, arabic: ${JSON.stringify(p.arabic)}, surah: ${JSON.stringify(p.surah)},\n`;
+    if (p.tv) {
+      js += `    ayahs: [...new Set([...((()=>{try{return TOPIC_VERSES[${JSON.stringify(p.tv)}]||[]}catch(e){return[]}})()),...${ayahsJson}])]\n`;
+    } else {
+      js += `    ayahs: ${ayahsJson}\n`;
+    }
+    js += `  },\n`;
+  }
+  js += "];";
+  return js;
+}
+
+const APP_JS = path.join(__dirname, "../assets/app.js");
+const content = fs.readFileSync(APP_JS, "utf8");
+
+// Find the section from the comment header to just before PROPHET_ELS
+const iStart = content.indexOf("// ── Prophets of Quran modal ────────────────────────────────");
+const iEnd   = content.indexOf("\nconst PROPHET_ELS");
+
+if (iStart === -1 || iEnd === -1) {
+  console.error("Markers not found. iStart:", iStart, "iEnd:", iEnd);
+  process.exit(1);
+}
+
+const replacement =
+  "// ── Prophets of Quran modal ────────────────────────────────\n\n" +
+  "// All 25 named Prophets in the Quran with comprehensive ayah lists\n" +
+  "// (direct name mentions + story passages + myislam.org topic pages, deduped)\n" +
+  buildProphetDataJS();
+
+const newContent = content.slice(0, iStart) + replacement + content.slice(iEnd);
+
+fs.writeFileSync(APP_JS, newContent, "utf8");
+console.log("✓ app.js updated with comprehensive PROPHET_DATA");
+
+// Syntax check summary
+console.log("\n=== Ayah counts ===");
+for (const p of PROPHETS) {
+  console.log(`  ${p.name.padEnd(32)} ${String(p.ayahs.length).padStart(4)} ayahs`);
+}
+console.log("\nTotal unique ayahs across all prophets:",
+  u(PROPHETS.flatMap(p => p.ayahs)).length);
