@@ -30,7 +30,10 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "WebFetch(domain:asadikram2255.github.io)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "WebFetch(domain:myislam.org)",
+      "WebFetch(domain:webcache.googleusercontent.com)",
+      "WebFetch(domain:web.archive.org)"
     ]
   }
 }
