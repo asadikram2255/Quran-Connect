@@ -41,7 +41,9 @@
       "Bash(python scripts/generate_topic_verses.py)",
       "WebFetch(domain:qurananalysis.com)",
       "Bash(wc -l \"/mnt/d/Users/asadi/Documents/GitHub/quran-better-for-me/assets/styles.css\")",
-      "mcp__Claude_in_Chrome__tabs_create_mcp"
+      "mcp__Claude_in_Chrome__tabs_create_mcp",
+      "Bash(node \"D:/Users/asadi/Documents/GitHub/quran-better-for-me/fix_prophets.js\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);let c=fs.readFileSync\\('D:/Users/asadi/Documents/GitHub/quran-better-for-me/assets/app.js','utf8'\\);const bad=\\(c.match\\(/\\\\]\\\\\\)\\\\]\\\\},/g\\)||[]\\).length;console.log\\('bad:',bad\\);\")"
     ]
   }
 }
