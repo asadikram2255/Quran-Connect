@@ -40,7 +40,8 @@
       "mcp__Claude_in_Chrome__navigate",
       "Bash(python scripts/generate_topic_verses.py)",
       "WebFetch(domain:qurananalysis.com)",
-      "Bash(wc -l \"/mnt/d/Users/asadi/Documents/GitHub/quran-better-for-me/assets/styles.css\")"
+      "Bash(wc -l \"/mnt/d/Users/asadi/Documents/GitHub/quran-better-for-me/assets/styles.css\")",
+      "mcp__Claude_in_Chrome__tabs_create_mcp"
     ]
   }
 }
