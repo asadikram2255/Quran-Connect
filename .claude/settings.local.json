@@ -33,7 +33,12 @@
       "Bash(node -e ' *)",
       "WebFetch(domain:myislam.org)",
       "WebFetch(domain:webcache.googleusercontent.com)",
-      "WebFetch(domain:web.archive.org)"
+      "WebFetch(domain:web.archive.org)",
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "Bash(ping -n 4 127.0.0.1)",
+      "Bash(dir \"D:\\\\Users\\\\asadi\\\\Documents\\\\GitHub\\\\quran-better-for-me\\\\temp_topic_data.js\")",
+      "mcp__Claude_in_Chrome__navigate",
+      "Bash(python scripts/generate_topic_verses.py)"
     ]
   }
 }
