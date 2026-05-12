@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=4" />
+  <link rel="stylesheet" href="assets/styles.css?v=5" />
 </head>
 
 <body>
@@ -33,6 +33,7 @@
             <option value="ur_ahmedali">اردو — احمد علی</option>
           </optgroup>
         </select>
+        <button id="prophetsBtn" class="btn prophetsBtn" type="button">🕌 Prophets of Quran</button>
         <button id="feelingsBtn" class="btn feelingsBtn" type="button">What Am I Feeling?</button>
         <button id="statsBtn" class="btn statsBtn" type="button">📊 Quran Statistics</button>
         <button id="aboutBtn" class="btn ghost smallBtn" type="button">About</button>
@@ -250,6 +251,20 @@
     </div>
   </div>
 
+  <!-- ── Prophets of Quran modal ─────────────────────────────── -->
+  <div id="prophetsModal" class="prophetsOverlay hidden" role="dialog" aria-modal="true">
+    <div class="prophetsPanel">
+      <div class="prophetsHeader">
+        <div>
+          <div class="prophetsTitle">🕌 Prophets of Quran</div>
+          <div class="prophetsSub">All 25 prophets mentioned in the Holy Qur'an — click a prophet to explore their ayaat</div>
+        </div>
+        <button id="prophetsModalClose" class="wordModalClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="prophetsBody" class="prophetsBody"></div>
+    </div>
+  </div>
+
   <!-- ── Quran Statistics modal ──────────────────────────────── -->
   <div id="statsModal" class="statsOverlay hidden" role="dialog" aria-modal="true">
     <div class="statsPanel">
@@ -269,6 +284,6 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=5"></script>
+  <script src="assets/app.js?v=6"></script>
 </body>
 </html>
