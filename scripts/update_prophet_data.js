@@ -23,8 +23,10 @@ function u(arr) { // unique + sort by surah:ayah
   });
 }
 
-function r(n)  { return Array.from({length: n}, (_, i) => i + 1); }  // [1..n]
-function sr(s, from, to) { return r(to - from + 1).map(v => `${s}:${v}`); }   // surah range
+// sr(s, from, to) → ["s:from", "s:from+1", ..., "s:to"]
+function sr(s, from, to) {
+  return Array.from({length: to - from + 1}, (_, i) => `${s}:${i + from}`);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPHET DATA  (key · name · arabic · surah · topicVersesKey · ayahs)
@@ -258,7 +260,7 @@ const PROPHETS = [
     tv:"Prophet Sulaiman (as)",
     ayahs: u([
       "2:102","4:163","6:84","21:78","21:79","21:81","21:82",
-      ...sr(27,15,45),      // Sulaiman & Bilqis narrative
+      ...sr(27,15,44),      // Sulaiman & Bilqis narrative (27:45 = Salih/Thamud, excluded)
       "34:12","34:13","34:14",
       ...sr(38,30,40),
     ]) },
