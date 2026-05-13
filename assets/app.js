@@ -1339,7 +1339,13 @@ async function searchByEnglishSmart(raw) {
 // ── Rendering ───────────────────────────────────────────────
 
 function renderResults(list) {
-  state.lastResults = list || [];
+  // Sort all result lists by surah then verse, ascending
+  list = (list || []).slice().sort((a, b) => {
+    const [as, av] = a.ayah_id.split(":").map(Number);
+    const [bs, bv] = b.ayah_id.split(":").map(Number);
+    return as - bs || av - bv;
+  });
+  state.lastResults = list;
   els.resultsList.innerHTML = "";
   if (els.resultsCount) els.resultsCount.textContent = list.length > 0 ? `(${list.length})` : "";
 
