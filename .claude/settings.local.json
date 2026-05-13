@@ -47,7 +47,8 @@
       "Bash(node --check \"D:/Users/asadi/Documents/GitHub/quran-better-for-me/assets/app.js\")",
       "Bash(gh run *)",
       "Bash(gh api *)",
-      "Bash(node scripts/fetch_prophet_ayahs.js)"
+      "Bash(node scripts/fetch_prophet_ayahs.js)",
+      "Bash(node \"D:/Users/asadi/Documents/GitHub/quran-better-for-me/scripts/update_prophet_data.js\")"
     ]
   }
 }
