@@ -1351,7 +1351,7 @@ function renderResults(list) {
   els.resultsList.classList.remove("empty");
 
   const urdu = isUrduActive();
-  for (const rec of list.slice(0, 60)) {
+  for (const rec of list) {
     const surahNum  = Number(surahFromAyahId(rec.ayah_id));
     const surahNm   = SURAH_NAMES[surahNum] || "";
     const transText = getQuranTranslation(rec.ayah_id);
