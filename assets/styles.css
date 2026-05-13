@@ -581,15 +581,23 @@ input[dir="rtl"] { font-family: 'Amiri', serif; font-size: 17px; }
 
 /* ── What Am I Feeling button ────────────────────────────── */
 .feelingsBtn {
-  background: linear-gradient(135deg, rgba(167,105,230,.22), rgba(236,110,105,.18));
-  border-color: rgba(167,105,230,.45);
+  background: rgba(167,139,250,.08);
+  border-color: rgba(167,139,250,.30);
+  color: #c4b5fd;
   font-size: 13px;
   padding: 8px 14px;
   border-radius: 14px;
+  font-weight: 600;
+  letter-spacing: .2px;
   white-space: nowrap;
+  transition: background .2s, border-color .2s, box-shadow .25s, transform .15s, color .2s;
 }
 .feelingsBtn:hover {
-  background: linear-gradient(135deg, rgba(167,105,230,.35), rgba(236,110,105,.28));
+  background: rgba(167,139,250,.16);
+  border-color: rgba(167,139,250,.65);
+  color: #ddd6fe;
+  box-shadow: 0 0 14px rgba(167,139,250,.35), 0 0 32px rgba(167,139,250,.15), inset 0 0 12px rgba(167,139,250,.06);
+  transform: translateY(-2px);
 }
 
 /* ── What Am I Feeling modal ─────────────────────────────── */
@@ -702,18 +710,19 @@ input[dir="rtl"] { font-family: 'Amiri', serif; font-size: 17px; }
 
 /* ── Quran Statistics modal ───────────────────────────────── */
 .statsBtn {
-  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
-  color: #fff;
-  border: none;
-  font-weight: 700;
-  letter-spacing: .3px;
-  box-shadow: 0 2px 12px rgba(14,165,233,.30);
-  transition: filter .18s, transform .12s, box-shadow .18s;
+  background: rgba(79,209,197,.08);
+  border: 1px solid rgba(79,209,197,.30);
+  color: #4fd1c5;
+  font-weight: 600;
+  letter-spacing: .2px;
+  transition: background .2s, border-color .2s, box-shadow .25s, transform .15s, color .2s;
 }
 .statsBtn:hover {
-  filter: brightness(1.12);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 18px rgba(14,165,233,.45);
+  background: rgba(79,209,197,.16);
+  border-color: rgba(79,209,197,.65);
+  color: #81e6d9;
+  box-shadow: 0 0 14px rgba(79,209,197,.35), 0 0 32px rgba(79,209,197,.15), inset 0 0 12px rgba(79,209,197,.06);
+  transform: translateY(-2px);
 }
 
 .statsOverlay {
@@ -1172,19 +1181,20 @@ input[dir="rtl"] { font-family: 'Amiri', serif; font-size: 17px; }
 
 /* ── Prophets of Quran button ────────────────────────────── */
 .prophetsBtn {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
-  border: none;
-  font-weight: 700;
-  letter-spacing: .3px;
-  box-shadow: 0 2px 12px rgba(16,185,129,.30);
-  transition: filter .18s, transform .12s, box-shadow .18s;
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.28);
+  color: #fbbf24;
+  font-weight: 600;
+  letter-spacing: .2px;
   white-space: nowrap;
+  transition: background .2s, border-color .2s, box-shadow .25s, transform .15s, color .2s;
 }
 .prophetsBtn:hover {
-  filter: brightness(1.12);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 18px rgba(16,185,129,.45);
+  background: rgba(251,191,36,.15);
+  border-color: rgba(251,191,36,.60);
+  color: #fcd34d;
+  box-shadow: 0 0 14px rgba(251,191,36,.35), 0 0 32px rgba(251,191,36,.14), inset 0 0 12px rgba(251,191,36,.06);
+  transform: translateY(-2px);
 }
 
 /* ── Prophets of Quran modal ─────────────────────────────── */
