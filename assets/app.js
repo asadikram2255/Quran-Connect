@@ -987,10 +987,10 @@ async function loadTranslation(id) {
   if (id === "en_default" || state.translationData.has(id)) return;
   const opt = TRANSLATION_OPTIONS.find(o => o.id === id);
   if (!opt?.path) return;
-  // Append ?v=3 so any browser-cached old translation file (with wrong keys)
-  // is bypassed — the versioned URL is treated as a fresh resource.
+  // ?v=3 in URL acts as cache-buster when data format changes.
+  // force-cache: serve from browser/SW cache when available.
   const fp = resolveDataPath(opt.path) + "?v=3";
-  const res = await fetch(fp, { cache: "no-cache" });
+  const res = await fetch(fp, { cache: "force-cache" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${fp}`);
   const data = await res.json();
   state.translationData.set(id, data);
@@ -1014,7 +1014,7 @@ async function preloadUrHadithShards(hadithIds) {
   if (!files.size) return;
   await Promise.all([...files].map(async file => {
     const fp = resolveDataPath(file);
-    const res = await fetch(fp, { cache: "no-cache" });
+    const res = await fetch(fp, { cache: "force-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${fp}`);
     const data = await res.json();
     state.urHadithShardCache.set(file, data);
@@ -1779,6 +1779,14 @@ async function init() {
         .catch(err => console.warn("Urdu hadith shard map load failed:", err));
     }
 
+    // Background warm-up: preload the most commonly accessed surahs
+    // so first searches feel instant. Low-priority — runs after UI is ready.
+    setTimeout(() => {
+      const warmSurahs = ["1","2","3","4","5","6","7","9","10","12","18","19","20",
+                          "21","26","27","28","36","37","38","55","67","112","113","114"];
+      Promise.all(warmSurahs.map(s => ensureSurahLoaded(s).catch(() => {})));
+    }, 800);
+
     // Translation switch handler
     if (els.transSel) {
       els.transSel.addEventListener("change", async () => {
@@ -1885,3 +1893,8 @@ async function init() {
 }
 
 init();
+
+// Register service worker for persistent JSON caching
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}

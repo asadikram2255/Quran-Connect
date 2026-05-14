@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css?v=7" />
+  <!-- Preload the manifest so it's already in cache when JS fetches it -->
+  <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
 </head>
 
 <body>
@@ -285,6 +287,6 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=11"></script>
+  <script src="assets/app.js?v=12"></script>
 </body>
 </html>
