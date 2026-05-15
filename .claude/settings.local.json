@@ -50,7 +50,9 @@
       "Bash(node scripts/fetch_prophet_ayahs.js)",
       "Bash(node \"D:/Users/asadi/Documents/GitHub/quran-better-for-me/scripts/update_prophet_data.js\")",
       "Bash(node scripts/fix_prophet_data.js)",
-      "Bash(xargs ls -lh)"
+      "Bash(xargs ls -lh)",
+      "Bash(node -e \"require\\('http'\\).get\\('http://127.0.0.1:8765', \\(\\)=>{}\\).on\\('error',\\(\\)=>{}\\)\")",
+      "Bash(pkill -f \"node -e.*8765\")"
     ]
   }
 }
