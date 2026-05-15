@@ -1616,10 +1616,12 @@ async function openDetail(ayahId) {
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
 
-  const semQ = pairs.semantic?.quran_top20   || [];
-  const semH = pairs.semantic?.hadith_top50  || [];
-  const lexQ = pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [];
-  const lexH = pairs.lexical?.hadith_top50   || [];
+  const MIN_PAIR_SCORE = 40;
+  const aboveMin = p => Number(p.score) >= MIN_PAIR_SCORE;
+  const semQ = (pairs.semantic?.quran_top20   || []).filter(aboveMin);
+  const semH = (pairs.semantic?.hadith_top50  || []).filter(aboveMin);
+  const lexQ = (pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || []).filter(aboveMin);
+  const lexH = (pairs.lexical?.hadith_top50   || []).filter(aboveMin);
 
   updateTabCounts(semQ.length, semH.length, lexQ.length, lexH.length);
 
