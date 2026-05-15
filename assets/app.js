@@ -1536,12 +1536,17 @@ async function openDetail(ayahId) {
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
 
-  const MIN_PAIR_SCORE = 25;
-  const aboveMin = p => Number(p.score) >= MIN_PAIR_SCORE;
-  const semQ = (pairs.semantic?.quran_top20   || []).filter(aboveMin);
-  const semH = (pairs.semantic?.hadith_top50  || []).filter(aboveMin);
-  const lexQ = (pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || []).filter(aboveMin);
-  const lexH = (pairs.lexical?.hadith_top50   || []).filter(aboveMin);
+  const MIN_SEM_SCORE = 25;
+  const aboveSemMin = p => Number(p.score) >= MIN_SEM_SCORE;
+  const semQ = (pairs.semantic?.quran_top20   || []).filter(aboveSemMin);
+  const semH = (pairs.semantic?.hadith_top50  || []).filter(aboveSemMin);
+  // Lexical Quran pairs use Jaccard root-overlap (0–100); most meaningful pairs
+  // score below 25, so skip the score filter — sort by score desc, cap at top 20.
+  const lexQ = (pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [])
+    .slice()
+    .sort((a, b) => Number(b.score) - Number(a.score))
+    .slice(0, 20);
+  const lexH = (pairs.lexical?.hadith_top50   || []).filter(aboveSemMin);
 
   updateTabCounts(semQ.length, semH.length, lexQ.length, lexH.length);
 
