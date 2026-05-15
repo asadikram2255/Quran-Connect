@@ -1510,6 +1510,9 @@ function closeWordModal() {
 
 async function openWordModal(word, kind) {
   // kind: "root" | "token"
+  // Ensure search indexes are available (needed for rootToAyahIds and arTokenToAyah)
+  if (!state.enTokenToAyah) await ensureSearchIndex();
+
   let ayahIds;
   if (kind === "root") {
     ayahIds = state.rootToAyahIds?.[word] || [];
@@ -1594,17 +1597,22 @@ async function openDetail(ayahId) {
   state.selectedAyahId = ayahId;
   renderResults(state.lastResults);
 
+  // Show the detail panel immediately with the ayah ID + skeleton pairs
+  // so the panel never feels blank while the shard loads.
+  setDetailState("detail");
+  if (els.dAyahId)  els.dAyahId.textContent  = fmtAyahId(ayahId);
+  if (els.dArabic)  els.dArabic.textContent  = "";
+  if (els.dEnglish) els.dEnglish.textContent = "";
+  showSkeletonPairs(3);
+
   await ensureSurahLoaded(surahFromAyahId(ayahId));
   if (myToken !== state.detailToken) return;
 
   const rec   = state.quranById.get(ayahId);
   const pairs = state.pairsByAyah.get(ayahId);
-  if (!rec || !pairs) return;
+  if (!rec || !pairs) { setDetailState("empty"); return; }
 
-  setDetailState("detail");
-
-  // Populate anchor card
-  els.dAyahId.textContent  = fmtAyahId(ayahId);
+  // Populate anchor card (ayah ID already set above; fill text now that rec is loaded)
   els.dArabic.textContent  = rec.arabic  || "";
   const anchorTrans = getQuranTranslation(ayahId);
   els.dEnglish.textContent = anchorTrans || rec.english || "";
@@ -1685,6 +1693,15 @@ async function runSearch() {
     setBadge("warn", "Searching…");
     await sleep(0);
 
+    // Ensure search indexes are loaded (no-op if already done by background loader)
+    if (type === "en" || type === "ar") {
+      if (!state.enTokenToAyah) {
+        setBadge("warn", "Loading search index…");
+        await ensureSearchIndex();
+        setBadge("warn", "Searching…");
+      }
+    }
+
     let results = [];
     if      (type === "id") results = await searchByAyahId(val);
     else if (type === "ar") results = await searchByArabicKeyword(val);
@@ -1745,31 +1762,69 @@ if (els.engFontDecBtn) els.engFontDecBtn.onclick = () => {
   document.documentElement.style.setProperty("--english-font-size", state.englishFontSize + "px");
 };
 
+// ── Lazy search-index loader ────────────────────────────────
+// The 4 search index files total ~2.5 MB. We defer them until
+// the user actually interacts with search (or idle fires first).
+
+let _searchIndexPromise = null;
+
+async function ensureSearchIndex() {
+  if (state.enTokenToAyah) return; // already loaded
+  if (_searchIndexPromise)  return _searchIndexPromise;
+
+  _searchIndexPromise = (async () => {
+    const m = state.manifest;
+    if (!m) throw new Error("Manifest not ready");
+    const [enTokenToAyah, enTriToTokens, arTokenToAyah, rootToAyahIds] = await Promise.all([
+      fetchJson(m.paths.english_token_to_ayahids),
+      fetchJson(m.paths.english_trigram_to_tokens),
+      fetchJson(m.paths.arabic_token_to_ayahids),
+      fetchJson(m.paths.root_to_ayahids),
+    ]);
+    state.enTokenToAyah = enTokenToAyah;
+    state.enTriToTokens = enTriToTokens;
+    state.arTokenToAyah = arTokenToAyah;
+    state.rootToAyahIds = rootToAyahIds;
+    _searchIndexPromise = null;
+  })();
+
+  return _searchIndexPromise;
+}
+
+// ── Skeleton helpers ────────────────────────────────────────
+
+function skeletonCard(arLine = true) {
+  return `<div class="skeletonCard">
+    ${arLine ? `<div class="skeletonLine ar"></div>` : ""}
+    <div class="skeletonLine wide"></div>
+    <div class="skeletonLine med"></div>
+    <div class="skeletonLine short"></div>
+  </div>`;
+}
+
+function showSkeletonPairs(count = 3) {
+  const html = Array.from({ length: count }, () => skeletonCard()).join("");
+  [els.semQuran, els.semHadith, els.lexQuran, els.lexHadith].forEach(el => {
+    if (el) el.innerHTML = html;
+  });
+}
+
 // ── Init ────────────────────────────────────────────────────
 
 async function init() {
   try {
+    setBadge("warn", "Loading…");
     const manifest = await fetchJson("data/meta/manifest.json");
     state.manifest = manifest;
 
-    const [shardMapQuran, shardMapPairs, shardMapHadith, enTokenToAyah, enTriToTokens, arTokenToAyah, rootToAyahIds] =
-      await Promise.all([
-        fetchJson(manifest.paths.shard_map_quran),
-        fetchJson(manifest.paths.shard_map_pairs),
-        fetchJson(manifest.paths.shard_map_hadith),
-        fetchJson(manifest.paths.english_token_to_ayahids),
-        fetchJson(manifest.paths.english_trigram_to_tokens),
-        fetchJson(manifest.paths.arabic_token_to_ayahids),
-        fetchJson(manifest.paths.root_to_ayahids),
-      ]);
-
-    state.shardMapQuran   = shardMapQuran;
-    state.shardMapPairs   = shardMapPairs;
-    state.shardMapHadith  = shardMapHadith;
-    state.enTokenToAyah   = enTokenToAyah;
-    state.enTriToTokens   = enTriToTokens;
-    state.arTokenToAyah   = arTokenToAyah;
-    state.rootToAyahIds   = rootToAyahIds;
+    // Fetch the 3 shard maps as a single bundled file (1 request instead of 3)
+    setBadge("warn", "Loading maps…");
+    const bundle = await fetchJson(
+      manifest.paths.shard_maps_bundle || "data/meta/shard_maps_bundle.json"
+    );
+    state.shardMapQuran  = bundle.quran;
+    state.shardMapPairs  = bundle.pairs;
+    state.shardMapHadith = bundle.hadith;
 
     setBadge("ok", `Ready — Quran: ${manifest.counts.quran_ayat} | Hadith: ${manifest.counts.hadith}`);
     setDetailState("empty");
@@ -1779,6 +1834,15 @@ async function init() {
       fetchJson(manifest.paths.ur_hadith_shard_map)
         .then(sm => { state.urHadithShardMap = sm; })
         .catch(err => console.warn("Urdu hadith shard map load failed:", err));
+    }
+
+    // Background: start loading search indexes on idle so they're ready before the user types.
+    // requestIdleCallback is used when available (Chrome/Firefox); setTimeout as fallback.
+    const startIndexLoad = () => ensureSearchIndex().catch(err => console.warn("Search index preload:", err));
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(startIndexLoad, { timeout: 4000 });
+    } else {
+      setTimeout(startIndexLoad, 1000);
     }
 
     // Background warm-up: preload the most commonly accessed surahs

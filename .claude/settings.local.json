@@ -49,7 +49,8 @@
       "Bash(gh api *)",
       "Bash(node scripts/fetch_prophet_ayahs.js)",
       "Bash(node \"D:/Users/asadi/Documents/GitHub/quran-better-for-me/scripts/update_prophet_data.js\")",
-      "Bash(node scripts/fix_prophet_data.js)"
+      "Bash(node scripts/fix_prophet_data.js)",
+      "Bash(xargs ls -lh)"
     ]
   }
 }

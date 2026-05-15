@@ -1,0 +1,10 @@
+{
+  "name": "Quran Better For Me",
+  "short_name": "QuranBFM",
+  "description": "Explore the Qur'an and authentic Hadith by meaning, root words, and topic. 6,236 ayat · 43,000+ Hadith · 6 translations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": []
+}

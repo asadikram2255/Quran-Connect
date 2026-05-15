@@ -1,10 +1,28 @@
 // Service Worker — cache-first for all static data files
 // Bump SW_VERSION whenever data files change to invalidate the cache.
-const SW_VERSION = "1";
+const SW_VERSION = "2";
 const CACHE_NAME = `quran-data-${SW_VERSION}`;
 
-// Install: no pre-caching needed — files are cached on first access
-self.addEventListener("install", () => self.skipWaiting());
+// Critical files to precache on install so first page load after SW registration is instant
+const PRECACHE_URLS = [
+  "data/meta/manifest.json",
+  "data/meta/shard_maps_bundle.json",
+];
+
+// Install: precache the essential meta files
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(
+        PRECACHE_URLS.map(url =>
+          fetch(url, { cache: "no-cache" })
+            .then(r => { if (r.ok) return cache.put(new Request(url), r); })
+            .catch(() => {}) // non-fatal — network unavailable is fine
+        )
+      )
+    ).then(() => self.skipWaiting())
+  );
+});
 
 // Activate: delete any old-version caches
 self.addEventListener("activate", event => {
