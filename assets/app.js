@@ -1624,7 +1624,7 @@ async function openDetail(ayahId) {
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
 
-  const MIN_PAIR_SCORE = 40;
+  const MIN_PAIR_SCORE = 25;
   const aboveMin = p => Number(p.score) >= MIN_PAIR_SCORE;
   const semQ = (pairs.semantic?.quran_top20   || []).filter(aboveMin);
   const semH = (pairs.semantic?.hadith_top50  || []).filter(aboveMin);
