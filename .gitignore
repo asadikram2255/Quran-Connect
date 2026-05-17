@@ -1,0 +1,19 @@
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Vercel
+.vercel/
+
+# OS
+.DS_Store
+.vercel
