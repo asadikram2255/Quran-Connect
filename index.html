@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=8" />
+  <link rel="stylesheet" href="assets/styles.css?v=9" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -119,8 +119,9 @@
           <button class="typeBtn active" data-type="en" type="button">English</button>
           <button class="typeBtn" data-type="ar" type="button">Arabic</button>
           <button class="typeBtn" data-type="id" type="button">Ayah ID</button>
+          <button class="typeBtn smartBtn" data-type="smart" type="button" title="AI semantic search powered by embeddings + reranker">Smart Search</button>
         </div>
-        <input id="mainQuery" type="text" placeholder="e.g. patience" autocomplete="off" spellcheck="false" />
+        <textarea id="mainQuery" rows="1" placeholder="e.g. patience" autocomplete="off" spellcheck="false"></textarea>
         <button id="searchBtn" class="btn" type="button">Search</button>
         <button id="clearBtn" class="btn ghost" type="button">Clear</button>
       </div>
@@ -136,6 +137,7 @@
             Search Results <span id="resultsCount" class="countBadge"></span>
           </div>
           <div class="scrollBody">
+            <div id="smartHint" class="smartHint hidden"></div>
             <div id="resultsList" class="list empty">Search results will appear here.</div>
           </div>
         </div>
@@ -296,6 +298,6 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=19"></script>
+  <script src="assets/app.js?v=20"></script>
 </body>
 </html>

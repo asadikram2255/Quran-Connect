@@ -27,14 +27,40 @@ const SURAH_NAMES = {
 const SEARCH_HINTS = {
   en: "Tip: type a concept in English and press Enter",
   ar: "Tip: type an Arabic word and press Enter",
-  id: "Tip: type an ayah reference like 2:255 and press Enter"
+  id: "Tip: type an ayah reference like 2:255 and press Enter",
+  smart: "Tip: describe a feeling or concept — e.g. 'feeling overwhelmed' or 'fear of death'"
 };
 
 const SEARCH_PLACEHOLDERS = {
   en: "e.g. patience",
   ar: "مثال: صبر",
-  id: "e.g. 2:255"
+  id: "e.g. 2:255",
+  smart: "e.g. feeling overwhelmed by grief"
 };
+
+const SMART_SEARCH_ENDPOINT = "/api/search";
+
+// Curated phrasings to suggest when Smart Search's top rerank score is very low.
+const SMART_SUGGESTIONS_EN = [
+  "patience in difficulty",
+  "anxiety and worry",
+  "trust in Allah",
+  "Day of Judgment",
+  "gratitude for blessings",
+  "mercy and forgiveness",
+  "hope after despair",
+  "fear of death",
+];
+const SMART_SUGGESTIONS_AR = [
+  "الصبر عند المصيبة",
+  "التوكل على الله",
+  "يوم القيامة",
+  "رحمة الله",
+  "الشكر على النعم",
+  "الخوف من الموت",
+];
+// Threshold below which we treat top reranker score as "weak" and offer alternatives.
+const SMART_WEAK_THRESHOLD = 0.05;
 
 const els = {
   mainQuery: document.getElementById("mainQuery"),
@@ -42,6 +68,7 @@ const els = {
   clearBtn:  document.getElementById("clearBtn"),
   resultsList: document.getElementById("resultsList"),
   resultsCount: document.getElementById("resultsCount"),
+  smartHint: document.getElementById("smartHint"),
   statusBadge: document.getElementById("statusBadge"),
   searchHint: document.getElementById("searchHint"),
 
@@ -1245,6 +1272,114 @@ async function searchByArabicKeyword(raw) {
   return out;
 }
 
+async function searchBySmart(raw) {
+  const q = String(raw || "").trim();
+  if (!q) return [];
+
+  const isArabic = /[؀-ۿ]/.test(q);
+  const lang = isArabic ? "ar" : "en";
+
+  let payload;
+  try {
+    const res = await fetch(SMART_SEARCH_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: q, lang }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error(`API ${res.status}: ${errBody.slice(0, 180)}`);
+    }
+    payload = await res.json();
+  } catch (err) {
+    setBadge("err", "Smart Search failed: " + (err.message || err).slice(0, 120));
+    return [];
+  }
+
+  const items = Array.isArray(payload?.results) ? payload.results : [];
+  if (!items.length) return [];
+
+  // Make sure the surah shards are loaded so we can return full ayah records
+  // (with roots/tokens/etc) consistent with what the rest of the UI expects.
+  const surahsNeeded = unique(items.map((r) => Number(r.surah)).filter(Boolean));
+  await loadSurahsParallel(surahsNeeded);
+
+  // Tokenize query once so we can mark which results also literally contain the
+  // user's words (hybrid annotation: semantic match + keyword match = strong signal).
+  const queryTokens = isArabic
+    ? normalizeArabic(q).split(" ").filter(t => t.length >= 2)
+    : normalizeEnglish(q).split(" ").filter(t => t.length >= 2);
+
+  const out = [];
+  for (const r of items) {
+    const local = state.quranById.get(r.ayah_id);
+    const base = local || {
+      ayah_id: r.ayah_id,
+      surah: r.surah,
+      ayah: r.ayah,
+      arabic: r.arabic_text,
+      english: r.english_text,
+      roots_ordered: r.roots || [],
+      tokens_ordered: [],
+      vec_preview: [],
+    };
+
+    const haystack = isArabic
+      ? normalizeArabic(base.arabic || "")
+      : normalizeEnglish(base.english || "");
+    const hasKeywordMatch = queryTokens.length > 0 &&
+      queryTokens.some(tok => haystack.includes(tok));
+
+    // Spread so we don't mutate the cached state.quranById record.
+    out.push({
+      ...base,
+      _rerank_score: typeof r.rerank_score === "number" ? r.rerank_score : null,
+      _embed_score:  typeof r.embed_score  === "number" ? r.embed_score  : null,
+      _hasKeywordMatch: hasKeywordMatch,
+    });
+  }
+
+  state.lastSmartCached = !!payload?.cached;
+  state.lastSmartTimings = payload?.timings_ms || null;
+  state.lastSmartQuery = q;
+  state.lastSmartLang = lang;
+  return out;
+}
+
+function showSmartHint({ topScore, lang, query }) {
+  if (!els.smartHint) return;
+  // Hide if signal is strong enough.
+  if (topScore == null || topScore >= SMART_WEAK_THRESHOLD) {
+    els.smartHint.classList.add("hidden");
+    els.smartHint.innerHTML = "";
+    return;
+  }
+  const suggestions = (lang === "ar" ? SMART_SUGGESTIONS_AR : SMART_SUGGESTIONS_EN)
+    .filter(s => s.toLowerCase() !== String(query || "").toLowerCase())
+    .slice(0, 5);
+  const chips = suggestions.map(s =>
+    `<button type="button" class="hintChip" data-suggest="${escapeHtml(s)}">${escapeHtml(s)}</button>`
+  ).join("");
+  els.smartHint.innerHTML = `
+    <div class="hintTitle">Weak match for "${escapeHtml(query)}"</div>
+    <div class="hintSub">The AI wasn't very confident. Try a more conceptual phrasing:</div>
+    <div class="hintChips">${chips}</div>
+  `;
+  els.smartHint.classList.remove("hidden");
+  els.smartHint.querySelectorAll(".hintChip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      els.mainQuery.value = btn.dataset.suggest;
+      runSearch();
+    });
+  });
+}
+
+function clearSmartHint() {
+  if (!els.smartHint) return;
+  els.smartHint.classList.add("hidden");
+  els.smartHint.innerHTML = "";
+}
+
 async function searchByEnglishSmart(raw) {
   const norm = normalizeEnglish(raw);
   if (!norm) return [];
@@ -1324,13 +1459,17 @@ async function searchByEnglishSmart(raw) {
 
 // ── Rendering ───────────────────────────────────────────────
 
-function renderResults(list) {
-  // Sort all result lists by surah then verse, ascending
-  list = (list || []).slice().sort((a, b) => {
-    const [as, av] = a.ayah_id.split(":").map(Number);
-    const [bs, bv] = b.ayah_id.split(":").map(Number);
-    return as - bs || av - bv;
-  });
+function renderResults(list, { preserveOrder = false } = {}) {
+  // By default sort by surah:verse ascending (good for keyword/ID search).
+  // For semantic results (Smart Search) we preserve the reranker's ordering instead.
+  list = (list || []).slice();
+  if (!preserveOrder) {
+    list.sort((a, b) => {
+      const [as, av] = a.ayah_id.split(":").map(Number);
+      const [bs, bv] = b.ayah_id.split(":").map(Number);
+      return as - bs || av - bv;
+    });
+  }
   state.lastResults = list;
   els.resultsList.innerHTML = "";
   if (els.resultsCount) els.resultsCount.textContent = list.length > 0 ? `(${list.length})` : "";
@@ -1348,12 +1487,25 @@ function renderResults(list) {
     const surahNm   = SURAH_NAMES[surahNum] || "";
     const transText = getQuranTranslation(rec.ayah_id);
     const displayEn = transText || rec.english || "";
+
+    // Smart Search confidence badge (only when rerank score is present).
+    let scoreBadge = "";
+    if (typeof rec._rerank_score === "number") {
+      const pct = Math.max(0, Math.min(100, Math.round(rec._rerank_score * 100)));
+      const tier = rec._rerank_score >= 0.5 ? "high" : rec._rerank_score >= 0.2 ? "mid" : "low";
+      const kw = rec._hasKeywordMatch
+        ? `<span class="kwMatch" title="Also literally contains your keywords">📖</span>`
+        : "";
+      scoreBadge = `<div class="scoreBadge ${tier}" title="Reranker confidence">${pct}%${kw}</div>`;
+    }
+
     const div = document.createElement("div");
     div.className = "item" + (state.selectedAyahId === rec.ayah_id ? " selected" : "");
     div.innerHTML = `
       <div class="itemId">
         <div class="ayahNum">${escapeHtml(rec.ayah_id)}</div>
         <div class="ayahName">${escapeHtml(surahNm)}</div>
+        ${scoreBadge}
       </div>
       <div>
         <div class="txt" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
@@ -1581,7 +1733,7 @@ if (els.dTokens) els.dTokens.addEventListener("click", e => {
 async function openDetail(ayahId) {
   const myToken = ++state.detailToken;
   state.selectedAyahId = ayahId;
-  renderResults(state.lastResults);
+  renderResults(state.lastResults, { preserveOrder: true });
 
   // Show the detail panel immediately with the ayah ID + skeleton pairs
   // so the panel never feels blank while the shard loads.
@@ -1681,7 +1833,7 @@ async function runSearch() {
       return;
     }
 
-    setBadge("warn", "Searching…");
+    setBadge("warn", type === "smart" ? "Embedding query + reranking… (~3s)" : "Searching…");
     await sleep(0);
 
     // Ensure search indexes are loaded (no-op if already done by background loader)
@@ -1694,13 +1846,26 @@ async function runSearch() {
     }
 
     let results = [];
-    if      (type === "id") results = await searchByAyahId(val);
-    else if (type === "ar") results = await searchByArabicKeyword(val);
-    else                    results = await searchByEnglishSmart(val);
+    if      (type === "id")    results = await searchByAyahId(val);
+    else if (type === "ar")    results = await searchByArabicKeyword(val);
+    else if (type === "smart") results = await searchBySmart(val);
+    else                       results = await searchByEnglishSmart(val);
 
-    renderResults(results);
+    // Smart Search results are ranked by the reranker; everything else uses ayah order.
+    renderResults(results, { preserveOrder: type === "smart" });
     warmPreloadTopResults(results);
-    setBadge("ok", `Found ${results.length} ayat`);
+
+    // Show "Did you mean?" only when Smart Search confidence is weak; clear it otherwise.
+    if (type === "smart" && results.length > 0) {
+      const topScore = typeof results[0]?._rerank_score === "number" ? results[0]._rerank_score : null;
+      showSmartHint({ topScore, lang: state.lastSmartLang, query: state.lastSmartQuery });
+    } else {
+      clearSmartHint();
+    }
+
+    let msg = `Found ${results.length} ayat`;
+    if (type === "smart" && state.lastSmartCached) msg += " (cached)";
+    setBadge("ok", msg);
   } catch (err) {
     console.error("runSearch error:", err);
     setBadge("err", String(err.message || err).slice(0,140));
@@ -1719,14 +1884,31 @@ if (els.clearBtn) els.clearBtn.onclick = () => {
   state.lastResults = [];
   state.detailToken++;
   renderResults([]);
+  clearSmartHint();
   setDetailState("empty");
   updateTabCounts(0,0,0,0);
   setBadge("ok", "Ready");
 };
 
-if (els.mainQuery) els.mainQuery.addEventListener("keydown", e => {
-  if (e.key === "Enter") { e.preventDefault(); runSearch(); }
-});
+if (els.mainQuery) {
+  // Enter submits; Shift+Enter inserts a newline (useful for long Smart Search prompts).
+  els.mainQuery.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runSearch(); }
+  });
+  // Auto-grow the textarea up to ~5 lines, then scroll.
+  const autoGrow = () => {
+    els.mainQuery.style.height = "auto";
+    const max = 5 * 24 + 24; // ~5 lines
+    els.mainQuery.style.height = Math.min(els.mainQuery.scrollHeight, max) + "px";
+    els.mainQuery.style.overflowY = els.mainQuery.scrollHeight > max ? "auto" : "hidden";
+  };
+  els.mainQuery.addEventListener("input", autoGrow);
+  // Reset height after clearing.
+  if (els.clearBtn) els.clearBtn.addEventListener("click", () => {
+    els.mainQuery.style.height = "";
+    els.mainQuery.style.overflowY = "hidden";
+  });
+}
 
 if (els.wordsToggleBtn) els.wordsToggleBtn.onclick = () => {
   const panel = els.anchorWordsPanel;
@@ -1871,7 +2053,7 @@ async function init() {
 
         setBadge("ok", "Translation applied");
         // Re-render everything currently visible with new translation
-        renderResults(state.lastResults);
+        renderResults(state.lastResults, { preserveOrder: true });
         if (state.selectedAyahId) openDetail(state.selectedAyahId);
       });
     }

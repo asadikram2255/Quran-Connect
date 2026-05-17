@@ -89,11 +89,70 @@ body { overflow: hidden; }
   color: var(--text);
 }
 .typeBtn:not(.active):hover { color: var(--text); border-color: rgba(255,255,255,.15); }
+.typeBtn.smartBtn {
+  background: linear-gradient(90deg, rgba(168,85,247,.18), rgba(79,209,197,.18));
+  border-color: rgba(168,85,247,.45);
+  color: var(--text);
+  font-weight: 600;
+}
+.typeBtn.smartBtn.active {
+  background: linear-gradient(90deg, rgba(168,85,247,.35), rgba(79,209,197,.35));
+  border-color: rgba(168,85,247,.7);
+}
+
+/* Smart Search: confidence score badge on each result */
+.scoreBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-top: 4px;
+  letter-spacing: .2px;
+}
+.scoreBadge.high { background: rgba(79,209,197,.18); color: #4fd1c5; border: 1px solid rgba(79,209,197,.4); }
+.scoreBadge.mid  { background: rgba(246,193,119,.15); color: #f6c177; border: 1px solid rgba(246,193,119,.35); }
+.scoreBadge.low  { background: rgba(169,181,210,.10); color: var(--muted); border: 1px solid var(--border); }
+
+/* Hybrid: small icon on results that also literally contain the user's keywords */
+.kwMatch {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--accent);
+  margin-left: 4px;
+  cursor: help;
+}
+
+/* "Did you mean" / weak-signal banner */
+.smartHint {
+  margin: 8px 10px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(168,85,247,.10), rgba(79,209,197,.08));
+  border: 1px solid rgba(168,85,247,.30);
+  color: var(--text);
+  font-size: 12px;
+}
+.smartHint.hidden { display: none; }
+.smartHint .hintTitle { font-weight: 700; margin-bottom: 6px; color: var(--text); }
+.smartHint .hintSub   { color: var(--muted); margin-bottom: 8px; }
+.smartHint .hintChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.smartHint .hintChip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(168,85,247,.35);
+  background: rgba(168,85,247,.10);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s;
+}
+.smartHint .hintChip:hover { background: rgba(168,85,247,.22); }
 .searchHint { color: var(--muted); font-size: 12px; margin-top: 8px; }
 
 /* Inputs */
 label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-input {
+input, textarea {
   width: 100%;
   padding: 12px;
   border-radius: 14px;
@@ -102,9 +161,16 @@ input {
   color: var(--text);
   outline: none;
   font-size: 15px;
+  font-family: inherit;
 }
-input:focus { border-color: rgba(79,209,197,.5); }
-input[dir="rtl"] { font-family: 'Amiri', serif; font-size: 17px; }
+textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 46px; /* Matches normal button height */
+  line-height: 1.5;
+}
+input:focus, textarea:focus { border-color: rgba(79,209,197,.5); }
+input[dir="rtl"], textarea[dir="rtl"] { font-family: 'Amiri', serif; font-size: 17px; }
 
 /* Buttons */
 .btn {
