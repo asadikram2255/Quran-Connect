@@ -1,12 +1,6 @@
 {
   "version": 1,
   "sources": {
-    "maududi": {
-      "label": "Tafhim al-Qur'an",
-      "author": "Sayyid Abul A'la Maududi",
-      "lang": "ur",
-      "shard_pattern": "data/tafsir/maududi/quran_s{NNN}.json"
-    },
     "ibn_kathir": {
       "label": "Ibn Kathir (Abridged)",
       "author": "Hafiz Ibn Kathir",
@@ -26,7 +20,7 @@
       "shard_pattern": "data/tafsir/bayan_ul_quran/quran_s{NNN}.json"
     },
     "ibn_kathir_ur": {
-      "label": "Tafsir Ibn Kathir",
+      "label": "Tafsir Ibn Kathir (Urdu)",
       "author": "Hafiz Ibn Kathir",
       "lang": "ur",
       "shard_pattern": "data/tafsir/ibn_kathir_ur/quran_s{NNN}.json"

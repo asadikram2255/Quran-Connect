@@ -1500,8 +1500,11 @@ function defaultTafsirForTranslation(transId) {
   const keys = Object.keys(sources);
   if (!keys.length) return null;
   const id = String(transId || "");
-  if (id.startsWith("ur") && sources.maududi)   return "maududi";
-  if (id.startsWith("en") && sources.ibn_kathir) return "ibn_kathir";
+  // ur_maududi → prefer bayan_ul_quran (Urdu, fully populated).
+  // maududi tafsir data is not yet loaded; it is excluded from tafsir_index.json
+  // until scripts/fetch_maududi_tafsir.py is run to populate it.
+  if (id.startsWith("ur") && sources.bayan_ul_quran) return "bayan_ul_quran";
+  if (id.startsWith("en") && sources.ibn_kathir)     return "ibn_kathir";
   // Fallback: prefer source whose lang matches translation lang prefix
   const langPrefix = id.split("_")[0];
   const match = keys.find(k => sources[k].lang === langPrefix);
