@@ -2384,6 +2384,15 @@ input[dir="rtl"], textarea[dir="rtl"] {
   margin: 0;
 }
 
+.tafsirCovers {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 8px;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Skeleton lines while loading a shard */
 .tafsirText .skeletonLine + .skeletonLine { margin-top: 8px; }
 

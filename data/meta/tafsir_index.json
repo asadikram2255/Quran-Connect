@@ -8,10 +8,28 @@
       "shard_pattern": "data/tafsir/maududi/quran_s{NNN}.json"
     },
     "ibn_kathir": {
-      "label": "Tafsir Ibn Kathir (Abridged)",
-      "author": "Ismail ibn Kathir",
+      "label": "Ibn Kathir (Abridged)",
+      "author": "Hafiz Ibn Kathir",
       "lang": "en",
       "shard_pattern": "data/tafsir/ibn_kathir/quran_s{NNN}.json"
+    },
+    "maarif": {
+      "label": "Ma'arif al-Qur'an",
+      "author": "Mufti Muhammad Shafi",
+      "lang": "en",
+      "shard_pattern": "data/tafsir/maarif/quran_s{NNN}.json"
+    },
+    "bayan_ul_quran": {
+      "label": "Bayan ul Quran",
+      "author": "Dr. Israr Ahmad",
+      "lang": "ur",
+      "shard_pattern": "data/tafsir/bayan_ul_quran/quran_s{NNN}.json"
+    },
+    "ibn_kathir_ur": {
+      "label": "Tafsir Ibn Kathir",
+      "author": "Hafiz Ibn Kathir",
+      "lang": "ur",
+      "shard_pattern": "data/tafsir/ibn_kathir_ur/quran_s{NNN}.json"
     }
   }
 }

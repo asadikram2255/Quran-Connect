@@ -1455,9 +1455,33 @@ async function ensureTafsirLoaded(surah, source) {
   return state.tafsirBySource[source][surahStr];
 }
 
+// Look up tafsir text for an ayah. Tafsir entries are often grouped — one
+// commentary block covers a run of consecutive verses, keyed at the first
+// verse of the range. If the exact ayah has no text, walk backward within
+// the same surah to find the covering entry.
+//
+// Returns null when nothing in the surah covers this ayah, or
+// { text, coversFrom, coversTo } when a covering entry was found.
 function getTafsir(ayahId, source) {
-  const [surah] = String(ayahId).split(":");
-  return state.tafsirBySource?.[source]?.[surah]?.[ayahId] || null;
+  const [surah, ayahStr] = String(ayahId).split(":");
+  const shard = state.tafsirBySource?.[source]?.[surah];
+  if (!shard) return null;
+
+  const ayahNum = Number(ayahStr);
+  if (!Number.isFinite(ayahNum)) return null;
+
+  // Exact hit
+  const direct = shard[ayahId];
+  if (direct) return { text: direct, coversFrom: ayahNum, coversTo: ayahNum };
+
+  // Walk backward through previous ayat in this surah
+  for (let n = ayahNum - 1; n >= 1; n--) {
+    const key = `${surah}:${n}`;
+    if (shard[key]) {
+      return { text: shard[key], coversFrom: n, coversTo: ayahNum };
+    }
+  }
+  return null;
 }
 
 // Translation → preferred tafsir source. Falls back to any available source.
@@ -1520,14 +1544,26 @@ async function renderAnchorTafsir(ayahId) {
   // Guard against stale render if the user opened a different ayah in the meantime
   if (state.selectedAyahId && state.selectedAyahId !== ayahId) return;
 
-  const text = getTafsir(ayahId, source);
-  if (!text) {
-    textEl.innerHTML = `<p class="tafsirEmpty">No commentary from ${escapeHtml(meta.label || source)} for this verse yet.</p>`;
+  const hit = getTafsir(ayahId, source);
+  if (!hit) {
+    textEl.innerHTML = `<p class="tafsirEmpty">No commentary from ${escapeHtml(meta.label || source)} for this verse.</p>`;
     return;
   }
   const isUrdu = meta.lang === "ur";
-  const safe = escapeHtml(text);
-  textEl.innerHTML = `<div class="tafsirBody${isUrdu ? " urdu-text" : ""}"${isUrdu ? ' dir="rtl"' : ""}>${safe}</div>`;
+  const safe   = escapeHtml(hit.text);
+
+  // If the commentary actually starts at an earlier ayah, tell the user.
+  // E.g. clicking 2:9 might surface 2:8's block — show "Covers 2:8 onward".
+  const [surah] = String(ayahId).split(":");
+  let note = "";
+  if (hit.coversFrom !== hit.coversTo) {
+    note = `<div class="tafsirCovers">Commentary begins at ${escapeHtml(surah)}:${hit.coversFrom}</div>`;
+  }
+
+  textEl.innerHTML = `
+    ${note}
+    <div class="tafsirBody${isUrdu ? " urdu-text" : ""}"${isUrdu ? ' dir="rtl"' : ""}>${safe}</div>
+  `;
 }
 
 // Tab-strip click handler (event delegation — block exists on first render)

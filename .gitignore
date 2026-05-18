@@ -20,3 +20,6 @@ __pycache__/
 
 # Editor / agent local settings
 .claude/
+
+# Local Netlify folder
+.netlify
