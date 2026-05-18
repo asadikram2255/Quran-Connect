@@ -150,6 +150,11 @@ const state = {
   activeSearchType: "en",
   modeWasManual: false,
 
+  // Tafsir scaffold
+  tafsirIndex: null,           // loaded from data/meta/tafsir_index.json (or null if absent)
+  tafsirBySource: {},          // { [source]: { [surah]: { [ayah_id]: text } } }
+  activeTafsirSource: null,    // sticky user choice; falls back to default-per-translation
+
   searchCache: { id: new Map(), ar: new Map(), en: new Map() },
   jsonCache:   new Map(),
   pendingJson: new Map(),
@@ -1413,6 +1418,126 @@ async function ensureSurahLoaded(surah) {
   state.loadedSurahs.add(surah);
 }
 
+// ── Tafsir scaffold (loader + renderer) ────────────────────
+
+async function ensureTafsirIndex() {
+  if (state.tafsirIndex !== null) return state.tafsirIndex;
+  const path = state.manifest?.paths?.tafsir_index || "data/meta/tafsir_index.json";
+  try {
+    const idx = await fetchJson(path);
+    state.tafsirIndex = idx && typeof idx === "object" ? idx : { sources: {} };
+  } catch (_) {
+    state.tafsirIndex = { sources: {} };
+  }
+  return state.tafsirIndex;
+}
+
+async function ensureTafsirLoaded(surah, source) {
+  if (!source) return null;
+  const surahStr = String(surah);
+  state.tafsirBySource[source] = state.tafsirBySource[source] || {};
+  if (state.tafsirBySource[source][surahStr]) return state.tafsirBySource[source][surahStr];
+
+  await ensureTafsirIndex();
+  const meta = state.tafsirIndex?.sources?.[source];
+  if (!meta?.shard_pattern) {
+    state.tafsirBySource[source][surahStr] = {};
+    return {};
+  }
+  const padded = surahStr.padStart(3, "0");
+  const url = meta.shard_pattern.replace("{NNN}", padded);
+  try {
+    const data = await fetchJson(url);
+    state.tafsirBySource[source][surahStr] = (data && typeof data === "object") ? data : {};
+  } catch (_) {
+    state.tafsirBySource[source][surahStr] = {};   // negative cache so we don't refetch 404s
+  }
+  return state.tafsirBySource[source][surahStr];
+}
+
+function getTafsir(ayahId, source) {
+  const [surah] = String(ayahId).split(":");
+  return state.tafsirBySource?.[source]?.[surah]?.[ayahId] || null;
+}
+
+// Translation → preferred tafsir source. Falls back to any available source.
+function defaultTafsirForTranslation(transId) {
+  const sources = state.tafsirIndex?.sources || {};
+  const keys = Object.keys(sources);
+  if (!keys.length) return null;
+  const id = String(transId || "");
+  if (id.startsWith("ur") && sources.maududi)   return "maududi";
+  if (id.startsWith("en") && sources.ibn_kathir) return "ibn_kathir";
+  // Fallback: prefer source whose lang matches translation lang prefix
+  const langPrefix = id.split("_")[0];
+  const match = keys.find(k => sources[k].lang === langPrefix);
+  return match || keys[0];
+}
+
+function renderTafsirTabs(currentSource) {
+  const tabsEl = document.querySelector("#tafsirBlock .tafsirTabs");
+  if (!tabsEl) return;
+  const sources = state.tafsirIndex?.sources || {};
+  const keys = Object.keys(sources);
+  if (keys.length < 2) { tabsEl.innerHTML = ""; return; }
+  tabsEl.innerHTML = keys.map(k => {
+    const active = k === currentSource ? " active" : "";
+    return `<button type="button" class="tafsirTab${active}" data-src="${escapeHtml(k)}" role="tab" aria-selected="${k === currentSource}">${escapeHtml(sources[k].label || k)}</button>`;
+  }).join("");
+}
+
+async function renderAnchorTafsir(ayahId) {
+  const block = document.getElementById("tafsirBlock");
+  if (!block) return;
+  const labelEl = block.querySelector(".tafsirLabel");
+  const textEl  = block.querySelector(".tafsirText");
+  if (!labelEl || !textEl) return;
+
+  await ensureTafsirIndex();
+  const sources = state.tafsirIndex?.sources || {};
+  if (!Object.keys(sources).length) { block.classList.add("hidden"); return; }
+
+  const source = state.activeTafsirSource && sources[state.activeTafsirSource]
+    ? state.activeTafsirSource
+    : defaultTafsirForTranslation(state.activeTranslation);
+  if (!source) { block.classList.add("hidden"); return; }
+
+  const meta = sources[source];
+  block.classList.remove("hidden");
+  labelEl.innerHTML = `Tafsir <span class="tafsirAuthor">— ${escapeHtml(meta.author || meta.label || "")}</span>`;
+  renderTafsirTabs(source);
+
+  // Skeleton while shard loads
+  textEl.innerHTML = `
+    <div class="skeletonLine wide"></div>
+    <div class="skeletonLine wide"></div>
+    <div class="skeletonLine med"></div>
+  `;
+
+  const surahNum = String(ayahId).split(":")[0];
+  await ensureTafsirLoaded(surahNum, source);
+
+  // Guard against stale render if the user opened a different ayah in the meantime
+  if (state.selectedAyahId && state.selectedAyahId !== ayahId) return;
+
+  const text = getTafsir(ayahId, source);
+  if (!text) {
+    textEl.innerHTML = `<p class="tafsirEmpty">No commentary from ${escapeHtml(meta.label || source)} for this verse yet.</p>`;
+    return;
+  }
+  const isUrdu = meta.lang === "ur";
+  const safe = escapeHtml(text);
+  textEl.innerHTML = `<div class="tafsirBody${isUrdu ? " urdu-text" : ""}"${isUrdu ? ' dir="rtl"' : ""}>${safe}</div>`;
+}
+
+// Tab-strip click handler (event delegation — block exists on first render)
+document.addEventListener("click", (e) => {
+  const tab = e.target.closest?.("#tafsirBlock .tafsirTab");
+  if (!tab) return;
+  state.activeTafsirSource = tab.dataset.src;
+  if (state.selectedAyahId) renderAnchorTafsir(state.selectedAyahId);
+});
+
 function findHadithShardFileBySerial(serial) {
   for (const x of state.shardMapHadith || [])
     if (serial >= x.start && serial <= x.end) return x.file;
@@ -1996,6 +2121,9 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
 
+  // Tafsir scaffold — async, doesn't block the rest of openDetail
+  renderAnchorTafsir(ayahId);
+
   const MIN_SEM_SCORE = 25;
   const aboveSemMin = p => Number(p.score) >= MIN_SEM_SCORE;
   const semQ = (pairs.semantic?.quran_top20   || []).filter(aboveSemMin);
@@ -2338,6 +2466,8 @@ async function init() {
         }
 
         setBadge("ok", "Translation applied");
+        // Translation drives default tafsir source — clear sticky choice so it re-picks
+        state.activeTafsirSource = null;
         // Re-render everything currently visible with new translation
         renderResults(state.lastResults, { preserveOrder: true });
         if (state.selectedAyahId) openDetail(state.selectedAyahId, { preserveHistory: true });

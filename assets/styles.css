@@ -2293,6 +2293,104 @@ input[dir="rtl"], textarea[dir="rtl"] {
 }
 
 /* ============================================================
+   Tafsir block — scholarly commentary under the anchor
+   ============================================================ */
+
+.tafsirBlock {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tafsirBlock.hidden { display: none !important; }
+
+.tafsirHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tafsirLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tafsirAuthor {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-left: 6px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+
+.tafsirTabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tafsirTab {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
+}
+.tafsirTab:hover {
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, .04);
+}
+.tafsirTab.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-strong);
+  color: var(--text);
+}
+
+.tafsirText {
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.tafsirBody {
+  font-family: 'Fraunces', 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.005em;
+  white-space: pre-wrap;
+}
+.tafsirBody.urdu-text {
+  font-family: 'Noto Nastaliq Urdu', serif !important;
+  direction: rtl;
+  text-align: right;
+  font-size: 16px !important;
+  line-height: 2.2 !important;
+}
+
+.tafsirEmpty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Skeleton lines while loading a shard */
+.tafsirText .skeletonLine + .skeletonLine { margin-top: 8px; }
+
+/* In condensed anchor, hide tafsir along with words */
+.anchorCard.condensed .tafsirBlock { display: none; }
+
+/* ============================================================
    PHASE 5.1 — Restraint pass: flatten gradients site-wide
    Removes the AI-template tells: gradient surfaces, gradient text,
    left-stripe accents, glow halos, multi-color decorations.
