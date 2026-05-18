@@ -3011,3 +3011,35 @@ body.view-mood .feelingsBtn { display: none; }
   font-weight: 600;
   border-radius: var(--r-pill);
 }
+
+/* ── Hero intro block (top of landing) ─────────────────────── */
+.heroIntro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 40px 24px 32px;
+  border-bottom: 1px solid var(--border);
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.heroTagline {
+  font-family: var(--font-serif, 'Fraunces', Georgia, serif);
+  font-size: clamp(22px, 4vw, 32px);
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -.3px;
+  line-height: 1.2;
+}
+.heroDesc {
+  font-size: 14px;
+  color: var(--text-soft);
+  line-height: 1.7;
+  max-width: 560px;
+  margin: 0;
+}
+
+/* Remove old .heroFeatures wrapper since pills now live in .heroIntro */
+.heroFeatures { display: none; }
