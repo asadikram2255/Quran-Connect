@@ -24,6 +24,12 @@
       "author": "Hafiz Ibn Kathir",
       "lang": "ur",
       "shard_pattern": "data/tafsir/ibn_kathir_ur/quran_s{NNN}.json"
+    },
+    "maududi": {
+      "label": "Tafhim al-Qur'an",
+      "author": "Sayyid Abul A'la Maududi",
+      "lang": "en",
+      "shard_pattern": "data/tafsir/maududi/quran_s{NNN}.json"
     }
   }
 }
