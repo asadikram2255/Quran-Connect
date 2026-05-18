@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=23" />
+  <link rel="stylesheet" href="assets/styles.css?v=24" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -162,11 +162,88 @@
             <button class="chip exampleBtn" data-type="id" data-value="49:13" type="button">49:13</button>
           </div>
           <div class="landingSmall">
-            6,236 ayat · 43,000+ authenticated Hadith · 6 translations · 58 curated topics
+            6,236 ayat · 43,000+ authenticated Hadith · 6 translations · 142 curated topics
           </div>
         </div>
       </div>
-    </div>
+
+    <!-- ── Credits ─────────────────────────────────────────── -->
+    <div class="landingCredits">
+      <div class="creditsSectionLabel">Credits &amp; Data Sources</div>
+
+      <div class="creditsGrid">
+
+        <div class="creditGroup">
+          <div class="creditGroupIcon">📖</div>
+          <div class="creditGroupName">Quran Translations</div>
+          <div class="creditGroupItems">
+            Sahih International · Abdullah Yusuf Ali ·
+            Abul A'la Maududi (Urdu) · Muhammad Junagarhi (Urdu) ·
+            Fateh Muhammad Jalandhri (Urdu) · Ahmed Ali (Urdu)
+          </div>
+          <a class="creditGroupSource" href="https://alquran.cloud" target="_blank" rel="noopener">via alquran.cloud</a>
+        </div>
+
+        <div class="creditGroup">
+          <div class="creditGroupIcon">📜</div>
+          <div class="creditGroupName">Hadith Collections</div>
+          <div class="creditGroupItems">
+            Bukhari · Muslim · Abu Dawud · Nasai ·
+            Tirmidhi · Ibn Majah · Mishkat · Ahmad · Darimi
+          </div>
+          <a class="creditGroupSource" href="https://github.com/fawazahmed0/hadith-api" target="_blank" rel="noopener">via fawazahmed0/hadith-api</a>
+        </div>
+
+        <div class="creditGroup">
+          <div class="creditGroupIcon">🕌</div>
+          <div class="creditGroupName">Tafsir Sources</div>
+          <div class="creditGroupItems">
+            Ibn Kathir (Abridged) · Ma'arif al-Qur'an (Mufti M. Shafi) ·
+            Bayan ul Quran (Dr. Israr Ahmad) · Tafsir Ibn Kathir (Urdu)
+          </div>
+          <a class="creditGroupSource" href="https://quran.com" target="_blank" rel="noopener">via quran.com API</a>
+        </div>
+
+        <div class="creditGroup">
+          <div class="creditGroupIcon">✨</div>
+          <div class="creditGroupName">AI Smart Search</div>
+          <div class="creditGroupItems">
+            BAAI/bge-m3 embeddings ·
+            BAAI/bge-reranker-v2-m3 reranker ·
+            Qdrant vector DB ·
+            HuggingFace Inference API ·
+            Vercel serverless
+          </div>
+        </div>
+
+        <div class="creditGroup">
+          <div class="creditGroupIcon">🔗</div>
+          <div class="creditGroupName">Other Sources</div>
+          <div class="creditGroupItems">
+            Topic verses via <a class="creditInline" href="https://myislam.org" target="_blank" rel="noopener">myislam.org</a><br>
+            Statistics via <a class="creditInline" href="https://qurananalysis.com/analysis/basic-statistics.php?lang=EN" target="_blank" rel="noopener">qurananalysis.com</a>
+          </div>
+        </div>
+
+      </div><!-- /.creditsGrid -->
+
+      <div class="creditsBuiltBy">
+        <div class="creditsBuiltByLabel">Built by</div>
+        <div class="creditsAuthors">
+          <div class="creditsAuthor">
+            <span class="creditsAuthorName">Muhammad Asad Ikram</span>
+            <span class="creditsAuthorRole">Creator &amp; Lead Developer</span>
+          </div>
+          <span class="creditsAuthorSep" aria-hidden="true">·</span>
+          <div class="creditsAuthor">
+            <span class="creditsAuthorName">matifjaved23</span>
+            <span class="creditsAuthorRole">Smart Search &amp; RAG Pipeline</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.landingCredits -->
+    </div><!-- /#landingCard -->
 
     <!-- ── Search bar ───────────────────────────────────── -->
     <div class="card stickyTop">

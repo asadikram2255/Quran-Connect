@@ -928,6 +928,135 @@ input[dir="rtl"], textarea[dir="rtl"] {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Credits section (inside About card) ──────────────────── */
+.landingCredits {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.creditsSectionLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.creditsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.creditGroup {
+  background: rgba(255,255,255,.025);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  width: 172px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color .2s, background .2s;
+}
+.creditGroup:hover {
+  border-color: var(--border-strong);
+  background: rgba(255,255,255,.04);
+}
+
+.creditGroupIcon { font-size: 22px; line-height: 1; }
+
+.creditGroupName {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -.01em;
+  line-height: 1.3;
+}
+
+.creditGroupItems {
+  font-size: 11.5px;
+  color: var(--text-soft);
+  line-height: 1.65;
+  flex: 1;
+}
+
+.creditGroupSource {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--border-strong);
+  padding-bottom: 1px;
+  transition: color .15s, border-color .15s;
+  margin-top: 2px;
+}
+.creditGroupSource:hover { color: var(--accent); border-color: var(--accent); }
+
+.creditInline {
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--border-strong);
+  transition: color .15s;
+}
+.creditInline:hover { color: var(--accent); }
+
+.creditsBuiltBy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.creditsBuiltByLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--text-muted);
+}
+
+.creditsAuthors {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.creditsAuthor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.creditsAuthorName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.creditsAuthorRole {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.creditsAuthorSep {
+  font-size: 22px;
+  color: var(--border-strong);
+  user-select: none;
+  line-height: 1;
+}
+
 .hidden { display: none !important; }
 .small  { color: var(--text-muted); font-size: 12px; }
 
