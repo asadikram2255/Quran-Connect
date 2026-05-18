@@ -50,6 +50,12 @@ function l2normalize(vec) {
   return vec.map((x) => x / n);
 }
 
+// bge-reranker-v2-m3 returns raw logits (unbounded). Apply sigmoid so scores
+// are always in [0, 1] and the frontend confidence badges make sense.
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+
 async function fetchJson(url, options, label) {
   const res = await fetch(url, options);
   if (!res.ok) {
@@ -99,10 +105,14 @@ async function rerankPairs(query, documents) {
     },
     "HF rerank"
   );
-  // Response shape: [[{label, score}, {label, score}, ...]]
-  // (Nested because the API can batch multiple "inputs", but we send one batch.)
-  const flat = Array.isArray(data?.[0]) ? data[0] : data;
-  return flat.map((item) => (typeof item?.score === "number" ? item.score : 0));
+  // HF returns one result per input pair: [{label,score}, {label,score}, ...]
+  // Each element may itself be an array (nested) — unwrap and pick highest score.
+  // Scores are raw logits → apply sigmoid to get [0,1] confidence.
+  return data.map((entry) => {
+    const item = Array.isArray(entry) ? entry[0] : entry;
+    const raw = typeof item?.score === "number" ? item.score : 0;
+    return sigmoid(raw);
+  });
 }
 
 // ── Qdrant ──────────────────────────────────────────────────────

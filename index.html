@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=21" />
+  <link rel="stylesheet" href="assets/styles.css?v=22" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -30,7 +30,7 @@
     <div class="header">
       <div>
         <div class="h1">Quran Better For Me</div>
-        <div class="sub">Explore the Qur'an and authentic Hadith by meaning, root words, and topic — by Muhammad Asad Ikram</div>
+        <div class="sub">Qur'an · Hadith · Tafseer · AI Search — by Muhammad Asad Ikram</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <select id="transSel" class="transSel" title="Select translation">
@@ -79,8 +79,9 @@
           <div class="heroFeat"><span class="heroFeatIcon">📿</span><span>Shared Arabic root-word pairs</span></div>
           <div class="heroFeat"><span class="heroFeatIcon">📖</span><span>Authentic Hadith for every ayah</span></div>
           <div class="heroFeat"><span class="heroFeatIcon">✨</span><span>AI Smart Search with confidence scores</span></div>
+          <div class="heroFeat"><span class="heroFeatIcon">🕌</span><span>Tafseer from Ibn Kathir, Maududi &amp; more</span></div>
         </div>
-        <div class="heroStats">6,236 ayat · 43,000+ Hadith · 6 translations · 142 topics · 25 Prophets</div>
+        <div class="heroStats">6,236 ayat · 43,000+ Hadith · 6 translations · 142 topics · 25 Prophets · 5 Tafseer sources</div>
         <button data-mood-action="search" class="btn heroSearchBtn" type="button">Explore the Qur'an →</button>
       </div>
 
@@ -123,10 +124,12 @@
           <div class="landingH">What it does</div>
           <ul class="landingList">
             <li>Search any <b>English concept</b>, <b>Arabic word</b>, or <b>Ayah ID</b> to find related verses.</li>
+            <li>Use <b>AI Smart Search</b> — semantic embeddings + cross-encoder reranking with confidence scores.</li>
             <li>See <b>meaning-based</b> pairs (semantic similarity) and <b>root-word</b> pairs (shared Arabic roots) side by side.</li>
             <li>Each Qur'an ayah is paired with <b>authentic Hadith</b> on the same theme.</li>
+            <li>Read <b>Tafseer</b> from 5 classical scholars — Ibn Kathir, Maududi, Maarif ul Quran, Bayan ul Quran, and Ibn Kathir (Urdu) — directly on each ayah.</li>
             <li>Tap <b>Words &amp; Roots</b> to explore every root and token in an ayah.</li>
-            <li>Explore <b>What Am I Feeling?</b> to browse 58 curated topics and jump straight to relevant ayat.</li>
+            <li>Explore <b>What Am I Feeling?</b> to browse 142 curated topics and jump straight to relevant ayat.</li>
             <li>Switch between <b>6 translations</b> — Sahih International, Yusuf Ali, and 4 Urdu scholars — any time.</li>
           </ul>
         </div>
@@ -361,7 +364,7 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=29"></script>
+  <script src="assets/app.js?v=30"></script>
   <script type="module" src="assets/motion.js?v=3"></script>
 </body>
 </html>

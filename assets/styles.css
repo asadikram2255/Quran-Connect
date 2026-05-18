@@ -1789,9 +1789,9 @@ input[dir="rtl"], textarea[dir="rtl"] {
   border: 1px solid var(--border);
   background: rgba(255,255,255,.04);
 }
-.scoreBadge.high { color: var(--success); border-color: rgba(52,211,153,.35);  background: rgba(52,211,153,.10); }
-.scoreBadge.mid  { color: var(--warm);    border-color: rgba(251,191,36,.35);  background: var(--warm-soft); }
-.scoreBadge.low  { color: var(--text-muted); }
+.scoreBadge.high { color: var(--success); border-color: rgba(52,211,153,.40);  background: rgba(52,211,153,.12); }
+.scoreBadge.mid  { color: var(--warm);    border-color: rgba(251,191,36,.40);  background: rgba(251,191,36,.08); }
+.scoreBadge.low  { color: var(--text-soft); border-color: var(--border); background: rgba(255,255,255,.04); }
 
 .kwMatch {
   display: inline-block;
