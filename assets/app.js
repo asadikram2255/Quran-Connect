@@ -38,7 +38,11 @@ const SEARCH_PLACEHOLDERS = {
   smart: "e.g. feeling overwhelmed by grief"
 };
 
-const SMART_SEARCH_ENDPOINT = "/api/search";
+// Always call the Vercel API directly so Smart Search works from any host
+// (GitHub Pages, local dev, etc.) not just the Vercel deployment itself.
+const SMART_SEARCH_ENDPOINT = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "/api/search"
+  : "https://quran-connect-psi.vercel.app/api/search";
 
 // Curated phrasings to suggest when Smart Search's top rerank score is very low.
 const SMART_SUGGESTIONS_EN = [
