@@ -17,3 +17,6 @@ __pycache__/
 # OS
 .DS_Store
 .vercel
+
+# Editor / agent local settings
+.claude/

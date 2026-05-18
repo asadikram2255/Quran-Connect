@@ -144,9 +144,11 @@ const state = {
   hadithById:  new Map(),
 
   selectedAyahId: null,
+  detailHistory: [],
   lastResults: [],
 
   activeSearchType: "en",
+  modeWasManual: false,
 
   searchCache: { id: new Map(), ar: new Map(), en: new Map() },
   jsonCache:   new Map(),
@@ -650,6 +652,7 @@ function buildProphetsModal() {
     const card = document.createElement("button");
     card.className = "prophetCard";
     card.type = "button";
+    card.dataset.num = String(idx + 1);
     card.innerHTML = `
       <div class="prophetNum">${idx + 1}</div>
       <div class="prophetAr">${p.arabic}</div>
@@ -664,6 +667,7 @@ function buildProphetsModal() {
 async function selectProphet(prophet) {
   closeProphetsModal();
   showLanding(false);
+  enterResearchView();
   setBadge("warn", `Loading ${prophet.name}…`);
 
   // Ensure all needed surahs are loaded
@@ -947,9 +951,186 @@ function closeFeelingsModal() {
   if (els.feelingsModal) els.feelingsModal.classList.add("hidden");
 }
 
+// ── Phase 5 — Mood-first hero ──────────────────────────────
+
+// Curated daily verses — well-known, meaningful, reasonably short.
+const DAILY_AYAH_POOL = [
+  "1:5","2:152","2:153","2:186","2:201","2:216","2:255","2:286",
+  "3:8","3:139","3:159","3:185",
+  "4:135","5:8","6:73","7:56","7:180","9:51","9:128",
+  "11:88","13:11","13:28","14:7","15:88","16:97","16:128",
+  "17:7","17:23","17:80","18:46",
+  "20:14","21:107","24:35","25:74","27:62","28:77","29:69",
+  "30:21","33:35","35:5","39:53","40:60","41:30","41:35",
+  "42:43","49:11","49:13","51:50","55:13","57:4",
+  "65:3","67:1","87:14","93:5","94:6"
+];
+
+function pickDailyAyah() {
+  const day = Math.floor(Date.now() / 86400000); // days since epoch (UTC)
+  return DAILY_AYAH_POOL[day % DAILY_AYAH_POOL.length];
+}
+
+async function renderDailyAyah() {
+  const block    = document.getElementById("dailyAyah");
+  if (!block) return;
+  const arEl     = block.querySelector(".dailyArabic");
+  const enEl     = block.querySelector(".dailyEnglish");
+  const refEl    = block.querySelector(".dailyRef");
+  const surahEl  = block.querySelector(".dailySurah");
+
+  const id = pickDailyAyah();
+  const [surahNum] = id.split(":");
+  refEl.textContent   = id;
+  surahEl.textContent = SURAH_NAMES[Number(surahNum)] || "";
+
+  // Load the surah shard so we can pull the ayah's text
+  try { await ensureSurahLoaded(surahNum); } catch (_) {}
+  const rec = state.quranById.get(id);
+  if (!rec) return;
+
+  arEl.textContent = rec.arabic || "";
+  arEl.removeAttribute("data-ph");
+  const trans = (typeof getQuranTranslation === "function" && getQuranTranslation(id)) || rec.english || "";
+  enEl.textContent = trans;
+  enEl.classList.toggle("urdu-text", isUrduActive());
+
+  block.tabIndex = 0;
+  block.setAttribute("role", "button");
+  const openIt = () => {
+    enterResearchView();
+    if (typeof openDetail === "function") openDetail(id);
+  };
+  block.onclick = openIt;
+  block.onkeydown = (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openIt(); }
+  };
+}
+
+function renderMoodHero() {
+  const host = document.getElementById("moodCats");
+  if (!host) return;
+  host.innerHTML = "";
+
+  for (const cat of TOPIC_CATEGORIES) {
+    // Strip leading emoji from the label so the swatch dot does the work
+    const cleanLabel = String(cat.label || "").replace(/^\s*\p{Extended_Pictographic}+\s*/u, "").trim();
+
+    const section = document.createElement("section");
+    section.className = "moodCat";
+
+    const head = document.createElement("div");
+    head.className = "moodCatHead";
+    const h2 = document.createElement("h2");
+    h2.className = "moodCatLabel";
+    h2.textContent = cleanLabel;
+    head.appendChild(h2);
+
+    const note = document.createElement("span");
+    note.className = "moodCatNote";
+    note.textContent = `${cat.topics.length} topics`;
+    head.appendChild(note);
+    section.appendChild(head);
+
+    const tiles = document.createElement("div");
+    tiles.className = "moodTiles";
+    for (const topic of cat.topics) {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "moodTile";
+      const verseCount = (TOPIC_VERSES[topic] || []).length;
+      tile.innerHTML = `
+        <span class="moodTileText">
+          <span class="moodTileLabel">${escapeHtml(topic)}</span>
+          ${verseCount ? `<span class="moodTileMeta">${verseCount} verses</span>` : ""}
+        </span>
+      `;
+      tile.addEventListener("click", () => selectTopic(topic));
+      tiles.appendChild(tile);
+    }
+    section.appendChild(tiles);
+    host.appendChild(section);
+  }
+}
+
+function enterResearchView() {
+  document.body.classList.remove("view-mood");
+  document.body.classList.add("view-research");
+}
+function exitToMoodView() {
+  document.body.classList.remove("view-research");
+  document.body.classList.add("view-mood");
+  // Reset any active drill state so returning home feels clean
+  state.selectedAyahId = null;
+  state.detailHistory  = [];
+  if (typeof updateBackButton === "function") updateBackButton();
+  if (typeof setDetailState === "function") setDetailState("empty");
+  if (els.mainQuery) els.mainQuery.value = "";
+  if (typeof clearSmartHint === "function") clearSmartHint();
+  state.lastResults = [];
+  if (typeof renderResults === "function") renderResults([]);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function wireMoodFirstView() {
+  // Default to mood view on first load
+  if (!document.body.classList.contains("view-research")
+   && !document.body.classList.contains("view-mood")) {
+    document.body.classList.add("view-mood");
+  }
+
+  // Header search trigger → research view + focus input
+  const trig = document.getElementById("searchTrigger");
+  if (trig) {
+    trig.addEventListener("click", () => {
+      enterResearchView();
+      requestAnimationFrame(() => els.mainQuery?.focus());
+    });
+  }
+
+  // Back-home pill (visible in research view)
+  const home = document.getElementById("backHome");
+  if (home) home.addEventListener("click", exitToMoodView);
+
+  // ⌘K / Ctrl+K opens search anywhere
+  document.addEventListener("keydown", e => {
+    const k = e.key?.toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && k === "k") {
+      e.preventDefault();
+      enterResearchView();
+      requestAnimationFrame(() => els.mainQuery?.focus());
+    }
+    // Esc returns to mood view if nothing else is open
+    if (e.key === "Escape" && document.body.classList.contains("view-research")) {
+      const anyModalOpen = ["wordModal","feelingsModal","statsModal","prophetsModal"]
+        .some(id => {
+          const m = document.getElementById(id);
+          return m && !m.classList.contains("hidden");
+        });
+      const menu = document.getElementById("overflowMenu");
+      const menuOpen = menu && !menu.classList.contains("hidden");
+      if (!anyModalOpen && !menuOpen) exitToMoodView();
+    }
+  });
+
+  // Hero footer buttons
+  document.querySelectorAll('[data-mood-action]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.moodAction;
+      if (action === "search") {
+        enterResearchView();
+        requestAnimationFrame(() => els.mainQuery?.focus());
+      } else if (action === "prophets") {
+        if (typeof openProphetsModal === "function") openProphetsModal();
+      }
+    });
+  });
+}
+
 async function selectTopic(topicName) {
   closeFeelingsModal();
   showLanding(false);
+  enterResearchView();
 
   const ayahIds = TOPIC_VERSES[topicName] || [];
   if (!ayahIds.length) return;
@@ -1134,6 +1315,31 @@ function setSearchType(type) {
   els.mainQuery.placeholder = SEARCH_PLACEHOLDERS[type] || "";
   if (els.searchHint) els.searchHint.textContent = SEARCH_HINTS[type] || "";
   els.mainQuery.focus();
+}
+
+// Phase 3 — Intent detection. Returns "id" / "ar" / "en" / null.
+function detectQueryIntent(q) {
+  const s = String(q || "").trim();
+  if (!s) return null;
+  if (/^\d+\s*[:.\-]\s*\d+/.test(s)) return "id";
+  if (/[؀-ۿ]/.test(s))     return "ar";
+  return "en";
+}
+
+// Auto-switch typeToggle as user types — unless they've manually picked a mode
+// (or the special "smart" mode is active). Reset on Clear.
+function applyAutoIntent() {
+  if (state.modeWasManual) return;
+  if (state.activeSearchType === "smart") return;
+  const intent = detectQueryIntent(els.mainQuery?.value);
+  if (!intent || intent === state.activeSearchType) return;
+  setSearchType(intent);
+  // setSearchType refocuses — keep caret position so typing isn't interrupted.
+  const el = els.mainQuery;
+  if (el && document.activeElement === el) {
+    const pos = el.value.length;
+    try { el.setSelectionRange(pos, pos); } catch (_) {}
+  }
 }
 
 // ── Arabic / English normalisation ─────────────────────────
@@ -1560,7 +1766,7 @@ function renderPairList(container, items, options = {}) {
     if (isQuranPair) {
       div.classList.add("clickable");
       div.title = "Click to explore pairs for this ayah";
-      div.addEventListener("click", () => openDetail(it.id));
+      div.addEventListener("click", () => drillTo(it.id));
     }
 
     const pairSurahNum  = Number(surahFromAyahId(it.id));
@@ -1701,7 +1907,7 @@ async function openWordModal(word, kind) {
              <div class="wordModalItemEn${modalUrdu ? " urdu-text" : ""}">${escapeHtml(modalDisplayEn)}</div>`
           : `<div class="wordModalLoading">Unavailable</div>`}
       `;
-      item.onclick = () => { closeWordModal(); openDetail(id); };
+      item.onclick = () => { closeWordModal(); drillTo(id); };
       groupEl.appendChild(item);
     }
 
@@ -1730,8 +1936,38 @@ if (els.dTokens) els.dTokens.addEventListener("click", e => {
 
 // ── Open detail ─────────────────────────────────────────────
 
-async function openDetail(ayahId) {
+// Drill from one anchor to another (pair click, word-modal click).
+// Pushes the current anchor onto a back-stack so the user can return.
+function drillTo(ayahId) {
+  if (state.selectedAyahId && state.selectedAyahId !== ayahId) {
+    state.detailHistory.push(state.selectedAyahId);
+  }
+  openDetail(ayahId, { preserveHistory: true });
+}
+
+function goBack() {
+  const prev = state.detailHistory.pop();
+  if (prev) openDetail(prev, { preserveHistory: true });
+}
+
+function updateBackButton() {
+  const btn = document.getElementById("backBtn");
+  if (!btn) return;
+  const depth = state.detailHistory.length;
+  if (depth === 0) {
+    btn.classList.add("hidden");
+    return;
+  }
+  btn.classList.remove("hidden");
+  const prev = state.detailHistory[depth - 1];
+  const lbl = btn.querySelector(".backLabel");
+  if (lbl) lbl.textContent = typeof fmtAyahId === "function" ? fmtAyahId(prev) : prev;
+}
+
+async function openDetail(ayahId, { preserveHistory = false } = {}) {
   const myToken = ++state.detailToken;
+  if (!preserveHistory) state.detailHistory = [];
+  updateBackButton();
   state.selectedAyahId = ayahId;
   renderResults(state.lastResults, { preserveOrder: true });
 
@@ -1756,9 +1992,7 @@ async function openDetail(ayahId) {
   els.dEnglish.textContent = anchorTrans || rec.english || "";
   els.dEnglish.className   = "anchorEnglish" + (isUrduActive() ? " urdu-text" : "");
 
-  // Words & Roots panel — reset to hidden on each new selection
-  if (els.anchorWordsPanel) els.anchorWordsPanel.classList.add("hidden");
-  if (els.wordsToggleBtn)   els.wordsToggleBtn.textContent = "Words & Roots";
+  // Words & Roots panel — always visible (Phase 3 redesign)
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
 
@@ -1883,6 +2117,7 @@ if (els.clearBtn) els.clearBtn.onclick = () => {
   state.selectedAyahId = null;
   state.lastResults = [];
   state.detailToken++;
+  state.modeWasManual = false;
   renderResults([]);
   clearSmartHint();
   setDetailState("empty");
@@ -1903,19 +2138,13 @@ if (els.mainQuery) {
     els.mainQuery.style.overflowY = els.mainQuery.scrollHeight > max ? "auto" : "hidden";
   };
   els.mainQuery.addEventListener("input", autoGrow);
+  els.mainQuery.addEventListener("input", applyAutoIntent);
   // Reset height after clearing.
   if (els.clearBtn) els.clearBtn.addEventListener("click", () => {
     els.mainQuery.style.height = "";
     els.mainQuery.style.overflowY = "hidden";
   });
 }
-
-if (els.wordsToggleBtn) els.wordsToggleBtn.onclick = () => {
-  const panel = els.anchorWordsPanel;
-  if (!panel) return;
-  const open = panel.classList.toggle("hidden") === false;
-  els.wordsToggleBtn.textContent = open ? "Hide Words" : "Words & Roots";
-};
 
 if (els.fontIncBtn) els.fontIncBtn.onclick = () => {
   state.arabicFontSize = Math.min(30, state.arabicFontSize + 2);
@@ -1934,6 +2163,63 @@ if (els.engFontDecBtn) els.engFontDecBtn.onclick = () => {
   state.englishFontSize = Math.max(10, state.englishFontSize - 1);
   document.documentElement.style.setProperty("--english-font-size", state.englishFontSize + "px");
 };
+
+// ── Back button (breadcrumb through drilled ayat) ───────────
+{
+  const back = document.getElementById("backBtn");
+  if (back) back.addEventListener("click", goBack);
+  document.addEventListener("keydown", e => {
+    // Alt + ArrowLeft mirrors browser-style back, only inside the app shell.
+    if (e.altKey && e.key === "ArrowLeft" && state.detailHistory.length > 0) {
+      e.preventDefault();
+      goBack();
+    }
+  });
+}
+
+// ── Header overflow menu (Prophets / Stats / About) ─────────
+{
+  const btn  = document.getElementById("overflowBtn");
+  const menu = document.getElementById("overflowMenu");
+  if (btn && menu) {
+    const close = () => {
+      menu.classList.add("hidden");
+      btn.setAttribute("aria-expanded", "false");
+    };
+    const toggle = () => {
+      const isOpen = !menu.classList.contains("hidden");
+      if (isOpen) { close(); return; }
+      menu.classList.remove("hidden");
+      btn.setAttribute("aria-expanded", "true");
+    };
+    btn.addEventListener("click", e => { e.stopPropagation(); toggle(); });
+    // Outside click + Escape closes
+    document.addEventListener("click", e => {
+      if (menu.classList.contains("hidden")) return;
+      if (!menu.contains(e.target) && e.target !== btn) close();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !menu.classList.contains("hidden")) close();
+    });
+    // Any menu item click closes the menu
+    menu.querySelectorAll(".menuItem").forEach(item => {
+      item.addEventListener("click", close);
+    });
+  }
+}
+
+// ── Scroll-linked anchor card condense ──────────────────────
+{
+  const wrap = document.querySelector(".detailScroll");
+  if (wrap) {
+    const onScroll = () => {
+      const condensed = wrap.scrollTop > 32;
+      const anchor = document.querySelector(".anchorCard");
+      if (anchor) anchor.classList.toggle("condensed", condensed);
+    };
+    wrap.addEventListener("scroll", onScroll, { passive: true });
+  }
+}
 
 // ── Lazy search-index loader ────────────────────────────────
 // The 4 search index files total ~2.5 MB. We defer them until
@@ -2054,25 +2340,35 @@ async function init() {
         setBadge("ok", "Translation applied");
         // Re-render everything currently visible with new translation
         renderResults(state.lastResults, { preserveOrder: true });
-        if (state.selectedAyahId) openDetail(state.selectedAyahId);
+        if (state.selectedAyahId) openDetail(state.selectedAyahId, { preserveHistory: true });
+        renderDailyAyah();
       });
     }
 
-    // Type toggle buttons
+    // Type toggle buttons. Manual click locks the mode until Clear.
     document.querySelectorAll(".typeBtn").forEach(btn => {
-      btn.addEventListener("click", () => setSearchType(btn.dataset.type));
+      btn.addEventListener("click", () => {
+        state.modeWasManual = true;
+        setSearchType(btn.dataset.type);
+      });
     });
 
     // Start / About buttons
     if (els.startBtn) {
       els.startBtn.addEventListener("click", () => {
         showLanding(false);
+        enterResearchView();
         els.mainQuery.focus();
       });
     }
     if (els.aboutBtn) {
       els.aboutBtn.addEventListener("click", () => showLanding(true));
     }
+
+    // Phase 5 — Mood-first hero
+    renderMoodHero();
+    wireMoodFirstView();
+    renderDailyAyah();
 
     // Feelings modal
     if (els.feelingsBtn) els.feelingsBtn.addEventListener("click", openFeelingsModal);
@@ -2121,6 +2417,7 @@ async function init() {
         setSearchType(type);
         els.mainQuery.value = val;
         showLanding(false);
+        enterResearchView();
         runSearch();
       });
     });

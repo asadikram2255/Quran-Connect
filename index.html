@@ -8,7 +8,7 @@
   <meta http-equiv="Expires" content="0" />
   <title>Quran Better For Me</title>
   <meta name="description" content="Explore the Qur'an and authentic Hadith by meaning, root words, and topic. 6,236 ayat · 43,000+ authenticated Hadith · 6 translations · 58 curated topics." />
-  <meta name="theme-color" content="#0b1220" />
+  <meta name="theme-color" content="#07091a" />
   <meta property="og:title" content="Quran Better For Me" />
   <meta property="og:description" content="Discover how Qur'an ayat connect through meaning and root words, paired with authentic Hadith. Search by concept, Arabic word, or ayah reference." />
   <meta property="og:type" content="website" />
@@ -17,8 +17,8 @@
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=9" />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css?v=17" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -44,16 +44,49 @@
             <option value="ur_ahmedali">اردو — احمد علی</option>
           </optgroup>
         </select>
-        <button id="prophetsBtn" class="btn prophetsBtn" type="button">Prophets of Quran</button>
         <button id="feelingsBtn" class="btn feelingsBtn" type="button">What Am I Feeling?</button>
-        <button id="statsBtn" class="btn statsBtn" type="button">Quran Statistics</button>
-        <button id="aboutBtn" class="btn ghost smallBtn" type="button">About</button>
+        <nav class="headerNav" aria-label="Primary">
+          <button id="prophetsBtn" class="navBtn" type="button">Prophets</button>
+          <button id="statsBtn"    class="navBtn" type="button">Statistics</button>
+        </nav>
+        <button id="searchTrigger" class="searchTrigger" type="button" aria-label="Open search">
+          <svg class="searchIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </button>
+        <button id="backHome" class="backHome" type="button" aria-label="Back to home">
+          <span aria-hidden="true">←</span>
+          <span>Home</span>
+        </button>
+        <button id="aboutBtn" class="navBtn navBtnQuiet" type="button" aria-label="About">About</button>
         <div id="statusBadge" class="badge warn">Loading…</div>
       </div>
     </div>
 
-    <!-- ── Landing / About card ─────────────────────────── -->
-    <div id="landingCard" class="card landing">
+    <!-- ── Mood-first hero (default landing) ────────────── -->
+    <section id="moodHero" class="moodHero" aria-label="Today's reflection and feelings">
+
+      <!-- Verse of the day -->
+      <article id="dailyAyah" class="dailyAyah" aria-label="Today's verse">
+        <div class="dailyLabel">Today's Reflection</div>
+        <div class="dailyArabic" dir="rtl" data-ph="…"></div>
+        <div class="dailyEnglish"></div>
+        <div class="dailyMeta">
+          <span class="dailyRef"></span>
+          <span class="dailySep" aria-hidden="true">·</span>
+          <span class="dailySurah"></span>
+        </div>
+      </article>
+
+      <div class="moodHeroTop">
+        <h1 class="moodHeadline">How are you <em>feeling</em> today?</h1>
+      </div>
+
+      <div id="moodCats"></div>
+    </section>
+
+    <!-- ── Landing / About card (legacy — kept for /about deep links) ─ -->
+    <div id="landingCard" class="card landing hidden">
       <div class="landingTop">
         <div>
           <div class="landingTitle">Your Qur'an Companion</div>
@@ -179,12 +212,15 @@
             <div id="detailView" class="detailView">
               <div class="anchorCard">
                 <div class="anchorIdRow">
+                  <button id="backBtn" class="backBtn hidden" type="button" aria-label="Back to previous ayah">
+                    <span class="backArrow" aria-hidden="true">←</span>
+                    <span class="backLabel"></span>
+                  </button>
                   <div class="anchorId" id="dAyahId"></div>
-                  <button id="wordsToggleBtn" class="btn ghost smallBtn" type="button">Words &amp; Roots</button>
                 </div>
                 <div class="anchorArabic" id="dArabic" dir="rtl"></div>
                 <div class="anchorEnglish" id="dEnglish"></div>
-                <div id="anchorWordsPanel" class="anchorWordsPanel hidden">
+                <div id="anchorWordsPanel" class="anchorWordsPanel">
                   <div class="anchorWordsSection">
                     <div class="anchorWordsLabel">Root Words</div>
                     <div id="dRoots" class="chipGroup"></div>
@@ -298,6 +334,7 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=20"></script>
+  <script src="assets/app.js?v=24"></script>
+  <script type="module" src="assets/motion.js?v=3"></script>
 </body>
 </html>
