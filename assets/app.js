@@ -1291,7 +1291,13 @@ function fmtScore(x) {
 }
 
 function showLanding(show) {
-  if (els.landingCard) els.landingCard.style.display = show ? "" : "none";
+  if (!els.landingCard) return;
+  if (show) {
+    els.landingCard.classList.remove("hidden");
+    els.landingCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    els.landingCard.classList.add("hidden");
+  }
 }
 
 function setDetailState(mode) {

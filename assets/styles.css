@@ -2961,3 +2961,53 @@ body.view-research .searchTrigger { display: none; }
 /* Make the original feelingsBtn redundant in mood view (its job IS the mood view) */
 body.view-mood .feelingsBtn { display: none; }
 
+
+/* ── Hero feature strip ─────────────────────────────────────── */
+.heroFeatures {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding: 24px 20px;
+  border-top: 1px solid var(--border);
+}
+.heroFeaturesPills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 760px;
+}
+.heroFeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.03);
+  font-size: 12px;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+.heroFeat:hover {
+  border-color: var(--accent-strong);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+.heroFeatIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+.heroStats {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: .3px;
+}
+.heroSearchBtn {
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--r-pill);
+}

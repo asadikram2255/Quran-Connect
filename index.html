@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=19" />
+  <link rel="stylesheet" href="assets/styles.css?v=20" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -83,6 +83,20 @@
       </div>
 
       <div id="moodCats"></div>
+
+      <!-- Feature strip — shows core capabilities below the mood categories -->
+      <div class="heroFeatures">
+        <div class="heroFeaturesPills">
+          <div class="heroFeat"><span class="heroFeatIcon">🔍</span><span>Search by concept, Arabic word, or Ayah ID</span></div>
+          <div class="heroFeat"><span class="heroFeatIcon">🔗</span><span>Meaning-based connections between ayat</span></div>
+          <div class="heroFeat"><span class="heroFeatIcon">📿</span><span>Shared Arabic root-word pairs</span></div>
+          <div class="heroFeat"><span class="heroFeatIcon">📖</span><span>Authentic Hadith for every ayah</span></div>
+          <div class="heroFeat"><span class="heroFeatIcon">✨</span><span>AI Smart Search with confidence scores</span></div>
+        </div>
+        <div class="heroStats">6,236 ayat · 43,000+ Hadith · 6 translations · 142 topics · 25 Prophets</div>
+        <button data-mood-action="search" class="btn heroSearchBtn" type="button">Explore the Qur'an →</button>
+      </div>
+
     </section>
 
     <!-- ── Landing / About card (legacy — kept for /about deep links) ─ -->
@@ -341,7 +355,7 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=27"></script>
+  <script src="assets/app.js?v=28"></script>
   <script type="module" src="assets/motion.js?v=3"></script>
 </body>
 </html>
