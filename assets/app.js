@@ -1651,6 +1651,7 @@ async function searchByArabicKeyword(raw) {
 }
 
 async function searchBySmart(raw) {
+  state._smartDiagnostic = null;   // clear any previous diagnostic flag
   const q = String(raw || "").trim();
   if (!q) return [];
 
@@ -1677,7 +1678,8 @@ async function searchBySmart(raw) {
   const items = Array.isArray(payload?.results) ? payload.results : [];
   if (!items.length) {
     if (payload?.debug === "qdrant_empty") {
-      setBadge("err", "Smart Search: Qdrant returned no results — collection may be empty or misconfigured. Check your Qdrant dashboard.");
+      state._smartDiagnostic = "qdrant_empty";
+      setBadge("err", "Qdrant collection is empty — re-upload vectors via scripts/02_upload_to_qdrant.py");
     }
     return [];
   }
@@ -2279,9 +2281,12 @@ async function runSearch() {
       clearSmartHint();
     }
 
-    let msg = `Found ${results.length} ayat`;
-    if (type === "smart" && state.lastSmartCached) msg += " · cached";
-    setBadge("ok", msg);
+    // Don't overwrite a diagnostic error badge set by searchBySmart
+    if (!state._smartDiagnostic) {
+      let msg = `Found ${results.length} ayat`;
+      if (type === "smart" && state.lastSmartCached) msg += " · cached";
+      setBadge("ok", msg);
+    }
 
     // Show timing breakdown for Smart Search in the hint bar
     if (type === "smart" && state.lastSmartTimings) {
