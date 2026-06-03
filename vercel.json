@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/search.js": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "data/embeddings/**"
     }
   },
   "headers": [

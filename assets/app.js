@@ -1677,9 +1677,10 @@ async function searchBySmart(raw) {
 
   const items = Array.isArray(payload?.results) ? payload.results : [];
   if (!items.length) {
-    if (payload?.debug === "qdrant_empty") {
-      state._smartDiagnostic = "qdrant_empty";
-      setBadge("err", "Qdrant collection is empty — re-upload vectors via scripts/02_upload_to_qdrant.py");
+    const dbg = payload?.debug;
+    if (dbg === "qdrant_empty" || dbg === "no_candidates") {
+      state._smartDiagnostic = dbg;
+      setBadge("err", "Smart Search: no results from embedding search — run scripts/export_embeddings.py and commit data/embeddings/");
     }
     return [];
   }
@@ -2291,11 +2292,12 @@ async function runSearch() {
     // Show timing breakdown for Smart Search in the hint bar
     if (type === "smart" && state.lastSmartTimings) {
       const t = state.lastSmartTimings;
-      const total = (t.embed || 0) + (t.qdrant || 0) + (t.rerank || 0);
+      const retrieve = t.local_search || t.qdrant || 0; // local_search in new API, qdrant in old
+      const total = (t.embed || 0) + retrieve + (t.rerank || 0);
       const parts = [];
-      if (t.embed)  parts.push(`embed ${(t.embed/1000).toFixed(1)}s`);
-      if (t.qdrant) parts.push(`retrieve ${(t.qdrant/1000).toFixed(1)}s`);
-      if (t.rerank) parts.push(`rerank ${(t.rerank/1000).toFixed(1)}s`);
+      if (t.embed)   parts.push(`embed ${(t.embed/1000).toFixed(1)}s`);
+      if (retrieve)  parts.push(`search ${(retrieve/1000).toFixed(1)}s`);
+      if (t.rerank)  parts.push(`rerank ${(t.rerank/1000).toFixed(1)}s`);
       const suffix = state.lastSmartCached ? " · served from cache" : "";
       if (els.searchHint) els.searchHint.textContent =
         `AI search: ${parts.join(" · ")} · total ${(total/1000).toFixed(1)}s${suffix}`;
