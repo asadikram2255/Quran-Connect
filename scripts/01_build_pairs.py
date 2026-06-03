@@ -82,9 +82,17 @@ QURAN_SEMANTIC_CANDIDATES = 200
 HADITH_SEMANTIC_CANDIDATES = 350
 
 # Retrieval model: multilingual, retrieval-focused, Arabic-friendly.
-# Lighter multilingual retrieval model that is much more feasible on CPU/16 GB RAM.
-# You can override with an environment variable if you want to experiment later.
-EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "Alibaba-NLP/gte-multilingual-base")
+#
+# Default: paraphrase-multilingual-mpnet-base-v2
+#   - 768-dim, ~278M params, no custom model code
+#   - Works on all Python versions including 3.13+
+#   - Good multilingual / Arabic quality
+#
+# Alternative (better quality, needs Python ≤ 3.12 due to custom rope code):
+#   EMBED_MODEL_NAME=Alibaba-NLP/gte-multilingual-base
+#
+# Override via env var for experimentation:
+EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
 EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "16"))
 VEC_PREVIEW_DIMS = 8
 MAX_SHARED_ITEMS_STORED = 8
