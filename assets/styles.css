@@ -69,6 +69,7 @@
   /* ── Reading sizes (user-adjustable via JS) ────── */
   --arabic-font-size:  24px;
   --english-font-size: 14px;
+  --tafsir-font-size:  14px;
 }
 
 /* ============================================================
@@ -2387,11 +2388,13 @@ input[dir="rtl"], textarea[dir="rtl"] {
 
 .tafsirHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
+.tafsirHeadLeft  { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tafsirHeadRight { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .tafsirLabel {
   font-size: 10px;
   font-weight: 700;
@@ -2443,9 +2446,11 @@ input[dir="rtl"], textarea[dir="rtl"] {
 }
 .tafsirBody {
   font-family: 'Fraunces', 'Newsreader', Georgia, serif;
+  font-size: var(--tafsir-font-size);
   font-weight: 400;
   letter-spacing: -.005em;
   white-space: pre-wrap;
+  line-height: 1.75;
 }
 .tafsirBody.urdu-text {
   font-family: 'Noto Nastaliq Urdu', serif !important;

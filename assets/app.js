@@ -113,6 +113,8 @@ const els = {
   fontDecBtn: document.getElementById("fontDecBtn"),
   engFontIncBtn: document.getElementById("engFontIncBtn"),
   engFontDecBtn: document.getElementById("engFontDecBtn"),
+  tafsirFontIncBtn: document.getElementById("tafsirFontIncBtn"),
+  tafsirFontDecBtn: document.getElementById("tafsirFontDecBtn"),
   transSel: document.getElementById("transSel"),
 
   feelingsBtn:        document.getElementById("feelingsBtn"),
@@ -167,6 +169,7 @@ const state = {
 
   arabicFontSize: 18,
   englishFontSize: 13,
+  tafsirFontSize: 14,
 
   rootToAyahIds: null,
 
@@ -2333,6 +2336,15 @@ if (els.engFontIncBtn) els.engFontIncBtn.onclick = () => {
 if (els.engFontDecBtn) els.engFontDecBtn.onclick = () => {
   state.englishFontSize = Math.max(10, state.englishFontSize - 1);
   document.documentElement.style.setProperty("--english-font-size", state.englishFontSize + "px");
+};
+
+if (els.tafsirFontIncBtn) els.tafsirFontIncBtn.onclick = () => {
+  state.tafsirFontSize = Math.min(26, state.tafsirFontSize + 1);
+  document.documentElement.style.setProperty("--tafsir-font-size", state.tafsirFontSize + "px");
+};
+if (els.tafsirFontDecBtn) els.tafsirFontDecBtn.onclick = () => {
+  state.tafsirFontSize = Math.max(10, state.tafsirFontSize - 1);
+  document.documentElement.style.setProperty("--tafsir-font-size", state.tafsirFontSize + "px");
 };
 
 // ── Back button (breadcrumb through drilled ayat) ───────────

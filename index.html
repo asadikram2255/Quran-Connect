@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=25" />
+  <link rel="stylesheet" href="assets/styles.css?v=26" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -322,8 +322,14 @@
                 <div class="anchorEnglish" id="dEnglish"></div>
                 <div id="tafsirBlock" class="tafsirBlock hidden" aria-label="Tafsir commentary">
                   <div class="tafsirHead">
-                    <div class="tafsirLabel"></div>
-                    <div class="tafsirTabs" role="tablist"></div>
+                    <div class="tafsirHeadLeft">
+                      <div class="tafsirLabel"></div>
+                      <div class="tafsirTabs" role="tablist"></div>
+                    </div>
+                    <div class="tafsirHeadRight">
+                      <button id="tafsirFontDecBtn" class="fontBtn" title="Decrease commentary text size" type="button">T−</button>
+                      <button id="tafsirFontIncBtn" class="fontBtn" title="Increase commentary text size" type="button">T+</button>
+                    </div>
                   </div>
                   <div class="tafsirText"></div>
                 </div>
@@ -441,7 +447,7 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=30"></script>
+  <script src="assets/app.js?v=31"></script>
   <script type="module" src="assets/motion.js?v=3"></script>
 </body>
 </html>
