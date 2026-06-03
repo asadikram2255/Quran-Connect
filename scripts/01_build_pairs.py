@@ -71,97 +71,6 @@ print("  HADITH_PATH    =", HADITH_PATH)
 print("  ROOT_WORDS_PATH=", ROOT_WORDS_PATH)
 print("  DATA_DIR       =", DATA_DIR)
 
-# ── Fingerprints (computed once, used throughout) ────────────────────────────
-print("\nComputing cache fingerprints…")
-_data_hash = sha256_obj({
-    "q_ar":  sha256_file(QURAN_AR_PATH),
-    "q_en":  sha256_file(QURAN_EN_PATH),
-    "h":     sha256_file(HADITH_PATH),
-    "roots": sha256_file(ROOT_WORDS_PATH),
-})
-_embed_hash = sha256_obj({
-    "data":       _data_hash,
-    "model":      EMBED_MODEL_NAME,
-    "lemmatizer": str(USE_LEMMATIZER),
-})
-_tfidf_hash = sha256_obj({
-    "embed":    _embed_hash,
-    "min_df":   TFIDF_MIN_DF,
-    "max_df":   TFIDF_MAX_DF,
-    "ngram":    TFIDF_NGRAM_MAX,
-})
-_config_hash = sha256_obj({
-    "MIN_QQ_CONTEXT_RAW":        MIN_QQ_CONTEXT_RAW,
-    "MIN_QH_CONTEXT_RAW":        MIN_QH_CONTEXT_RAW,
-    "MIN_QH_EMBED":              MIN_QH_EMBED,
-    "VERY_HIGH_QQ_EMBED":        VERY_HIGH_QQ_EMBED,
-    "VERY_HIGH_QH_EMBED":        VERY_HIGH_QH_EMBED,
-    "VERY_HIGH_RERANK":          VERY_HIGH_RERANK,
-    "MIN_QQ_SHARED_ROOTS":       MIN_QQ_SHARED_ROOTS,
-    "MIN_QH_SHARED_TOKENS":      MIN_QH_SHARED_TOKENS,
-    "TOPK_QURAN_SEMANTIC":       TOPK_QURAN_SEMANTIC,
-    "TOPK_HADITH_SEMANTIC":      TOPK_HADITH_SEMANTIC,
-    "TOPK_HADITH_LEXICAL":       TOPK_HADITH_LEXICAL,
-    "QURAN_SEMANTIC_CANDIDATES": QURAN_SEMANTIC_CANDIDATES,
-    "HADITH_SEMANTIC_CANDIDATES":HADITH_SEMANTIC_CANDIDATES,
-    "QURAN_PREFILTER_TOPN":      QURAN_PREFILTER_TOPN,
-    "HADITH_PREFILTER_TOPN":     HADITH_PREFILTER_TOPN,
-    "GENERIC_TOKEN_DF_RATIO":    GENERIC_TOKEN_DF_RATIO,
-    "GENERIC_ROOT_DF_RATIO":     GENERIC_ROOT_DF_RATIO,
-    "USE_RERANKER":              USE_RERANKER,
-    "RERANK_MODEL":              RERANK_MODEL_NAME if USE_RERANKER else None,
-})
-_pairs_hash = sha256_obj({"embed": _embed_hash, "cfg": _config_hash})
-
-_cs = _load_cache_state()
-
-# Level 1 — embeddings: skip model.encode() if inputs + model unchanged
-_embed_ok = (
-    not FORCE_EMBED
-    and _cs.get("embed_hash") == _embed_hash
-    and _all_exist(_cp("q_ar_emb.npy"), _cp("h_ar_emb.npy"),
-                   _cp("q_en_emb.npy"), _cp("h_en_emb.npy"))
-)
-# Level 2 — TF-IDF: skip vectorizer fit if inputs + tfidf params unchanged
-_tfidf_ok = (
-    not FORCE_PAIRS
-    and _cs.get("tfidf_hash") == _tfidf_hash
-    and _all_exist(_cp("q_tfidf.npz"), _cp("h_tfidf.npz"), _cp("vectorizer.pkl"))
-)
-# Level 3 — nearest-neighbour distances: skip kNN search if embeddings unchanged
-_nn_ok = (
-    not FORCE_PAIRS
-    and _cs.get("embed_hash") == _embed_hash
-    and _all_exist(_cp("dist_qq.npy"), _cp("ind_qq.npy"),
-                   _cp("dist_qh.npy"), _cp("ind_qh.npy"))
-)
-# Level 4 — pair shards: skip all scoring if embeddings + config unchanged
-_pairs_ok = (
-    not FORCE_PAIRS
-    and _cs.get("pairs_hash") == _pairs_hash
-    and os.path.exists(os.path.join(OUT_QURAN_PAIRS_DIR, "pairs_s001.json"))
-)
-# Level 5 — text shards: skip Quran + Hadith JSON writing if source data unchanged
-_shards_ok = (
-    not FORCE_SHARDS
-    and _cs.get("shards_hash") == _data_hash
-    and os.path.exists(os.path.join(OUT_QURAN_TEXT_DIR,  "quran_s001.json"))
-    and os.path.exists(os.path.join(OUT_HADITH_TEXT_DIR, "hadith_00001_01000.json"))
-)
-
-print(f"  data={_data_hash[:8]}  embed={_embed_hash[:8]}  "
-      f"tfidf={_tfidf_hash[:8]}  cfg={_config_hash[:8]}")
-print(f"  Cache hit? embed={_embed_ok}  tfidf={_tfidf_ok}  nn={_nn_ok}  "
-      f"pairs={_pairs_ok}  shards={_shards_ok}")
-if _pairs_ok and _shards_ok:
-    print("  ✓ All outputs up-to-date — only diagnostics + manifest will be refreshed.")
-elif _pairs_ok:
-    print("  ✓ Pairs up-to-date — will rewrite text shards only.")
-elif _embed_ok:
-    print("  ✓ Embeddings cached — skipping model.encode(). Re-scoring pairs.")
-else:
-    print("  Full rebuild required.")
-
 # ---------- Config ----------
 HADITH_SHARD_SIZE = 1000
 
@@ -571,6 +480,99 @@ def _save_cache_state(**kw):
 
 def _all_exist(*paths: str) -> bool:
     return all(os.path.exists(p) for p in paths)
+
+
+# ── Fingerprints (computed once, used throughout) ────────────────────────────
+# Must run AFTER: all config constants, all path constants, all helper functions.
+print("\nComputing cache fingerprints…")
+_data_hash = sha256_obj({
+    "q_ar":  sha256_file(QURAN_AR_PATH),
+    "q_en":  sha256_file(QURAN_EN_PATH),
+    "h":     sha256_file(HADITH_PATH),
+    "roots": sha256_file(ROOT_WORDS_PATH),
+})
+_embed_hash = sha256_obj({
+    "data":       _data_hash,
+    "model":      EMBED_MODEL_NAME,
+    "lemmatizer": str(USE_LEMMATIZER),
+})
+_tfidf_hash = sha256_obj({
+    "embed":  _embed_hash,
+    "min_df": TFIDF_MIN_DF,
+    "max_df": TFIDF_MAX_DF,
+    "ngram":  TFIDF_NGRAM_MAX,
+})
+_config_hash = sha256_obj({
+    "MIN_QQ_CONTEXT_RAW":         MIN_QQ_CONTEXT_RAW,
+    "MIN_QH_CONTEXT_RAW":         MIN_QH_CONTEXT_RAW,
+    "MIN_QH_EMBED":               MIN_QH_EMBED,
+    "VERY_HIGH_QQ_EMBED":         VERY_HIGH_QQ_EMBED,
+    "VERY_HIGH_QH_EMBED":         VERY_HIGH_QH_EMBED,
+    "VERY_HIGH_RERANK":           VERY_HIGH_RERANK,
+    "MIN_QQ_SHARED_ROOTS":        MIN_QQ_SHARED_ROOTS,
+    "MIN_QH_SHARED_TOKENS":       MIN_QH_SHARED_TOKENS,
+    "TOPK_QURAN_SEMANTIC":        TOPK_QURAN_SEMANTIC,
+    "TOPK_HADITH_SEMANTIC":       TOPK_HADITH_SEMANTIC,
+    "TOPK_HADITH_LEXICAL":        TOPK_HADITH_LEXICAL,
+    "QURAN_SEMANTIC_CANDIDATES":  QURAN_SEMANTIC_CANDIDATES,
+    "HADITH_SEMANTIC_CANDIDATES": HADITH_SEMANTIC_CANDIDATES,
+    "QURAN_PREFILTER_TOPN":       QURAN_PREFILTER_TOPN,
+    "HADITH_PREFILTER_TOPN":      HADITH_PREFILTER_TOPN,
+    "GENERIC_TOKEN_DF_RATIO":     GENERIC_TOKEN_DF_RATIO,
+    "GENERIC_ROOT_DF_RATIO":      GENERIC_ROOT_DF_RATIO,
+    "USE_RERANKER":               USE_RERANKER,
+    "RERANK_MODEL":               RERANK_MODEL_NAME if USE_RERANKER else None,
+})
+_pairs_hash = sha256_obj({"embed": _embed_hash, "cfg": _config_hash})
+
+_cs = _load_cache_state()
+
+# Level 1 — embeddings: skip model.encode() if inputs + model unchanged
+_embed_ok = (
+    not FORCE_EMBED
+    and _cs.get("embed_hash") == _embed_hash
+    and _all_exist(_cp("q_ar_emb.npy"), _cp("h_ar_emb.npy"),
+                   _cp("q_en_emb.npy"), _cp("h_en_emb.npy"))
+)
+# Level 2 — TF-IDF: skip vectorizer fit if inputs + tfidf params unchanged
+_tfidf_ok = (
+    not FORCE_PAIRS
+    and _cs.get("tfidf_hash") == _tfidf_hash
+    and _all_exist(_cp("q_tfidf.npz"), _cp("h_tfidf.npz"), _cp("vectorizer.pkl"))
+)
+# Level 3 — nearest-neighbour distances: skip kNN search if embeddings unchanged
+_nn_ok = (
+    not FORCE_PAIRS
+    and _cs.get("embed_hash") == _embed_hash
+    and _all_exist(_cp("dist_qq.npy"), _cp("ind_qq.npy"),
+                   _cp("dist_qh.npy"), _cp("ind_qh.npy"))
+)
+# Level 4 — pair shards: skip all scoring if embeddings + config unchanged
+_pairs_ok = (
+    not FORCE_PAIRS
+    and _cs.get("pairs_hash") == _pairs_hash
+    and os.path.exists(os.path.join(OUT_QURAN_PAIRS_DIR, "pairs_s001.json"))
+)
+# Level 5 — text shards: skip Quran + Hadith JSON writing if source data unchanged
+_shards_ok = (
+    not FORCE_SHARDS
+    and _cs.get("shards_hash") == _data_hash
+    and os.path.exists(os.path.join(OUT_QURAN_TEXT_DIR,  "quran_s001.json"))
+    and os.path.exists(os.path.join(OUT_HADITH_TEXT_DIR, "hadith_00001_01000.json"))
+)
+
+print(f"  data={_data_hash[:8]}  embed={_embed_hash[:8]}  "
+      f"tfidf={_tfidf_hash[:8]}  cfg={_config_hash[:8]}")
+print(f"  Cache hit? embed={_embed_ok}  tfidf={_tfidf_ok}  nn={_nn_ok}  "
+      f"pairs={_pairs_ok}  shards={_shards_ok}")
+if _pairs_ok and _shards_ok:
+    print("  ✓ All outputs up-to-date — only diagnostics + manifest will be refreshed.")
+elif _pairs_ok:
+    print("  ✓ Pairs up-to-date — will rewrite text shards only.")
+elif _embed_ok:
+    print("  ✓ Embeddings cached — skipping model.encode(). Re-scoring pairs.")
+else:
+    print("  Full rebuild required.")
 
 
 # ---------- Stopwords bootstrap ----------
