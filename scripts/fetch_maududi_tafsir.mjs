@@ -78,40 +78,61 @@ function stripHtml(s) {
 //   <p class="tr">(S:V) verse text<sup>N</sup> </p>
 //   <p class="nt">N. Commentary text for footnote N... </p>
 //
+// The site uses explicit <sup>N</sup> references inside the verse text to
+// link each footnote to its verse. We use those as the authoritative mapping,
+// not document position (which would mis-key footnotes that appear after
+// several verses in a block).
+//
 // Algorithm:
-//   Walk all <p class="tr"> and <p class="nt"> blocks in document order.
-//   Each "tr" sets the current verse key.
-//   Each "nt" appends its text to the current verse key.
-//   Multiple footnotes for the same verse are joined with double newline.
+//  Pass 1 — scan all <p class="tr"> blocks, extract verse key + every
+//            <sup>N</sup> reference → build fnNum→verseKey map.
+//  Pass 2 — scan all <p class="nt"> blocks, extract leading footnote number
+//            → look up verseKey in map → store text.
+//  Fallback — if no <sup> refs exist (rare short surahs with no footnotes),
+//             the result is simply empty for that surah, which is correct.
 
 function parseSurahHtml(html, surahNum) {
   const result = {};
 
-  // Collect all tr and nt paragraphs with their document positions
-  const elements = [];
-  const re = /<p class="(tr|nt)">([\s\S]*?)<\/p>/g;
+  // ── Pass 1: map footnote number → verse key ────────────────
+  const fnToVerse = new Map();
+  const trRe = /<p class="tr">([\s\S]*?)<\/p>/g;
   let m;
-  while ((m = re.exec(html)) !== null) {
-    elements.push({ type: m[1], pos: m.index, raw: m[2] });
+
+  while ((m = trRe.exec(html)) !== null) {
+    const raw = m[1];
+    // Verse reference — site uses (S:V) or [S:V] depending on surah
+    const vm = raw.match(/[(\[](\d+):(\d+)[)\]]/);
+    if (!vm) continue;
+    const verseKey = `${vm[1]}:${vm[2]}`;
+
+    // Every <sup>N</sup> inside this verse paragraph is a footnote reference
+    const supRe = /<sup>(\d+)<\/sup>/gi;
+    let sup;
+    while ((sup = supRe.exec(raw)) !== null) {
+      const fn = parseInt(sup[1], 10);
+      if (!fnToVerse.has(fn)) fnToVerse.set(fn, verseKey); // first occurrence wins
+    }
   }
 
-  let currentVerse = null;
+  // ── Pass 2: assign footnote text to verse key ───────────────
+  const ntRe = /<p class="nt">([\s\S]*?)<\/p>/g;
 
-  for (const el of elements) {
-    if (el.type === 'tr') {
-      // Extract verse reference — site uses (S:V) or [S:V] depending on surah
-      const vm = el.raw.match(/[(\[](\d+):(\d+)[)\]]/);
-      if (vm) {
-        currentVerse = `${vm[1]}:${vm[2]}`;
-      }
-    } else if (el.type === 'nt' && currentVerse) {
-      const text = stripHtml(el.raw);
-      if (text.length > 15) {
-        result[currentVerse] = result[currentVerse]
-          ? result[currentVerse] + '\n\n' + text
-          : text;
-      }
-    }
+  while ((m = ntRe.exec(html)) !== null) {
+    const text = stripHtml(m[1]);
+    if (text.length < 15) continue;
+
+    // Leading footnote number: "N." or "N " at the start of the stripped text
+    const fnMatch = text.match(/^(\d+)[.\s]/);
+    if (!fnMatch) continue;
+    const fn = parseInt(fnMatch[1], 10);
+
+    const verseKey = fnToVerse.get(fn);
+    if (!verseKey) continue; // footnote not referenced by any verse on this page
+
+    result[verseKey] = result[verseKey]
+      ? result[verseKey] + '\n\n' + text
+      : text;
   }
 
   return result;

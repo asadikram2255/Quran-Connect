@@ -2464,10 +2464,18 @@ input[dir="rtl"], textarea[dir="rtl"] {
 }
 
 .tafsirCovers {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-style: italic;
-  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  font-style: normal;
+  color: var(--warm);
+  background: var(--warm-soft);
+  border: 1px solid rgba(239,157,77,.22);
+  border-radius: var(--r-sm);
+  padding: 7px 11px;
+  margin-bottom: 12px;
+  line-height: 1.5;
   letter-spacing: .02em;
   font-variant-numeric: tabular-nums;
 }

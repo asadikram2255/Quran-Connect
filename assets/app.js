@@ -1565,12 +1565,12 @@ async function renderAnchorTafsir(ayahId) {
   const isUrdu = meta.lang === "ur";
   const safe   = escapeHtml(hit.text);
 
-  // If the commentary actually starts at an earlier ayah, tell the user.
-  // E.g. clicking 2:9 might surface 2:8's block — show "Covers 2:8 onward".
+  // If the commentary is from a different (earlier) ayah, show a clear notice.
+  // E.g. clicking 2:9 surfaces 2:8's block — "No separate note for 2:9; showing 2:8".
   const [surah] = String(ayahId).split(":");
   let note = "";
   if (hit.coversFrom !== hit.coversTo) {
-    note = `<div class="tafsirCovers">Commentary begins at ${escapeHtml(surah)}:${hit.coversFrom}</div>`;
+    note = `<div class="tafsirCovers">ℹ No separate commentary for ${escapeHtml(surah)}:${hit.coversTo} — showing nearest note from verse ${escapeHtml(surah)}:${hit.coversFrom}</div>`;
   }
 
   textEl.innerHTML = `
