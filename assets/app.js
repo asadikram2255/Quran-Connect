@@ -1675,7 +1675,12 @@ async function searchBySmart(raw) {
   }
 
   const items = Array.isArray(payload?.results) ? payload.results : [];
-  if (!items.length) return [];
+  if (!items.length) {
+    if (payload?.debug === "qdrant_empty") {
+      setBadge("err", "Smart Search: Qdrant returned no results — collection may be empty or misconfigured. Check your Qdrant dashboard.");
+    }
+    return [];
+  }
 
   // Make sure the surah shards are loaded so we can return full ayah records
   // (with roots/tokens/etc) consistent with what the rest of the UI expects.

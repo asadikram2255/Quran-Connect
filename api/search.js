@@ -40,7 +40,7 @@ function normalizeQuery(text, lang) {
 
 function cacheKey(lang, query) {
   const h = crypto.createHash("sha1").update(`${lang}:${query}`).digest("hex");
-  return `qs:v1:${h}`;
+  return `qs:v2:${h}`;  // bump version to bust any stale cached results
 }
 
 function l2normalize(vec) {
@@ -189,8 +189,9 @@ export default async function handler(req, res) {
     const t2 = Date.now();
 
     if (candidates.length === 0) {
-      const empty = { query, lang, results: [], timings_ms: { embed: t1 - t0, qdrant: t2 - t1 } };
-      try { await kv.set(key, empty, { ex: CACHE_TTL_SECONDS }); } catch {}
+      console.warn(`Qdrant returned 0 candidates for query="${query}" vector="${vectorName}" collection="${COLLECTION}"`);
+      const empty = { query, lang, results: [], debug: "qdrant_empty", timings_ms: { embed: t1 - t0, qdrant: t2 - t1 } };
+      // Do NOT cache empty Qdrant results — they may be transient (collection loading, etc.)
       return res.status(200).json({ ...empty, cached: false });
     }
 
