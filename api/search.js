@@ -1,60 +1,94 @@
 // POST /api/search  { query: string, lang?: "en" | "ar" }
 //
-// Two-stage retrieval:
-//   1. Embed query with Alibaba-NLP/gte-multilingual-base via HF Inference API
-//   2. Qdrant search on named vector ("en" or "ar_lemma") → Top 50
-//   3. Rerank with BAAI/bge-reranker-v2-m3 on (query, english_text) pairs
-//   4. Cache result in Vercel KV (30-day TTL) keyed by sha1(lang:normalized_query)
+// Self-hosted two-stage retrieval — no Qdrant required:
+//   1. Embed query with paraphrase-multilingual-mpnet-base-v2 via HF Inference API
+//   2. Cosine similarity against pre-computed embeddings in data/embeddings/
+//      (ar_emb.bin for Arabic queries, en_emb.bin for English queries)
+//   3. Rerank top-50 with BAAI/bge-reranker-v2-m3
+//   4. Return top 10
+//
+// The embedding files are committed to the repo and bundled with the Vercel
+// function — no external vector database needed, no monthly expiry.
 
-import { kv } from "@vercel/kv";
-import crypto from "node:crypto";
+import fs   from "node:fs";
+import path from "node:path";
 
-const QDRANT_URL = process.env.QDRANT_URL;
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
 const HF_TOKEN = process.env.HF_TOKEN;
 
-const COLLECTION = process.env.QDRANT_COLLECTION || "quran_verses";
-const EMBED_MODEL = "BAAI/bge-m3";
+// Must match the model used by 01_build_pairs.py (paraphrase-multilingual-mpnet-base-v2)
+// so that query vectors and corpus vectors are in the same space.
+const EMBED_MODEL  = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2";
 const RERANK_MODEL = "BAAI/bge-reranker-v2-m3";
-
-const HF_BASE = "https://router.huggingface.co/hf-inference/models";
+const HF_BASE      = "https://router.huggingface.co/hf-inference/models";
 
 const TOPK_RETRIEVE = 50;
-const TOPK_RETURN = 10;
-const CACHE_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const TOPK_RETURN   = 10;
 
-// ── helpers ─────────────────────────────────────────────────────
+// ── Embedding files (committed to repo, bundled with Vercel function) ─────
+const EMB_DIR   = path.join(process.cwd(), "data", "embeddings");
+const AR_PATH   = path.join(EMB_DIR, "ar_emb.bin");
+const EN_PATH   = path.join(EMB_DIR, "en_emb.bin");
+const META_PATH = path.join(EMB_DIR, "meta.json");
+
+// Module-level cache — loaded once per warm serverless instance
+let _arEmb = null;
+let _enEmb = null;
+let _meta  = null;
+
+function loadEmbeddings() {
+  if (_meta) return; // already loaded
+  _meta = JSON.parse(fs.readFileSync(META_PATH, "utf8"));
+  const { n, dims } = _meta;
+  const arBuf = fs.readFileSync(AR_PATH);
+  const enBuf = fs.readFileSync(EN_PATH);
+  // Slice to get a correctly-aligned ArrayBuffer for Float32Array
+  _arEmb = new Float32Array(arBuf.buffer.slice(arBuf.byteOffset, arBuf.byteOffset + n * dims * 4));
+  _enEmb = new Float32Array(enBuf.buffer.slice(enBuf.byteOffset, enBuf.byteOffset + n * dims * 4));
+}
+
+function localSearch(queryVec, useArabic, limit) {
+  loadEmbeddings();
+  const { ids, en, ar, dims, n } = _meta;
+  const corpus = useArabic ? _arEmb : _enEmb;
+
+  // Dot-product (embeddings are L2-normalised so dot = cosine similarity)
+  const scores = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let dot = 0;
+    const off = i * dims;
+    for (let j = 0; j < dims; j++) dot += corpus[off + j] * queryVec[j];
+    scores[i] = dot;
+  }
+
+  // Partial sort — get top `limit` indices
+  const indices = Array.from({ length: n }, (_, i) => i);
+  indices.sort((a, b) => scores[b] - scores[a]);
+
+  return indices.slice(0, limit).map(i => ({
+    payload: {
+      ayah_id:      ids[i],
+      surah:        parseInt(ids[i].split(":")[0]),
+      ayah:         parseInt(ids[i].split(":")[1]),
+      arabic_text:  ar[i],
+      english_text: en[i],
+      roots:        [],
+    },
+    score: scores[i],
+  }));
+}
+
+// ── helpers ──────────────────────────────────────────────────────
 
 const ARABIC_RE = /[؀-ۿ]/;
-
-function detectLang(text) {
-  return ARABIC_RE.test(text) ? "ar" : "en";
-}
+function detectLang(text) { return ARABIC_RE.test(text) ? "ar" : "en"; }
 
 function normalizeQuery(text, lang) {
   let t = String(text || "").trim();
   if (lang === "en") t = t.toLowerCase();
-  t = t.replace(/\s+/g, " ");
-  return t;
+  return t.replace(/\s+/g, " ");
 }
 
-function cacheKey(lang, query) {
-  const h = crypto.createHash("sha1").update(`${lang}:${query}`).digest("hex");
-  return `qs:v2:${h}`;  // bump version to bust any stale cached results
-}
-
-function l2normalize(vec) {
-  let s = 0;
-  for (const x of vec) s += x * x;
-  const n = Math.sqrt(s) || 1;
-  return vec.map((x) => x / n);
-}
-
-// bge-reranker-v2-m3 returns raw logits (unbounded). Apply sigmoid so scores
-// are always in [0, 1] and the frontend confidence badges make sense.
-function sigmoid(x) {
-  return 1 / (1 + Math.exp(-x));
-}
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
 
 async function fetchJson(url, options, label) {
   const res = await fetch(url, options);
@@ -65,181 +99,119 @@ async function fetchJson(url, options, label) {
   return res.json();
 }
 
-// ── HF Inference API ────────────────────────────────────────────
-
 async function embedQuery(text) {
   const data = await fetchJson(
     `${HF_BASE}/${EMBED_MODEL}/pipeline/feature-extraction`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${HF_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
     },
     "HF embed"
   );
-  // bge-m3 returns a flat 1024-dim vector for single-string input.
-  // L2-normalize to match the index-side normalize_embeddings=True.
+  // Returns flat 768-dim vector for single-string input
   const vec = Array.isArray(data[0]) ? data[0] : data;
-  return l2normalize(vec);
+  // L2-normalise to match normalize_embeddings=True in the build script
+  let s = 0;
+  for (const x of vec) s += x * x;
+  const norm = Math.sqrt(s) || 1;
+  return new Float32Array(vec.map(x => x / norm));
 }
 
 async function rerankPairs(query, documents) {
-  // HF text-classification pipeline for cross-encoder rerankers expects
-  // an array of {text, text_pair} objects. Returns nested arrays of
-  // {label, score}. Score is the relevance (higher = more relevant).
   const data = await fetchJson(
     `${HF_BASE}/${RERANK_MODEL}`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${HF_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        inputs: documents.map((d) => ({ text: query, text_pair: d })),
+        inputs: documents.map(d => ({ text: query, text_pair: d })),
         options: { wait_for_model: true },
       }),
     },
     "HF rerank"
   );
-  // HF returns one result per input pair: [{label,score}, {label,score}, ...]
-  // Each element may itself be an array (nested) — unwrap and pick highest score.
-  // Scores are raw logits → apply sigmoid to get [0,1] confidence.
-  return data.map((entry) => {
+  return data.map(entry => {
     const item = Array.isArray(entry) ? entry[0] : entry;
-    const raw = typeof item?.score === "number" ? item.score : 0;
+    const raw  = typeof item?.score === "number" ? item.score : 0;
     return sigmoid(raw);
   });
 }
 
-// ── Qdrant ──────────────────────────────────────────────────────
-
-async function qdrantSearch(vector, vectorName, limit) {
-  const data = await fetchJson(
-    `${QDRANT_URL}/collections/${COLLECTION}/points/search`,
-    {
-      method: "POST",
-      headers: {
-        "api-key": QDRANT_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        vector: { name: vectorName, vector },
-        limit,
-        with_payload: true,
-      }),
-    },
-    "Qdrant search"
-  );
-  return data.result || [];
-}
-
-// ── handler ─────────────────────────────────────────────────────
+// ── handler ──────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin",  "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-  if (!QDRANT_URL || !QDRANT_API_KEY || !HF_TOKEN) {
-    return res.status(500).json({ error: "Missing env vars (QDRANT_URL, QDRANT_API_KEY, HF_TOKEN)" });
-  }
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
+  if (!HF_TOKEN) return res.status(500).json({ error: "Missing env var: HF_TOKEN" });
 
   let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch { body = {}; }
-  }
+  if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
   const rawQuery = (body?.query ?? "").toString();
-  if (!rawQuery.trim()) {
-    return res.status(400).json({ error: "Missing 'query'" });
-  }
+  if (!rawQuery.trim()) return res.status(400).json({ error: "Missing 'query'" });
 
-  const lang = body?.lang === "ar" || body?.lang === "en" ? body.lang : detectLang(rawQuery);
+  const lang  = body?.lang === "ar" || body?.lang === "en" ? body.lang : detectLang(rawQuery);
   const query = normalizeQuery(rawQuery, lang);
-  const vectorName = lang === "ar" ? "ar_lemma" : "en";
-
-  // 1. Cache check
-  const key = cacheKey(lang, query);
-  try {
-    const cached = await kv.get(key);
-    if (cached) {
-      return res.status(200).json({ ...cached, cached: true });
-    }
-  } catch (e) {
-    // Cache miss or KV not configured — continue.
-    console.warn("KV read failed:", e.message);
-  }
+  const useAr = lang === "ar";
 
   try {
-    // 2. Embed
-    const t0 = Date.now();
+    // 1. Embed query with HF
+    const t0   = Date.now();
     const qvec = await embedQuery(query);
-    const t1 = Date.now();
+    const t1   = Date.now();
 
-    // 3. Qdrant top-K candidates
-    const candidates = await qdrantSearch(qvec, vectorName, TOPK_RETRIEVE);
+    // 2. Local cosine similarity → top-50 candidates (in-process, ~5 ms)
+    const candidates = localSearch(qvec, useAr, TOPK_RETRIEVE);
     const t2 = Date.now();
 
     if (candidates.length === 0) {
-      console.warn(`Qdrant returned 0 candidates for query="${query}" vector="${vectorName}" collection="${COLLECTION}"`);
-      const empty = { query, lang, results: [], debug: "qdrant_empty", timings_ms: { embed: t1 - t0, qdrant: t2 - t1 } };
-      // Do NOT cache empty Qdrant results — they may be transient (collection loading, etc.)
-      return res.status(200).json({ ...empty, cached: false });
+      return res.status(200).json({
+        query, lang, results: [],
+        debug: "no_candidates",
+        cached: false,
+      });
     }
 
-    // 4. Rerank on English text (cross-encoder works best with reader-language text)
-    const documents = candidates.map((c) => c.payload?.english_text || c.payload?.arabic_text || "");
+    // 3. Rerank top-50 on English text
+    const documents = candidates.map(c => c.payload?.english_text || c.payload?.arabic_text || "");
     let rerankScores = [];
     try {
       rerankScores = await rerankPairs(query, documents);
     } catch (e) {
-      // If reranker fails, fall back to embed order.
-      console.warn("Rerank failed, falling back to embedding scores:", e.message);
-      rerankScores = candidates.map((c) => c.score || 0);
+      console.warn("Rerank failed — falling back to embed order:", e.message);
+      rerankScores = candidates.map(c => c.score || 0);
     }
     const t3 = Date.now();
 
     const merged = candidates.map((c, i) => ({
-      ayah_id: c.payload?.ayah_id,
-      surah: c.payload?.surah,
-      ayah: c.payload?.ayah,
-      arabic_text: c.payload?.arabic_text,
-      english_text: c.payload?.english_text,
-      roots: c.payload?.roots || [],
-      embed_score: typeof c.score === "number" ? c.score : null,
-      rerank_score: typeof rerankScores[i] === "number" ? rerankScores[i] : null,
+      ayah_id:      c.payload.ayah_id,
+      surah:        c.payload.surah,
+      ayah:         c.payload.ayah,
+      arabic_text:  c.payload.arabic_text,
+      english_text: c.payload.english_text,
+      roots:        c.payload.roots || [],
+      embed_score:  c.score,
+      rerank_score: rerankScores[i] ?? null,
     }));
 
     merged.sort((a, b) => (b.rerank_score ?? -1) - (a.rerank_score ?? -1));
     const results = merged.slice(0, TOPK_RETURN);
 
-    const payload = {
-      query,
-      lang,
-      vector_used: vectorName,
+    return res.status(200).json({
+      query, lang,
+      embed_model: EMBED_MODEL,
       results,
       timings_ms: {
-        embed: t1 - t0,
-        qdrant: t2 - t1,
-        rerank: t3 - t2,
+        embed:        t1 - t0,
+        local_search: t2 - t1,
+        rerank:       t3 - t2,
       },
-    };
+      cached: false,
+    });
 
-    try {
-      await kv.set(key, payload, { ex: CACHE_TTL_SECONDS });
-    } catch (e) {
-      console.warn("KV write failed:", e.message);
-    }
-
-    return res.status(200).json({ ...payload, cached: false });
   } catch (e) {
     console.error("Search error:", e);
     return res.status(500).json({ error: e.message || String(e) });
