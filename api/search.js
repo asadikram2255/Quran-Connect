@@ -12,6 +12,7 @@
 
 import fs   from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const HF_TOKEN = process.env.HF_TOKEN;
 
@@ -25,25 +26,42 @@ const TOPK_RETRIEVE = 50;
 const TOPK_RETURN   = 10;
 
 // ── Embedding files (committed to repo, bundled with Vercel function) ─────
-const EMB_DIR   = path.join(process.cwd(), "data", "embeddings");
-const AR_PATH   = path.join(EMB_DIR, "ar_emb.bin");
-const EN_PATH   = path.join(EMB_DIR, "en_emb.bin");
-const META_PATH = path.join(EMB_DIR, "meta.json");
+// Vercel path resolution is tricky: process.cwd() varies between builds.
+// Try multiple strategies, use the first that has our meta.json.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const _candidates = [
+  path.join(process.cwd(), "data", "embeddings"),
+  path.join(__dirname, "..", "data", "embeddings"),
+  path.join(__dirname, "data", "embeddings"),
+  "/var/task/data/embeddings",
+];
+const EMB_DIR = _candidates.find(d => fs.existsSync(path.join(d, "meta.json"))) || _candidates[0];
 
 // Module-level cache — loaded once per warm serverless instance
 let _arEmb = null;
 let _enEmb = null;
 let _meta  = null;
+let _loadError = null;
 
 function loadEmbeddings() {
-  if (_meta) return; // already loaded
-  _meta = JSON.parse(fs.readFileSync(META_PATH, "utf8"));
-  const { n, dims } = _meta;
-  const arBuf = fs.readFileSync(AR_PATH);
-  const enBuf = fs.readFileSync(EN_PATH);
-  // Slice to get a correctly-aligned ArrayBuffer for Float32Array
-  _arEmb = new Float32Array(arBuf.buffer.slice(arBuf.byteOffset, arBuf.byteOffset + n * dims * 4));
-  _enEmb = new Float32Array(enBuf.buffer.slice(enBuf.byteOffset, enBuf.byteOffset + n * dims * 4));
+  if (_meta) return;
+  if (_loadError) throw _loadError;
+  try {
+    const metaPath = path.join(EMB_DIR, "meta.json");
+    if (!fs.existsSync(metaPath)) {
+      throw new Error(`Embedding files not found. Tried: ${_candidates.join(", ")}. Run scripts/export_embeddings.py and commit data/embeddings/.`);
+    }
+    _meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+    const { n, dims } = _meta;
+    const arBuf = fs.readFileSync(path.join(EMB_DIR, "ar_emb.bin"));
+    const enBuf = fs.readFileSync(path.join(EMB_DIR, "en_emb.bin"));
+    _arEmb = new Float32Array(arBuf.buffer.slice(arBuf.byteOffset, arBuf.byteOffset + n * dims * 4));
+    _enEmb = new Float32Array(enBuf.buffer.slice(enBuf.byteOffset, enBuf.byteOffset + n * dims * 4));
+    console.log(`Loaded embeddings: ${n} vectors × ${dims} dims from ${EMB_DIR}`);
+  } catch (e) {
+    _loadError = e;
+    throw e;
+  }
 }
 
 function localSearch(queryVec, useArabic, limit) {
@@ -147,6 +165,11 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
   if (!HF_TOKEN) return res.status(500).json({ error: "Missing env var: HF_TOKEN" });
+
+  // Pre-flight: make sure embeddings are loadable
+  try { loadEmbeddings(); } catch (e) {
+    return res.status(500).json({ error: "Embedding load failed: " + e.message, embDir: EMB_DIR });
+  }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }

@@ -1671,7 +1671,8 @@ async function searchBySmart(raw) {
     }
     payload = await res.json();
   } catch (err) {
-    setBadge("err", "Smart Search failed: " + (err.message || err).slice(0, 120));
+    state._smartDiagnostic = "api_error";
+    setBadge("err", "Smart Search: " + (err.message || err).slice(0, 160));
     return [];
   }
 
