@@ -71,7 +71,7 @@ print("  DATA_DIR       =", DATA_DIR)
 # ---------- Config ----------
 HADITH_SHARD_SIZE = 1000
 
-TOPK_QURAN_SEMANTIC = 20
+TOPK_QURAN_SEMANTIC = 25   # raised from 20 → gives the frontend MIN_SEM_SCORE filter more to work with
 TOPK_HADITH_SEMANTIC = 50
 TOPK_HADITH_LEXICAL = 50
 
@@ -102,11 +102,11 @@ GENERIC_TOKEN_DF_RATIO = 0.05
 GENERIC_ROOT_DF_RATIO = 0.04
 MIN_QQ_SHARED_ROOTS = 2
 MIN_QH_SHARED_TOKENS = 1
-MIN_QQ_CONTEXT_RAW = 0.33
+MIN_QQ_CONTEXT_RAW = 0.30  # was 0.33 — looser floor lets valid low-score pairs through
 MIN_QH_CONTEXT_RAW = 0.28
 MIN_QH_EMBED = 0.40
-VERY_HIGH_QQ_EMBED = 0.78
-VERY_HIGH_QH_EMBED = 0.68
+VERY_HIGH_QQ_EMBED = 0.74  # was 0.78 — lets synonym/paraphrase pairs (no shared roots) survive
+VERY_HIGH_QH_EMBED = 0.65  # was 0.68 — slightly more lenient Quran-Hadith override
 VERY_HIGH_RERANK = 0.72
 
 # ---------- Helpers ----------
@@ -753,11 +753,13 @@ def rerank_quran_quran(i: int):
         meaningful_lemma_weight = score_shared_terms(meaningful_lemmas, lemma_idf)
 
         length_ratio = min(q_lemma_lens[i], q_lemma_lens[j]) / max(1, max(q_lemma_lens[i], q_lemma_lens[j]))
-        generic_pen = (
+        # Cap total generic penalty at 0.35 — without a cap, three dimensions × 0.25 each
+        # can stack to 0.75 and erase otherwise-valid pairs from the results.
+        generic_pen = min(0.35, (
             diversity_penalty(shared_tok, generic_tokens) +
             diversity_penalty(shared_lemmas, generic_lemmas) +
             diversity_penalty(shared_roots, generic_roots)
-        )
+        ))
 
         semantic_core = minmax01(embed_sim, 0.48, 0.92)
         tfidf_core = minmax01(float(tfidf_sim), 0.03, 0.55)
@@ -823,19 +825,37 @@ def rerank_quran_quran(i: int):
     for item in provisional:
         rerank_score = rerank_scores.get(item["j"], 0.0)
         rerank_core = minmax01(rerank_score, 0.45, 0.92) if reranker is not None else 0.0
-        raw = (
-            0.20 * item["semantic_core"] +
-            0.18 * item["tfidf_core"] +
-            0.10 * rerank_core +
-            0.14 * item["lemma_core"] +
-            0.08 * item["lemma_recall_core"] +
-            0.16 * item["root_core"] +
-            0.06 * item["root_recall_core"] +
-            0.03 * item["token_core"] +
-            0.02 * item["token_recall_core"] +
-            0.02 * item["len_core"] +
-            0.01 * item["support_bonus"]
-        )
+
+        if reranker is not None:
+            # Full formula with reranker — weights sum to 1.00
+            raw = (
+                0.20 * item["semantic_core"] +
+                0.18 * item["tfidf_core"] +
+                0.10 * rerank_core +
+                0.14 * item["lemma_core"] +
+                0.08 * item["lemma_recall_core"] +
+                0.16 * item["root_core"] +
+                0.06 * item["root_recall_core"] +
+                0.03 * item["token_core"] +
+                0.02 * item["token_recall_core"] +
+                0.02 * item["len_core"] +
+                0.01 * item["support_bonus"]
+            )
+        else:
+            # Reranker disabled — redistribute its 0.10 weight proportionally
+            # so the formula still sums to 1.00 and calibration bounds stay valid.
+            raw = (
+                0.22 * item["semantic_core"] +
+                0.20 * item["tfidf_core"] +
+                0.16 * item["lemma_core"] +
+                0.09 * item["lemma_recall_core"] +
+                0.18 * item["root_core"] +
+                0.07 * item["root_recall_core"] +
+                0.03 * item["token_core"] +
+                0.02 * item["token_recall_core"] +
+                0.02 * item["len_core"] +
+                0.01 * item["support_bonus"]
+            )
 
         if not item["shared_roots"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QQ_EMBED and item["tfidf_sim"] < 0.22:
             continue
@@ -890,7 +910,8 @@ def rerank_quran_hadith(i: int):
         filtered_lemma_inter = score_shared_terms(filtered_lemmas, lemma_idf)
 
         length_ratio = min(q_lemma_lens[i], h_lemma_lens[j]) / max(1, max(q_lemma_lens[i], h_lemma_lens[j]))
-        generic_pen = diversity_penalty(shared_tok, generic_tokens_all) + diversity_penalty(shared_lemmas, generic_lemmas_all)
+        # Cap at 0.25 — two dimensions × 0.25 could stack to 0.50 without the cap.
+        generic_pen = min(0.25, diversity_penalty(shared_tok, generic_tokens_all) + diversity_penalty(shared_lemmas, generic_lemmas_all))
         support_bonus = minmax01(0.55 * filtered_tok_inter + 1.00 * filtered_lemma_inter, 0.0, 9.0)
 
         semantic_core = minmax01(embed_sim, 0.40, 0.92)
@@ -948,17 +969,33 @@ def rerank_quran_hadith(i: int):
     for item in provisional:
         rerank_score = rerank_scores.get(item["j"], 0.0)
         rerank_core = minmax01(rerank_score, 0.44, 0.92) if reranker is not None else 0.0
-        raw = (
-            0.22 * item["semantic_core"] +
-            0.23 * item["tfidf_core"] +
-            0.20 * rerank_core +
-            0.11 * item["lemma_core"] +
-            0.05 * item["lemma_recall_core"] +
-            0.05 * item["token_core"] +
-            0.04 * item["token_recall_core"] +
-            0.07 * item["support_bonus"] +
-            0.03 * item["len_core"]
-        )
+
+        if reranker is not None:
+            # Full formula with reranker — weights sum to 1.00
+            raw = (
+                0.22 * item["semantic_core"] +
+                0.23 * item["tfidf_core"] +
+                0.20 * rerank_core +
+                0.11 * item["lemma_core"] +
+                0.05 * item["lemma_recall_core"] +
+                0.05 * item["token_core"] +
+                0.04 * item["token_recall_core"] +
+                0.07 * item["support_bonus"] +
+                0.03 * item["len_core"]
+            )
+        else:
+            # Reranker disabled — redistribute its 0.20 weight proportionally
+            # so the formula sums to 1.00 and scores span the full calibration range.
+            raw = (
+                0.28 * item["semantic_core"] +
+                0.29 * item["tfidf_core"] +
+                0.14 * item["lemma_core"] +
+                0.06 * item["lemma_recall_core"] +
+                0.06 * item["token_core"] +
+                0.05 * item["token_recall_core"] +
+                0.09 * item["support_bonus"] +
+                0.03 * item["len_core"]
+            )
 
         if not item["filtered_shared"] and rerank_score < VERY_HIGH_RERANK and item["embed_sim"] < VERY_HIGH_QH_EMBED and item["tfidf_sim"] < 0.15:
             continue
@@ -1024,13 +1061,25 @@ def quran_root_pairs_all_with_2plus(i: int):
 
         other_roots = q_root_sets[j]
         shared, _, _, recall, jacc = weighted_overlap(base_roots, other_roots, root_idf)
+
+        # Require at least one NON-GENERIC shared root so pairs connected only
+        # via very common roots (e.g. high-frequency religious vocabulary that
+        # appears in hundreds of ayat) are excluded.
+        meaningful_shared = {r for r in shared if r not in generic_roots}
+        if not meaningful_shared:
+            continue
+
         raw = (
             0.55 * minmax01(jacc, 0.06, 0.70) +
             0.30 * minmax01(recall, 0.12, 0.95) +
             0.15 * minmax01(inter_count, 2.0, 7.0)
         )
         score = calibrated_percentage(raw, 0.10, 0.92, power=1.08)
-        display_shared = sorted(list(shared), key=lambda r: (-root_idf.get(r, 1.0), r))[:MAX_SHARED_ITEMS_STORED]
+        # Display: prefer non-generic roots first, ranked by IDF descending
+        display_shared = sorted(
+            list(meaningful_shared) + [r for r in shared if r in generic_roots],
+            key=lambda r: (r in generic_roots, -root_idf.get(r, 1.0), r)
+        )[:MAX_SHARED_ITEMS_STORED]
 
         out.append({
             "id": q_ids[j],
@@ -1039,7 +1088,9 @@ def quran_root_pairs_all_with_2plus(i: int):
             "intersection": int(inter_count),
         })
 
-    out.sort(key=lambda x: (-x["intersection"], -x["score"], x["id"]))
+    # Sort by score descending (matches frontend re-sort order), break ties by intersection.
+    # Old order was (-intersection, -score) which disagreed with the frontend's (-score) sort.
+    out.sort(key=lambda x: (-x["score"], -x["intersection"], x["id"]))
     return out
 
 
@@ -1048,8 +1099,14 @@ def hadith_lexical_pairs(i: int):
     if not base_tokens:
         return []
 
+    # Only count non-generic tokens toward the qualification threshold.
+    # Without this filter, a Hadith sharing only common words (قال, هذا, …)
+    # with an Ayah would qualify with inter_count ≥ 1, flooding results
+    # with spurious low-quality lexical matches.
+    base_meaningful = {tok for tok in base_tokens if tok not in generic_tokens_all}
+
     counts = Counter()
-    for tok in base_tokens:
+    for tok in base_meaningful:
         for j in post_h_tokens.get(tok, []):
             counts[j] += 1
 
@@ -1098,11 +1155,24 @@ diagnostics = {
     "arabic_lemmatizer_enabled": HAS_QALSADI,
     "arabic_lemmatizer_name": ARABIC_LEMMATIZER_NAME if HAS_QALSADI else None,
     "reranker_model": RERANK_MODEL_NAME if reranker is not None else None,
+    "reranker_enabled": reranker is not None,
     "avg_quran_semantic_pairs": round(float(np.mean([len(v) for v in semantic_pairs_quran.values()])), 3),
     "avg_hadith_semantic_pairs": round(float(np.mean([len(v) for v in semantic_pairs_hadith.values()])), 3),
-    "min_qq_context_raw": MIN_QQ_CONTEXT_RAW,
-    "min_qh_context_raw": MIN_QH_CONTEXT_RAW,
-    "min_qh_embed": MIN_QH_EMBED,
+    "avg_quran_lexical_pairs": round(float(np.mean([len(v) for v in lex_pairs_quran.values()])), 3),
+    "avg_hadith_lexical_pairs": round(float(np.mean([len(v) for v in lex_pairs_hadith.values()])), 3),
+    "thresholds": {
+        "min_qq_context_raw": MIN_QQ_CONTEXT_RAW,
+        "min_qh_context_raw": MIN_QH_CONTEXT_RAW,
+        "min_qh_embed": MIN_QH_EMBED,
+        "very_high_qq_embed": VERY_HIGH_QQ_EMBED,
+        "very_high_qh_embed": VERY_HIGH_QH_EMBED,
+        "very_high_rerank": VERY_HIGH_RERANK,
+        "min_qq_shared_roots": MIN_QQ_SHARED_ROOTS,
+        "min_qh_shared_tokens": MIN_QH_SHARED_TOKENS,
+        "topk_quran_semantic": TOPK_QURAN_SEMANTIC,
+        "topk_hadith_semantic": TOPK_HADITH_SEMANTIC,
+        "topk_hadith_lexical": TOPK_HADITH_LEXICAL,
+    },
     "tfidf": {
         "min_df": TFIDF_MIN_DF,
         "max_df": TFIDF_MAX_DF,
