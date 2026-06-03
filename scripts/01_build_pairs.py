@@ -3,11 +3,14 @@ import sys
 import re
 import json
 import math
+import hashlib
+import pickle
 from collections import defaultdict, Counter
 from functools import lru_cache
 
 import numpy as np
 import pandas as pd
+from scipy.sparse import save_npz, load_npz
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
@@ -68,6 +71,97 @@ print("  HADITH_PATH    =", HADITH_PATH)
 print("  ROOT_WORDS_PATH=", ROOT_WORDS_PATH)
 print("  DATA_DIR       =", DATA_DIR)
 
+# ── Fingerprints (computed once, used throughout) ────────────────────────────
+print("\nComputing cache fingerprints…")
+_data_hash = sha256_obj({
+    "q_ar":  sha256_file(QURAN_AR_PATH),
+    "q_en":  sha256_file(QURAN_EN_PATH),
+    "h":     sha256_file(HADITH_PATH),
+    "roots": sha256_file(ROOT_WORDS_PATH),
+})
+_embed_hash = sha256_obj({
+    "data":       _data_hash,
+    "model":      EMBED_MODEL_NAME,
+    "lemmatizer": str(USE_LEMMATIZER),
+})
+_tfidf_hash = sha256_obj({
+    "embed":    _embed_hash,
+    "min_df":   TFIDF_MIN_DF,
+    "max_df":   TFIDF_MAX_DF,
+    "ngram":    TFIDF_NGRAM_MAX,
+})
+_config_hash = sha256_obj({
+    "MIN_QQ_CONTEXT_RAW":        MIN_QQ_CONTEXT_RAW,
+    "MIN_QH_CONTEXT_RAW":        MIN_QH_CONTEXT_RAW,
+    "MIN_QH_EMBED":              MIN_QH_EMBED,
+    "VERY_HIGH_QQ_EMBED":        VERY_HIGH_QQ_EMBED,
+    "VERY_HIGH_QH_EMBED":        VERY_HIGH_QH_EMBED,
+    "VERY_HIGH_RERANK":          VERY_HIGH_RERANK,
+    "MIN_QQ_SHARED_ROOTS":       MIN_QQ_SHARED_ROOTS,
+    "MIN_QH_SHARED_TOKENS":      MIN_QH_SHARED_TOKENS,
+    "TOPK_QURAN_SEMANTIC":       TOPK_QURAN_SEMANTIC,
+    "TOPK_HADITH_SEMANTIC":      TOPK_HADITH_SEMANTIC,
+    "TOPK_HADITH_LEXICAL":       TOPK_HADITH_LEXICAL,
+    "QURAN_SEMANTIC_CANDIDATES": QURAN_SEMANTIC_CANDIDATES,
+    "HADITH_SEMANTIC_CANDIDATES":HADITH_SEMANTIC_CANDIDATES,
+    "QURAN_PREFILTER_TOPN":      QURAN_PREFILTER_TOPN,
+    "HADITH_PREFILTER_TOPN":     HADITH_PREFILTER_TOPN,
+    "GENERIC_TOKEN_DF_RATIO":    GENERIC_TOKEN_DF_RATIO,
+    "GENERIC_ROOT_DF_RATIO":     GENERIC_ROOT_DF_RATIO,
+    "USE_RERANKER":              USE_RERANKER,
+    "RERANK_MODEL":              RERANK_MODEL_NAME if USE_RERANKER else None,
+})
+_pairs_hash = sha256_obj({"embed": _embed_hash, "cfg": _config_hash})
+
+_cs = _load_cache_state()
+
+# Level 1 — embeddings: skip model.encode() if inputs + model unchanged
+_embed_ok = (
+    not FORCE_EMBED
+    and _cs.get("embed_hash") == _embed_hash
+    and _all_exist(_cp("q_ar_emb.npy"), _cp("h_ar_emb.npy"),
+                   _cp("q_en_emb.npy"), _cp("h_en_emb.npy"))
+)
+# Level 2 — TF-IDF: skip vectorizer fit if inputs + tfidf params unchanged
+_tfidf_ok = (
+    not FORCE_PAIRS
+    and _cs.get("tfidf_hash") == _tfidf_hash
+    and _all_exist(_cp("q_tfidf.npz"), _cp("h_tfidf.npz"), _cp("vectorizer.pkl"))
+)
+# Level 3 — nearest-neighbour distances: skip kNN search if embeddings unchanged
+_nn_ok = (
+    not FORCE_PAIRS
+    and _cs.get("embed_hash") == _embed_hash
+    and _all_exist(_cp("dist_qq.npy"), _cp("ind_qq.npy"),
+                   _cp("dist_qh.npy"), _cp("ind_qh.npy"))
+)
+# Level 4 — pair shards: skip all scoring if embeddings + config unchanged
+_pairs_ok = (
+    not FORCE_PAIRS
+    and _cs.get("pairs_hash") == _pairs_hash
+    and os.path.exists(os.path.join(OUT_QURAN_PAIRS_DIR, "pairs_s001.json"))
+)
+# Level 5 — text shards: skip Quran + Hadith JSON writing if source data unchanged
+_shards_ok = (
+    not FORCE_SHARDS
+    and _cs.get("shards_hash") == _data_hash
+    and os.path.exists(os.path.join(OUT_QURAN_TEXT_DIR,  "quran_s001.json"))
+    and os.path.exists(os.path.join(OUT_HADITH_TEXT_DIR, "hadith_00001_01000.json"))
+)
+
+print(f"  data={_data_hash[:8]}  embed={_embed_hash[:8]}  "
+      f"tfidf={_tfidf_hash[:8]}  cfg={_config_hash[:8]}")
+print(f"  Cache hit? embed={_embed_ok}  tfidf={_tfidf_ok}  nn={_nn_ok}  "
+      f"pairs={_pairs_ok}  shards={_shards_ok}")
+if _pairs_ok and _shards_ok:
+    print("  ✓ All outputs up-to-date — only diagnostics + manifest will be refreshed.")
+elif _pairs_ok:
+    print("  ✓ Pairs up-to-date — will rewrite text shards only.")
+elif _embed_ok:
+    print("  ✓ Embeddings cached — skipping model.encode(). Re-scoring pairs.")
+else:
+    print("  Full rebuild required.")
+
 # ---------- Config ----------
 HADITH_SHARD_SIZE = 1000
 
@@ -108,6 +202,32 @@ MIN_QH_EMBED = 0.40
 VERY_HIGH_QQ_EMBED = 0.74  # was 0.78 — lets synonym/paraphrase pairs (no shared roots) survive
 VERY_HIGH_QH_EMBED = 0.65  # was 0.68 — slightly more lenient Quran-Hadith override
 VERY_HIGH_RERANK = 0.72
+
+# TF-IDF params — moved here from inline so they are part of the config fingerprint
+TFIDF_MIN_DF   = max(2, int(os.getenv("TFIDF_MIN_DF",   "2")))
+TFIDF_MAX_DF   = float(os.getenv("TFIDF_MAX_DF",  "0.90"))
+TFIDF_NGRAM_MAX = int(os.getenv("TFIDF_NGRAM_MAX", "2"))
+
+# ── Incremental-build cache ──────────────────────────────────────────────────
+# Avoids re-running expensive stages (embeddings, TF-IDF, pair scoring) when
+# only thresholds / display params changed.
+#
+# Cache lives in  data/cache/  and is keyed by SHA-256 fingerprints of:
+#   embed_hash  — SHA256(input CSVs + embed model + lemmatizer setting)
+#   tfidf_hash  — SHA256(embed_hash + TF-IDF params)
+#   config_hash — SHA256(all scoring thresholds + K values)
+#   pairs_hash  — SHA256(embed_hash + config_hash)
+#   data_hash   — SHA256(input CSVs) — for text-shard freshness
+#
+# Force flags (env vars, default 0 → use cache):
+#   FORCE_EMBED=1   always recompute embeddings
+#   FORCE_PAIRS=1   always rescore pairs (but may reuse embeddings)
+#   FORCE_SHARDS=1  always rewrite Quran/Hadith text shards
+CACHE_DIR    = os.path.join(DATA_DIR, "cache")
+os.makedirs(CACHE_DIR, exist_ok=True)
+FORCE_EMBED  = os.getenv("FORCE_EMBED",  "0") == "1"
+FORCE_PAIRS  = os.getenv("FORCE_PAIRS",  "0") == "1"
+FORCE_SHARDS = os.getenv("FORCE_SHARDS", "0") == "1"
 
 # ---------- Helpers ----------
 def safe_str(x):
@@ -406,6 +526,53 @@ def take_top_items(items: list[dict], n: int, score_key: str) -> list[dict]:
     return items[:n]
 
 
+# ── Cache helpers ────────────────────────────────────────────────────────────
+
+_CACHE_STATE_PATH = os.path.join(CACHE_DIR, "cache_state.json")
+
+
+def _cp(*names: str) -> str:
+    """Return absolute path inside CACHE_DIR."""
+    return os.path.join(CACHE_DIR, *names)
+
+
+def sha256_file(path: str, chunk: int = 1 << 20) -> str:
+    """SHA-256 of a file's raw bytes (first 16 hex chars used as fingerprint)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for blk in iter(lambda: f.read(chunk), b""):
+            h.update(blk)
+    return h.hexdigest()
+
+
+def sha256_obj(obj) -> str:
+    """SHA-256 of a JSON-serialisable object (first 16 hex chars)."""
+    return hashlib.sha256(
+        json.dumps(obj, sort_keys=True, default=str).encode()
+    ).hexdigest()
+
+
+def _load_cache_state() -> dict:
+    if os.path.exists(_CACHE_STATE_PATH):
+        try:
+            with open(_CACHE_STATE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_cache_state(**kw):
+    s = _load_cache_state()
+    s.update(kw)
+    with open(_CACHE_STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump(s, f, indent=2)
+
+
+def _all_exist(*paths: str) -> bool:
+    return all(os.path.exists(p) for p in paths)
+
+
 # ---------- Stopwords bootstrap ----------
 STOPWORDS_AR_TXT = os.path.join(OUT_SEARCH_DIR, "stopwords_ar.txt")
 if not os.path.exists(STOPWORDS_AR_TXT):
@@ -587,59 +754,93 @@ print("Generic Quran roots penalized:", len(generic_roots))
 print("Extra hadith-noise tokens penalized:", len(extra_hadith_noise))
 
 # ---------- Embeddings ----------
-print("Loading embedding model:", EMBED_MODEL_NAME)
-print("Embedding batch size:", EMBED_BATCH_SIZE)
 print("USE_RERANKER:", USE_RERANKER)
-try:
-    model = SentenceTransformer(EMBED_MODEL_NAME, trust_remote_code=True)
-except TypeError:
-    # Some models do not need / accept trust_remote_code.
-    model = SentenceTransformer(EMBED_MODEL_NAME)
-
-
-def embed_passages(texts: list[str]) -> np.ndarray:
-    emb = model.encode(
-        texts,
-        batch_size=EMBED_BATCH_SIZE,
-        show_progress_bar=True,
-        normalize_embeddings=True,
-    )
-    return np.asarray(emb, dtype=np.float32)
-
-
-q_emb = embed_passages(q["lemma_text"].tolist())
 
 h_keep["matn_norm"] = h_keep["arabic_text"].map(extract_matn).map(normalize_ar)
-h_emb = embed_passages(h_keep["matn_norm"].tolist())
-print("Embeddings shapes:", q_emb.shape, h_emb.shape)
-
-# English embeddings — used only for Quran-Hadith blending (not Quran-Quran).
-print("Building English embeddings for Quran-Hadith cross-lingual signal...")
-q_en_emb = embed_passages(q["english_text"].map(normalize_en).tolist())
 h_en_texts = h_keep["english_text"].map(lambda t: normalize_en(t) if normalize_en(t).strip() else " ").tolist()
-h_en_emb = embed_passages(h_en_texts)
-print("English embedding shapes:", q_en_emb.shape, h_en_emb.shape)
+
+if _embed_ok:
+    # ── Cache hit: load saved .npy arrays ──────────────────────────────────
+    print("Embeddings: loading from cache (skipping model.encode)…")
+    q_emb    = np.load(_cp("q_ar_emb.npy"))
+    h_emb    = np.load(_cp("h_ar_emb.npy"))
+    q_en_emb = np.load(_cp("q_en_emb.npy"))
+    h_en_emb = np.load(_cp("h_en_emb.npy"))
+    print("  Loaded shapes:", q_emb.shape, h_emb.shape, q_en_emb.shape, h_en_emb.shape)
+    # model object not created — only needed when embedding cache is invalid
+    model = None
+else:
+    # ── Cache miss: run model.encode ────────────────────────────────────────
+    print("Embeddings: loading model:", EMBED_MODEL_NAME)
+    print("  Embedding batch size:", EMBED_BATCH_SIZE)
+    try:
+        model = SentenceTransformer(EMBED_MODEL_NAME, trust_remote_code=True)
+    except TypeError:
+        model = SentenceTransformer(EMBED_MODEL_NAME)
+
+    def embed_passages(texts: list[str]) -> np.ndarray:
+        emb = model.encode(
+            texts,
+            batch_size=EMBED_BATCH_SIZE,
+            show_progress_bar=True,
+            normalize_embeddings=True,
+        )
+        return np.asarray(emb, dtype=np.float32)
+
+    print("  Encoding Quran Arabic…")
+    q_emb = embed_passages(q["lemma_text"].tolist())
+    print("  Encoding Hadith Arabic…")
+    h_emb = embed_passages(h_keep["matn_norm"].tolist())
+    print("  Arabic embedding shapes:", q_emb.shape, h_emb.shape)
+
+    print("  Encoding Quran English…")
+    q_en_emb = embed_passages(q["english_text"].map(normalize_en).tolist())
+    print("  Encoding Hadith English…")
+    h_en_emb = embed_passages(h_en_texts)
+    print("  English embedding shapes:", q_en_emb.shape, h_en_emb.shape)
+
+    # Save to cache
+    np.save(_cp("q_ar_emb.npy"), q_emb)
+    np.save(_cp("h_ar_emb.npy"), h_emb)
+    np.save(_cp("q_en_emb.npy"), q_en_emb)
+    np.save(_cp("h_en_emb.npy"), h_en_emb)
+    _save_cache_state(embed_hash=_embed_hash)
+    print("  Embeddings saved to cache.")
 
 # ---------- TF-IDF on lemmatized Arabic ----------
-TFIDF_MIN_DF = max(2, int(os.getenv("TFIDF_MIN_DF", "2")))
-TFIDF_MAX_DF = float(os.getenv("TFIDF_MAX_DF", "0.90"))
-TFIDF_NGRAM_MAX = int(os.getenv("TFIDF_NGRAM_MAX", "2"))
+# (TFIDF_MIN_DF / TFIDF_MAX_DF / TFIDF_NGRAM_MAX defined in config section above)
 
-print("Building TF-IDF on lemmatized Arabic text...")
-vectorizer = TfidfVectorizer(
-    analyzer="word",
-    token_pattern=r"(?u)\b\w+\b",
-    ngram_range=(1, TFIDF_NGRAM_MAX),
-    min_df=TFIDF_MIN_DF,
-    max_df=TFIDF_MAX_DF,
-    sublinear_tf=True,
-    norm="l2",
-)
-combined_lemma_texts = q["lemma_text"].tolist() + h_keep["lemma_text"].tolist()
-tfidf_all = vectorizer.fit_transform(combined_lemma_texts)
-q_tfidf = tfidf_all[:len(q)]
-h_tfidf = tfidf_all[len(q):]
-print("TF-IDF matrix shapes:", q_tfidf.shape, h_tfidf.shape)
+if _tfidf_ok:
+    print("TF-IDF: loading from cache…")
+    q_tfidf    = load_npz(_cp("q_tfidf.npz"))
+    h_tfidf    = load_npz(_cp("h_tfidf.npz"))
+    with open(_cp("vectorizer.pkl"), "rb") as _f:
+        vectorizer = pickle.load(_f)
+    print("  TF-IDF shapes:", q_tfidf.shape, h_tfidf.shape)
+else:
+    print("TF-IDF: fitting on lemmatized Arabic…")
+    vectorizer = TfidfVectorizer(
+        analyzer="word",
+        token_pattern=r"(?u)\b\w+\b",
+        ngram_range=(1, TFIDF_NGRAM_MAX),
+        min_df=TFIDF_MIN_DF,
+        max_df=TFIDF_MAX_DF,
+        sublinear_tf=True,
+        norm="l2",
+    )
+    combined_lemma_texts = q["lemma_text"].tolist() + h_keep["lemma_text"].tolist()
+    tfidf_all = vectorizer.fit_transform(combined_lemma_texts)
+    q_tfidf = tfidf_all[:len(q)]
+    h_tfidf = tfidf_all[len(q):]
+    print("  TF-IDF matrix shapes:", q_tfidf.shape, h_tfidf.shape)
+
+    save_npz(_cp("q_tfidf.npz"), q_tfidf)
+    save_npz(_cp("h_tfidf.npz"), h_tfidf)
+    with open(_cp("vectorizer.pkl"), "wb") as _f:
+        pickle.dump(vectorizer, _f)
+    _save_cache_state(tfidf_hash=_tfidf_hash)
+    print("  TF-IDF saved to cache.")
+
 
 def tfidf_scores_for_candidates(base_row, cand_rows) -> np.ndarray:
     if cand_rows.shape[0] == 0:
@@ -679,13 +880,29 @@ h_norm_texts = h_keep["arabic_norm"].tolist()
 q_lemma_texts = q["lemma_text"].tolist()
 h_lemma_texts = h_keep["lemma_text"].tolist()
 
-nn_q = NearestNeighbors(n_neighbors=QURAN_SEMANTIC_CANDIDATES + 1, metric="cosine", algorithm="brute")
-nn_q.fit(q_emb)
-dist_qq, ind_qq = nn_q.kneighbors(q_emb, return_distance=True)
+if _nn_ok:
+    print("Nearest-neighbour distances: loading from cache…")
+    dist_qq = np.load(_cp("dist_qq.npy"))
+    ind_qq  = np.load(_cp("ind_qq.npy"))
+    dist_qh = np.load(_cp("dist_qh.npy"))
+    ind_qh  = np.load(_cp("ind_qh.npy"))
+    print(f"  Loaded dist_qq{dist_qq.shape}  dist_qh{dist_qh.shape}")
+else:
+    print("Nearest-neighbour distances: running kNN search…")
+    nn_q = NearestNeighbors(n_neighbors=QURAN_SEMANTIC_CANDIDATES + 1, metric="cosine", algorithm="brute")
+    nn_q.fit(q_emb)
+    dist_qq, ind_qq = nn_q.kneighbors(q_emb, return_distance=True)
 
-nn_h = NearestNeighbors(n_neighbors=HADITH_SEMANTIC_CANDIDATES, metric="cosine", algorithm="brute")
-nn_h.fit(h_emb)
-dist_qh, ind_qh = nn_h.kneighbors(q_emb, return_distance=True)
+    nn_h = NearestNeighbors(n_neighbors=HADITH_SEMANTIC_CANDIDATES, metric="cosine", algorithm="brute")
+    nn_h.fit(h_emb)
+    dist_qh, ind_qh = nn_h.kneighbors(q_emb, return_distance=True)
+
+    np.save(_cp("dist_qq.npy"), dist_qq)
+    np.save(_cp("ind_qq.npy"),  ind_qq)
+    np.save(_cp("dist_qh.npy"), dist_qh)
+    np.save(_cp("ind_qh.npy"),  ind_qh)
+    # nn distances are keyed by embed_hash (already stored); nothing extra to save
+    print(f"  kNN done — dist_qq{dist_qq.shape}  dist_qh{dist_qh.shape}. Saved to cache.")
 
 # ---------- Semantic reranking ----------
 q_tok_sets = q["tok_set"].tolist()
@@ -1021,15 +1238,43 @@ def rerank_quran_hadith(i: int):
     return [{k: v for k, v in item.items() if k != "raw_score"} for item in out[:TOPK_HADITH_SEMANTIC]]
 
 
-semantic_pairs_quran = {}
-semantic_pairs_hadith = {}
-for i, ayah_id in enumerate(q_ids):
-    if (i + 1) % 250 == 0 or i == 0:
-        print(f"Semantic pairing progress: {i + 1}/{len(q_ids)}")
-    semantic_pairs_quran[ayah_id] = rerank_quran_quran(i)
-    semantic_pairs_hadith[ayah_id] = rerank_quran_hadith(i)
-
-print("Semantic pairing done with embedding retrieval + stronger filtering + optional reranker.")
+if _pairs_ok:
+    # ── Pair cache hit — load results from existing JSON shards ──────────────
+    print("Pairs: cache hit — loading from existing pair shards (skipping scoring)…")
+    semantic_pairs_quran  = {}
+    semantic_pairs_hadith = {}
+    lex_pairs_quran       = {}
+    lex_pairs_hadith      = {}
+    for ayah_id in q_ids:
+        semantic_pairs_quran[ayah_id]  = []
+        semantic_pairs_hadith[ayah_id] = []
+        lex_pairs_quran[ayah_id]       = []
+        lex_pairs_hadith[ayah_id]      = []
+    _loaded = 0
+    for surah in sorted(q["surah"].unique().tolist()):
+        s   = int(surah)
+        fn  = os.path.join(OUT_QURAN_PAIRS_DIR, f"pairs_s{surah_to_shard_name(s)}.json")
+        if not os.path.exists(fn):
+            continue
+        with open(fn, "r", encoding="utf-8") as _f:
+            for rec in json.load(_f):
+                aid = rec["ayah_id"]
+                semantic_pairs_quran[aid]  = rec["semantic"].get("quran_top20", [])  if "semantic" in rec else []
+                semantic_pairs_hadith[aid] = rec["semantic"].get("hadith_top50", []) if "semantic" in rec else []
+                lex_pairs_quran[aid]       = rec["lexical"].get("quran_all_2plus", []) if "lexical" in rec else []
+                lex_pairs_hadith[aid]      = rec["lexical"].get("hadith_top50", [])    if "lexical" in rec else []
+        _loaded += 1
+    print(f"  Loaded {_loaded} surah pair shards from disk.")
+else:
+    # ── Pair cache miss — run full scoring ───────────────────────────────────
+    semantic_pairs_quran = {}
+    semantic_pairs_hadith = {}
+    for i, ayah_id in enumerate(q_ids):
+        if (i + 1) % 250 == 0 or i == 0:
+            print(f"Semantic pairing progress: {i + 1}/{len(q_ids)}")
+        semantic_pairs_quran[ayah_id] = rerank_quran_quran(i)
+        semantic_pairs_hadith[ayah_id] = rerank_quran_hadith(i)
+    print("Semantic pairing done.")
 
 # ---------- Lexical pairing ----------
 post_q_roots = defaultdict(list)
@@ -1139,19 +1384,31 @@ def hadith_lexical_pairs(i: int):
     return out[:TOPK_HADITH_LEXICAL]
 
 
-lex_pairs_quran = {}
-lex_pairs_hadith = {}
-for i, ayah_id in enumerate(q_ids):
-    lex_pairs_quran[ayah_id] = quran_root_pairs_all_with_2plus(i)
-    lex_pairs_hadith[ayah_id] = hadith_lexical_pairs(i)
-
-print("Lexical pairing done.")
-print("Quran-Quran lexical now includes ALL ayat with >= 2 shared roots.")
-print("Quran-Hadith lexical includes shared Arabic tokens for display.")
+if not _pairs_ok:
+    lex_pairs_quran = {}
+    lex_pairs_hadith = {}
+    for i, ayah_id in enumerate(q_ids):
+        lex_pairs_quran[ayah_id] = quran_root_pairs_all_with_2plus(i)
+        lex_pairs_hadith[ayah_id] = hadith_lexical_pairs(i)
+    print("Lexical pairing done.")
+    print("Quran-Quran lexical now includes ALL ayat with >= 2 non-generic shared roots.")
+    print("Quran-Hadith lexical filtered to non-generic shared tokens.")
 
 # ---------- Diagnostics ----------
 diagnostics = {
     "embedding_model": EMBED_MODEL_NAME,
+    "cache": {
+        "data_hash":   _data_hash[:12],
+        "embed_hash":  _embed_hash[:12],
+        "tfidf_hash":  _tfidf_hash[:12],
+        "config_hash": _config_hash[:12],
+        "pairs_hash":  _pairs_hash[:12],
+        "embed_was_cached":  _embed_ok,
+        "tfidf_was_cached":  _tfidf_ok,
+        "nn_was_cached":     _nn_ok,
+        "pairs_were_cached": _pairs_ok,
+        "shards_were_cached":_shards_ok,
+    },
     "arabic_lemmatizer_enabled": HAS_QALSADI,
     "arabic_lemmatizer_name": ARABIC_LEMMATIZER_NAME if HAS_QALSADI else None,
     "reranker_model": RERANK_MODEL_NAME if reranker is not None else None,
@@ -1192,90 +1449,102 @@ write_json(os.path.join(OUT_META_DIR, "pairing_diagnostics.json"), diagnostics)
 print("Wrote diagnostics:", os.path.join(OUT_META_DIR, "pairing_diagnostics.json"))
 
 # ---------- Quran text shards ----------
-q["vec_preview"] = [np.round(v[:VEC_PREVIEW_DIMS], 4).tolist() for v in q_emb]
+shard_map_quran = {str(int(s)): f"quran_text/quran_s{surah_to_shard_name(int(s))}.json"
+                   for s in q["surah"].unique()}
 
-shard_map_quran = {}
-for surah in sorted(q["surah"].unique().tolist()):
-    s = int(surah)
-    shard_df = q[q["surah"] == s]
-    recs = []
-    for _, row in shard_df.iterrows():
-        recs.append({
-            "ayah_id": row["ayah_id"],
-            "surah": int(row["surah"]),
-            "ayah": int(row["ayah"]),
-            "arabic": safe_str(row["arabic_text"]),
-            "english": safe_str(row["english_text"]),
-            "roots_ordered": row["roots_ordered"],
-            "tokens_ordered": row["tokens_ordered"],
-            "vec_preview": row["vec_preview"],
-        })
-
-    fn = f"quran_s{surah_to_shard_name(s)}.json"
-    shard_map_quran[str(s)] = f"quran_text/{fn}"
-    write_json(os.path.join(OUT_QURAN_TEXT_DIR, fn), recs)
+if _shards_ok:
+    print("Quran text shards: cache hit — skipping write.")
+else:
+    q["vec_preview"] = [np.round(v[:VEC_PREVIEW_DIMS], 4).tolist() for v in q_emb]
+    for surah in sorted(q["surah"].unique().tolist()):
+        s = int(surah)
+        shard_df = q[q["surah"] == s]
+        recs = []
+        for _, row in shard_df.iterrows():
+            recs.append({
+                "ayah_id":       row["ayah_id"],
+                "surah":         int(row["surah"]),
+                "ayah":          int(row["ayah"]),
+                "arabic":        safe_str(row["arabic_text"]),
+                "english":       safe_str(row["english_text"]),
+                "roots_ordered": row["roots_ordered"],
+                "tokens_ordered":row["tokens_ordered"],
+                "vec_preview":   row["vec_preview"],
+            })
+        write_json(os.path.join(OUT_QURAN_TEXT_DIR, f"quran_s{surah_to_shard_name(s)}.json"), recs)
+    print("Wrote Quran text shards:", len(shard_map_quran))
 
 write_json(os.path.join(OUT_META_DIR, "shard_map_quran.json"), shard_map_quran)
-print("Wrote Quran text shards:", len(shard_map_quran))
 
 # ---------- Hadith shards ----------
 h_sorted = h_keep.sort_values("serial").reset_index(drop=True)
 shard_map_hadith = []
-
 for start in range(0, len(h_sorted), HADITH_SHARD_SIZE):
-    end = min(len(h_sorted), start + HADITH_SHARD_SIZE)
-    block = h_sorted.iloc[start:end]
+    end          = min(len(h_sorted), start + HADITH_SHARD_SIZE)
+    block        = h_sorted.iloc[start:end]
     serial_start = int(block["serial"].iloc[0])
-    serial_end = int(block["serial"].iloc[-1])
-    fn = f"hadith_{serial_start:05d}_{serial_end:05d}.json"
-
-    out = []
-    for _, row in block.iterrows():
-        out.append({
-            "hadith_id": row["hadith_id"],
-            "serial": int(row["serial"]),
-            "book": safe_str(row["book"]),
-            "reference": safe_str(row["reference"]),
-            "arabic": safe_str(row["arabic_text"]),
-            "english": safe_str(row["english_text"]),
-        })
-
-    write_json(os.path.join(OUT_HADITH_TEXT_DIR, fn), out)
+    serial_end   = int(block["serial"].iloc[-1])
     shard_map_hadith.append({
         "start": serial_start,
-        "end": serial_end,
-        "file": f"hadith_text/{fn}",
+        "end":   serial_end,
+        "file":  f"hadith_text/hadith_{serial_start:05d}_{serial_end:05d}.json",
     })
 
+if _shards_ok:
+    print("Hadith shards: cache hit — skipping write.")
+else:
+    for entry in shard_map_hadith:
+        s, e = entry["start"], entry["end"]
+        block = h_sorted[(h_sorted["serial"] >= s) & (h_sorted["serial"] <= e)]
+        out = []
+        for _, row in block.iterrows():
+            out.append({
+                "hadith_id": row["hadith_id"],
+                "serial":    int(row["serial"]),
+                "book":      safe_str(row["book"]),
+                "reference": safe_str(row["reference"]),
+                "arabic":    safe_str(row["arabic_text"]),
+                "english":   safe_str(row["english_text"]),
+            })
+        write_json(os.path.join(OUT_HADITH_TEXT_DIR, f"hadith_{s:05d}_{e:05d}.json"), out)
+    _save_cache_state(shards_hash=_data_hash)
+    print("Wrote Hadith shards:", len(shard_map_hadith))
+
 write_json(os.path.join(OUT_META_DIR, "shard_map_hadith.json"), shard_map_hadith)
-print("Wrote Hadith shards:", len(shard_map_hadith))
 
 # ---------- Pair shards ----------
 shard_map_pairs = {}
 for surah in sorted(q["surah"].unique().tolist()):
-    s = int(surah)
-    ayah_ids_in_surah = q[q["surah"] == s]["ayah_id"].tolist()
-
-    out = []
-    for ayah_id in ayah_ids_in_surah:
-        out.append({
-            "ayah_id": ayah_id,
-            "semantic": {
-                "quran_top20": semantic_pairs_quran[ayah_id],
-                "hadith_top50": semantic_pairs_hadith[ayah_id],
-            },
-            "lexical": {
-                "quran_all_2plus": lex_pairs_quran[ayah_id],
-                "hadith_top50": lex_pairs_hadith[ayah_id],
-            },
-        })
-
-    fn = f"pairs_s{surah_to_shard_name(s)}.json"
+    s   = int(surah)
+    fn  = f"pairs_s{surah_to_shard_name(s)}.json"
     shard_map_pairs[str(s)] = f"quran_pairs/{fn}"
-    write_json(os.path.join(OUT_QURAN_PAIRS_DIR, fn), out)
+
+if _pairs_ok:
+    print("Pair shards: cache hit — skipping write.")
+else:
+    for surah in sorted(q["surah"].unique().tolist()):
+        s = int(surah)
+        ayah_ids_in_surah = q[q["surah"] == s]["ayah_id"].tolist()
+        out = []
+        for ayah_id in ayah_ids_in_surah:
+            out.append({
+                "ayah_id": ayah_id,
+                "semantic": {
+                    "quran_top20":  semantic_pairs_quran[ayah_id],
+                    "hadith_top50": semantic_pairs_hadith[ayah_id],
+                },
+                "lexical": {
+                    "quran_all_2plus": lex_pairs_quran[ayah_id],
+                    "hadith_top50":    lex_pairs_hadith[ayah_id],
+                },
+            })
+        write_json(os.path.join(OUT_QURAN_PAIRS_DIR, f"pairs_s{surah_to_shard_name(s)}.json"), out)
+
+    _save_cache_state(pairs_hash=_pairs_hash)
+    print("Pair shards written and pairs_hash saved to cache.")
 
 write_json(os.path.join(OUT_META_DIR, "shard_map_pairs.json"), shard_map_pairs)
-print("Wrote pair shards:", len(shard_map_pairs))
+print("Wrote shard_map_pairs.json:", len(shard_map_pairs), "entries")
 
 # ---------- Manifest ----------
 manifest = {
