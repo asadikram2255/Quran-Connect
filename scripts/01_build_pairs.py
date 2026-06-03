@@ -151,9 +151,20 @@ def safe_str(x):
     return "" if pd.isna(x) else str(x)
 
 
+def _sanitize_for_json(obj):
+    """Replace NaN/Infinity with 0 recursively — JSON doesn't support them."""
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return 0
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
+
+
 def write_json(path: str, obj):
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(_sanitize_for_json(obj), f, ensure_ascii=False, separators=(",", ":"))
 
 
 def require_file(path: str, label: str):
