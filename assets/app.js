@@ -1558,23 +1558,17 @@ async function renderAnchorTafsir(ayahId) {
   if (state.selectedAyahId && state.selectedAyahId !== ayahId) return;
 
   const hit = getTafsir(ayahId, source);
-  if (!hit) {
+  // Only show commentary when there is an exact entry for this ayah.
+  // Walk-backward hits (a neighbouring verse's note) are not shown — a clear
+  // "not available" message is less confusing than unrelated commentary.
+  if (!hit || hit.coversFrom !== hit.coversTo) {
     textEl.innerHTML = `<p class="tafsirEmpty">No commentary from ${escapeHtml(meta.label || source)} for this verse.</p>`;
     return;
   }
   const isUrdu = meta.lang === "ur";
   const safe   = escapeHtml(hit.text);
 
-  // If the commentary is from a different (earlier) ayah, show a clear notice.
-  // E.g. clicking 2:9 surfaces 2:8's block — "No separate note for 2:9; showing 2:8".
-  const [surah] = String(ayahId).split(":");
-  let note = "";
-  if (hit.coversFrom !== hit.coversTo) {
-    note = `<div class="tafsirCovers">ℹ No separate commentary for ${escapeHtml(surah)}:${hit.coversTo} — showing nearest note from verse ${escapeHtml(surah)}:${hit.coversFrom}</div>`;
-  }
-
   textEl.innerHTML = `
-    ${note}
     <div class="tafsirBody${isUrdu ? " urdu-text" : ""}"${isUrdu ? ' dir="rtl"' : ""}>${safe}</div>
   `;
 }
