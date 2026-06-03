@@ -64,7 +64,8 @@ const SMART_SUGGESTIONS_AR = [
   "الخوف من الموت",
 ];
 // Threshold below which we treat top reranker score as "weak" and offer alternatives.
-const SMART_WEAK_THRESHOLD = 0.05;
+// 0.25 means the best result scored below 25% confidence — clearly a weak match.
+const SMART_WEAK_THRESHOLD = 0.25;
 
 const els = {
   mainQuery: document.getElementById("mainQuery"),
@@ -1987,10 +1988,12 @@ function renderPairList(container, items, options = {}) {
       sharedBlock = makeSharedChips(sharedTokensLabel, shared);
     }
 
+    const sc  = Number(it.score) || 0;
+    const tier = sc >= 70 ? "high" : sc >= 40 ? "mid" : "low";
     div.innerHTML = `
       <div class="pairTop">
         ${idHtml}
-        <div class="pairScore" title="Relevance score based on meaning similarity and shared Arabic roots">score: ${fmtScore(it.score)}</div>
+        <div class="pairScore ${tier}" title="Relevance score: ${sc}%">${sc}%</div>
       </div>
       ${body}
       ${sharedBlock}
@@ -2170,17 +2173,17 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   // Tafsir scaffold — async, doesn't block the rest of openDetail
   renderAnchorTafsir(ayahId);
 
-  const MIN_SEM_SCORE = 25;
-  const aboveSemMin = p => Number(p.score) >= MIN_SEM_SCORE;
-  const semQ = (pairs.semantic?.quran_top20   || []).filter(aboveSemMin);
-  const semH = (pairs.semantic?.hadith_top50  || []).filter(aboveSemMin);
-  // Lexical Quran pairs use Jaccard root-overlap (0–100); most meaningful pairs
-  // score below 25, so skip the score filter — sort by score desc, cap at top 20.
+  const MIN_SEM_SCORE = 25;   // semantic pairs: embedding-based, 0-100 calibrated
+  const MIN_LEX_SCORE = 10;   // lexical pairs: Jaccard/overlap-based, lower bar appropriate
+  const semQ = (pairs.semantic?.quran_top20   || []).filter(p => Number(p.score) >= MIN_SEM_SCORE);
+  const semH = (pairs.semantic?.hadith_top50  || []).filter(p => Number(p.score) >= MIN_SEM_SCORE);
+  // LexQ: sort by score desc (matches generation order), cap at top 20
   const lexQ = (pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [])
     .slice()
     .sort((a, b) => Number(b.score) - Number(a.score))
     .slice(0, 20);
-  const lexH = (pairs.lexical?.hadith_top50   || []).filter(aboveSemMin);
+  // LexH: use lexical-appropriate threshold (not the semantic one)
+  const lexH = (pairs.lexical?.hadith_top50   || []).filter(p => Number(p.score) >= MIN_LEX_SCORE);
 
   updateTabCounts(semQ.length, semH.length, lexQ.length, lexH.length);
 
@@ -2272,8 +2275,21 @@ async function runSearch() {
     }
 
     let msg = `Found ${results.length} ayat`;
-    if (type === "smart" && state.lastSmartCached) msg += " (cached)";
+    if (type === "smart" && state.lastSmartCached) msg += " · cached";
     setBadge("ok", msg);
+
+    // Show timing breakdown for Smart Search in the hint bar
+    if (type === "smart" && state.lastSmartTimings) {
+      const t = state.lastSmartTimings;
+      const total = (t.embed || 0) + (t.qdrant || 0) + (t.rerank || 0);
+      const parts = [];
+      if (t.embed)  parts.push(`embed ${(t.embed/1000).toFixed(1)}s`);
+      if (t.qdrant) parts.push(`retrieve ${(t.qdrant/1000).toFixed(1)}s`);
+      if (t.rerank) parts.push(`rerank ${(t.rerank/1000).toFixed(1)}s`);
+      const suffix = state.lastSmartCached ? " · served from cache" : "";
+      if (els.searchHint) els.searchHint.textContent =
+        `AI search: ${parts.join(" · ")} · total ${(total/1000).toFixed(1)}s${suffix}`;
+    }
   } catch (err) {
     console.error("runSearch error:", err);
     setBadge("err", String(err.message || err).slice(0,140));

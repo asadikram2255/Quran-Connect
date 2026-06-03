@@ -750,17 +750,34 @@ input[dir="rtl"], textarea[dir="rtl"] {
 .pairSurah { color: var(--text-muted); font-size: 11px; }
 
 .pairScore {
-  color: var(--warm);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  border-radius: var(--r-pill);
+  padding: 2px 8px;
   white-space: nowrap;
   flex-shrink: 0;
   cursor: help;
-  padding: 2px 8px;
-  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  /* default (no tier class) */
+  color: var(--warm);
   background: var(--warm-soft);
-  border: 1px solid rgba(251,191,36,.25);
+  border-color: rgba(239,157,77,.25);
+}
+.pairScore.high {
+  color: #86efac;
+  background: rgba(134,239,172,.12);
+  border-color: rgba(134,239,172,.30);
+}
+.pairScore.mid {
+  color: var(--warm);
+  background: var(--warm-soft);
+  border-color: rgba(239,157,77,.30);
+}
+.pairScore.low {
+  color: var(--text-muted);
+  background: rgba(255,255,255,.04);
+  border-color: var(--border);
 }
 
 .pairBody [dir="rtl"] {
