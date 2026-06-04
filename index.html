@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=28" />
+  <link rel="stylesheet" href="assets/styles.css?v=29" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -30,7 +30,7 @@
     <div class="header">
       <div>
         <div class="h1">Quran Better For Me</div>
-        <div class="sub">Qur'an · Hadith · Tafseer · AI Search — by Muhammad Asad Ikram</div>
+        <div class="sub">Qur'an · Hadith · Tafseer · Root-Word Search — by Muhammad Asad Ikram</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <select id="transSel" class="transSel" title="Select translation">
@@ -49,11 +49,6 @@
           <button id="prophetsBtn" class="navBtn" type="button">Prophets</button>
           <button id="statsBtn"    class="navBtn" type="button">Statistics</button>
         </nav>
-        <button id="searchTrigger" class="searchTrigger" type="button" aria-label="Open search">
-          <svg class="searchIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <span>Search</span>
-          <kbd>⌘K</kbd>
-        </button>
         <button id="backHome" class="backHome" type="button" aria-label="Back to home">
           <span aria-hidden="true">←</span>
           <span>Home</span>
@@ -68,27 +63,26 @@
 
       <!-- ① App intro — first thing a visitor sees -->
       <div class="heroIntro">
-        <div class="heroTagline">Your intelligent Qur'an companion</div>
+        <div class="heroTagline">Your Qur'an Companion</div>
         <p class="heroDesc">
-          Discover how Qur'anic ayat connect through shared meaning, Arabic root words, and authentic Hadith —
-          6,236 ayat explored like never before.
+          6,236 ayat · 43,000+ authenticated Hadith · 6 translations · 5 Tafseer sources
         </p>
-        <div class="heroFeaturesPills">
-          <div class="heroFeat"><span class="heroFeatIcon">🔍</span><span>Search by concept, Arabic word, or Ayah ID</span></div>
-          <div class="heroFeat"><span class="heroFeatIcon">🔗</span><span>Meaning-based connections between ayat</span></div>
-          <div class="heroFeat"><span class="heroFeatIcon">📿</span><span>Shared Arabic root-word pairs</span></div>
-          <div class="heroFeat"><span class="heroFeatIcon">📖</span><span>Authentic Hadith for every ayah</span></div>
-          <div class="heroFeat"><span class="heroFeatIcon">✨</span><span>Natural language search via root-word analysis</span></div>
-          <div class="heroFeat"><span class="heroFeatIcon">🕌</span><span>Tafseer from Ibn Kathir, Maududi &amp; more</span></div>
-        </div>
-        <div class="heroStats">6,236 ayat · 43,000+ Hadith · 6 translations · 142 topics · 25 Prophets · 5 Tafseer sources</div>
+
         <!-- ── Module selector ─────────────────────────────── -->
         <div class="moduleSelector">
+
           <button data-mood-action="search" class="moduleCard" type="button">
             <div class="moduleCardInner">
               <div class="moduleCardBody">
                 <div class="moduleCardTitle">Explore Connections</div>
-                <div class="moduleCardDesc">Search by concept, Arabic word, or Ayah ID. Discover meaning-based and root-word pairs between ayat, paired with Hadith and Tafseer.</div>
+                <div class="moduleCardDesc">Deep-dive into any ayah — see how it connects to the rest of the Qur'an and authentic Hadith.</div>
+                <ul class="moduleCardFeatures">
+                  <li>Search by English concept, Arabic word, or Ayah ID</li>
+                  <li>Meaning-based &amp; root-word pairs between ayat</li>
+                  <li>Authentic Hadith paired with every verse</li>
+                  <li>Tafseer from 5 classical scholars</li>
+                  <li>6 translations — English &amp; Urdu</li>
+                </ul>
               </div>
             </div>
             <div class="moduleCardFooter">
@@ -96,11 +90,19 @@
               <span class="moduleCardArrow">→</span>
             </div>
           </button>
+
           <a href="search/" class="moduleCard">
             <div class="moduleCardInner">
               <div class="moduleCardBody">
                 <div class="moduleCardTitle">Search Quran</div>
-                <div class="moduleCardDesc">Type anything in English, Urdu, or transliteration — translated to Arabic, roots extracted, all 6,236 ayaat searched instantly.</div>
+                <div class="moduleCardDesc">Find relevant ayat from any query — English, Urdu terms, or natural language phrases.</div>
+                <ul class="moduleCardFeatures">
+                  <li>Type anything — translates to Arabic automatically</li>
+                  <li>Arabic root extraction for deeper matching</li>
+                  <li>Filter by Surah, Juz, or place of revelation</li>
+                  <li>3 English translations per result</li>
+                  <li>Root-word breakdown for every ayah</li>
+                </ul>
               </div>
             </div>
             <div class="moduleCardFooter">
@@ -108,6 +110,7 @@
               <span class="moduleCardArrow">→</span>
             </div>
           </a>
+
         </div>
       </div>
 
