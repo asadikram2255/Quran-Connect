@@ -180,6 +180,12 @@ const EXACT_WORDS = {
   'al-fattah':    ['الفتاح'],
   'asma ul husna': ['الحسني', 'اسماءه'],
 
+  // ── Durood / Salawat (blessings upon the Prophet) ────────────────────────
+  'durood':       ['يصلون', 'صلوا', 'وسلموا', 'تسليما'],
+  'darood':       ['يصلون', 'صلوا', 'وسلموا', 'تسليما'],
+  'salawat':      ['يصلون', 'صلوا', 'وسلموا', 'تسليما'],
+  'salawaat':     ['يصلون', 'صلوا', 'وسلموا', 'تسليما'],
+
   // ── Quranic commands ────────────────────────────────────────────────────
   'qul':          ['قل'],
 
@@ -389,10 +395,13 @@ const TRANSLITERATIONS = {
   'la ilaha illallah': { english: ['no god but allah','monotheism','oneness'], roots: ['و ح د','ا ل ه'] },
 
   // ── Blessings upon the Prophet (Durood / Salawat) ─────────────────────────
-  'durood':     { english: ['blessings upon prophet','send blessings','salutations','peace be upon him'], roots: ['ص ل و','س ل م'] },
-  'darood':     { english: ['blessings upon prophet','send blessings','salutations'], roots: ['ص ل و','س ل م'] },
-  'salawat':    { english: ['blessings upon prophet','send blessings','salutations','prayers upon prophet'], roots: ['ص ل و','س ل م'] },
-  'salawaat':   { english: ['blessings upon prophet','send blessings'], roots: ['ص ل و','س ل م'] },
+  // Uses EXACT_WORDS (يصلون, صلوا, وسلموا, تسليما) for precise matching.
+  // Roots kept narrow — only س ل م (peace/salutation), NOT ص ل و (general prayer)
+  // which would flood results with all prayer-related ayaat.
+  'durood':     { english: ['blessings upon prophet','send blessings','salutations','peace be upon him'], roots: ['س ل م'] },
+  'darood':     { english: ['blessings upon prophet','send blessings','salutations'], roots: ['س ل م'] },
+  'salawat':    { english: ['blessings upon prophet','send blessings','salutations','prayers upon prophet'], roots: ['س ل م'] },
+  'salawaat':   { english: ['blessings upon prophet','send blessings'], roots: ['س ل م'] },
 
   // ── Pillars of Islam ──────────────────────────────────────────────────────
   'salah':      { english: ['prayer','pray','worship'], roots: ['ص ل و','ع ب د'] },
