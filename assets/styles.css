@@ -3185,21 +3185,12 @@ body.view-mood .feelingsBtn { display: none; }
   transition: opacity .2s;
 }
 .moduleCard:hover::after { opacity: 1; }
-.moduleCardPrimary::after { opacity: 1; }
 
 .moduleCardInner {
   display: flex;
   align-items: flex-start;
   gap: 16px;
   padding: 20px 22px 18px;
-}
-
-.moduleCardIcon {
-  font-size: 2rem;
-  flex-shrink: 0;
-  line-height: 1;
-  margin-top: 2px;
-  filter: drop-shadow(0 0 8px var(--accent-glow));
 }
 
 .moduleCardBody {
@@ -3247,14 +3238,6 @@ body.view-mood .feelingsBtn { display: none; }
 .moduleCard:hover .moduleCardArrow {
   opacity: 1;
   transform: translateX(4px);
-}
-
-.moduleCardPrimary {
-  border-color: var(--accent-strong);
-  background: linear-gradient(145deg, rgba(245,183,94,.10) 0%, var(--surface-1) 55%);
-}
-.moduleCardPrimary .moduleCardFooter {
-  background: rgba(245,183,94,.06);
 }
 
 @media (min-width: 600px) {
