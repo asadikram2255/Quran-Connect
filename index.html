@@ -78,11 +78,29 @@
           <div class="heroFeat"><span class="heroFeatIcon">🔗</span><span>Meaning-based connections between ayat</span></div>
           <div class="heroFeat"><span class="heroFeatIcon">📿</span><span>Shared Arabic root-word pairs</span></div>
           <div class="heroFeat"><span class="heroFeatIcon">📖</span><span>Authentic Hadith for every ayah</span></div>
-          <div class="heroFeat"><span class="heroFeatIcon">✨</span><span>AI Smart Search with confidence scores</span></div>
+          <div class="heroFeat"><span class="heroFeatIcon">✨</span><span>Natural language search via root-word analysis</span></div>
           <div class="heroFeat"><span class="heroFeatIcon">🕌</span><span>Tafseer from Ibn Kathir, Maududi &amp; more</span></div>
         </div>
         <div class="heroStats">6,236 ayat · 43,000+ Hadith · 6 translations · 142 topics · 25 Prophets · 5 Tafseer sources</div>
-        <button data-mood-action="search" class="btn heroSearchBtn" type="button">Explore the Qur'an →</button>
+        <!-- ── Module selector ─────────────────────────────── -->
+        <div class="moduleSelector">
+          <button data-mood-action="search" class="moduleCard moduleCardPrimary" type="button">
+            <div class="moduleCardIcon">🔗</div>
+            <div class="moduleCardBody">
+              <div class="moduleCardTitle">Explore Connections</div>
+              <div class="moduleCardDesc">Search by concept, Arabic word, or Ayah ID. See meaning-based and root-word pairs between ayat, with Hadith and Tafseer for every verse.</div>
+            </div>
+            <div class="moduleCardArrow">→</div>
+          </button>
+          <a href="search/" class="moduleCard moduleCardSecondary">
+            <div class="moduleCardIcon">🔍</div>
+            <div class="moduleCardBody">
+              <div class="moduleCardTitle">Search Quran</div>
+              <div class="moduleCardDesc">Type anything in English, Urdu, or transliteration. Your query is translated to Arabic, roots extracted, and all 6,236 ayaat are searched.</div>
+            </div>
+            <div class="moduleCardArrow">→</div>
+          </a>
+        </div>
       </div>
 
       <!-- ② Today's verse -->
@@ -124,7 +142,6 @@
           <div class="landingH">What it does</div>
           <ul class="landingList">
             <li>Search any <b>English concept</b>, <b>Arabic word</b>, or <b>Ayah ID</b> to find related verses.</li>
-            <li>Use <b>AI Smart Search</b> — semantic embeddings + cross-encoder reranking with confidence scores.</li>
             <li>See <b>meaning-based</b> pairs (semantic similarity) and <b>root-word</b> pairs (shared Arabic roots) side by side.</li>
             <li>Each Qur'an ayah is paired with <b>authentic Hadith</b> on the same theme.</li>
             <li>Read <b>Tafseer</b> from 5 classical scholars — Ibn Kathir, Maududi, Maarif ul Quran, Bayan ul Quran, and Ibn Kathir (Urdu) — directly on each ayah.</li>
@@ -138,7 +155,7 @@
           <div class="landingH">How to use</div>
           <ol class="landingList">
             <li>Select a translation from the dropdown in the header.</li>
-            <li>Choose <b>English</b>, <b>Arabic</b>, or <b>Ayah ID</b> search mode.</li>
+            <li>Choose <b>English</b>, <b>Arabic</b>, or <b>Ayah ID</b> search mode — or use <b>Search Quran</b> for natural language queries.</li>
             <li>Type your query and press <b>Search</b> or <b>Enter</b>.</li>
             <li>Click any result ayah to open its <b>Pairs</b> panel.</li>
             <li>Click a paired ayah or Hadith to dive deeper.</li>
@@ -206,13 +223,10 @@
 
         <div class="creditGroup">
           <div class="creditGroupIcon">✨</div>
-          <div class="creditGroupName">AI Smart Search</div>
+          <div class="creditGroupName">Quran Search Engine</div>
           <div class="creditGroupItems">
-            BAAI/bge-m3 embeddings ·
-            BAAI/bge-reranker-v2-m3 reranker ·
-            Qdrant vector DB ·
-            HuggingFace Inference API ·
-            Vercel serverless
+            Arabic root-word analysis · BM25 ranking ·
+            MyMemory translation API · 3 English translations per ayah
           </div>
         </div>
 
@@ -252,7 +266,6 @@
           <button class="typeBtn active" data-type="en" type="button">English</button>
           <button class="typeBtn" data-type="ar" type="button">Arabic</button>
           <button class="typeBtn" data-type="id" type="button">Ayah ID</button>
-          <button class="typeBtn smartBtn" data-type="smart" type="button" title="AI semantic search powered by embeddings + reranker">Smart Search</button>
         </div>
         <textarea id="mainQuery" rows="1" placeholder="e.g. patience" autocomplete="off" spellcheck="false"></textarea>
         <button id="searchBtn" class="btn" type="button">Search</button>
@@ -270,7 +283,6 @@
             Search Results <span id="resultsCount" class="countBadge"></span>
           </div>
           <div class="scrollBody">
-            <div id="smartHint" class="smartHint hidden"></div>
             <div id="resultsList" class="list empty">Search results will appear here.</div>
           </div>
         </div>

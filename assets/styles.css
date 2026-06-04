@@ -3136,3 +3136,90 @@ body.view-mood .feelingsBtn { display: none; }
 
 /* Remove old .heroFeatures wrapper since pills now live in .heroIntro */
 .heroFeatures { display: none; }
+
+/* ── Module selector cards ──────────────────────────────────── */
+.moduleSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 560px;
+  margin: 4px auto 0;
+}
+.moduleCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--r, 10px);
+  border: 1.5px solid var(--border);
+  background: var(--surface, #f5f5f5);
+  text-align: left;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s, background .15s, box-shadow .15s, transform .1s;
+  position: relative;
+}
+.moduleCard:hover {
+  border-color: var(--accent);
+  background: var(--card-bg, #fff);
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.moduleCardPrimary {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface, #f5f5f5));
+}
+.moduleCardPrimary:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--card-bg, #fff));
+}
+.moduleCardIcon {
+  font-size: 1.7rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.moduleCardBody {
+  flex: 1;
+  min-width: 0;
+}
+.moduleCardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+  letter-spacing: -.2px;
+}
+.moduleCardDesc {
+  font-size: 12.5px;
+  color: var(--text-soft, #666);
+  line-height: 1.5;
+}
+.moduleCardArrow {
+  font-size: 1.1rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  font-weight: 700;
+  opacity: .7;
+  transition: opacity .15s, transform .15s;
+}
+.moduleCard:hover .moduleCardArrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+@media (min-width: 600px) {
+  .moduleSelector {
+    flex-direction: row;
+  }
+  .moduleCard {
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .moduleCardArrow {
+    align-self: flex-end;
+  }
+}
