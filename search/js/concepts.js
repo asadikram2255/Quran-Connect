@@ -388,6 +388,12 @@ const TRANSLITERATIONS = {
   'allahu akbar':    { english: ['greatest','great','magnify'], roots: ['ك ب ر'] },
   'la ilaha illallah': { english: ['no god but allah','monotheism','oneness'], roots: ['و ح د','ا ل ه'] },
 
+  // ── Blessings upon the Prophet (Durood / Salawat) ─────────────────────────
+  'durood':     { english: ['blessings upon prophet','send blessings','salutations','peace be upon him'], roots: ['ص ل و','س ل م'] },
+  'darood':     { english: ['blessings upon prophet','send blessings','salutations'], roots: ['ص ل و','س ل م'] },
+  'salawat':    { english: ['blessings upon prophet','send blessings','salutations','prayers upon prophet'], roots: ['ص ل و','س ل م'] },
+  'salawaat':   { english: ['blessings upon prophet','send blessings'], roots: ['ص ل و','س ل م'] },
+
   // ── Pillars of Islam ──────────────────────────────────────────────────────
   'salah':      { english: ['prayer','pray','worship'], roots: ['ص ل و','ع ب د'] },
   'salat':      { english: ['prayer','pray','worship'], roots: ['ص ل و'] },
@@ -1957,6 +1963,8 @@ const CONCEPT_EXPANSIONS = {
   'pilgrimage':   ['ح ج ج', 'ط و ف'],
   'purification': ['ط ه ر', 'غ س ل'],
   'remembrance':  ['ذ ك ر'],
+  'blessings':    ['ص ل و', 'ب ر ك', 'ن ع م'],
+  'salutations':  ['ص ل و', 'س ل م'],
 
   // ── Character virtues ─────────────────────────────────────────────────────
   'patience':     ['ص ب ر'],
