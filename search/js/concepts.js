@@ -730,6 +730,16 @@ const TRANSLITERATIONS = {
   'rasool':       { english: ['messenger','apostle','envoy'], roots: ['ر س ل'] },
   'rasul':        { english: ['messenger','apostle'], roots: ['ر س ل'] },
 
+  // ── Help / Aid / Victory ─────────────────────────────────────────────────
+  'nasr':       { english: ['help','victory','support','divine aid'], roots: ['ن ص ر'] },
+  'nusrat':     { english: ['help','support','assistance','divine help'], roots: ['ن ص ر'] },
+  'nasir':      { english: ['helper','supporter','one who helps'], roots: ['ن ص ر'] },
+  'madad':      { english: ['help','aid','assistance'], roots: ['ن ص ر', 'ع و ن'] },
+  'awn':        { english: ['help','assistance','aid'], roots: ['ع و ن'] },
+  'istaana':    { english: ['seek help','ask for help'], roots: ['ع و ن'] },
+  'wali':       { english: ['guardian','protector','helper','friend of allah'], roots: ['و ل ي'] },
+  'mawla':      { english: ['guardian','master','protector','helper'], roots: ['و ل ي'] },
+
   // ── Social concepts ───────────────────────────────────────────────────────
   'ummah':      { english: ['community','nation','muslim community','people'], roots: ['ا م م'] },
   'ahl':        { english: ['people','family','household'], roots: ['ا ه ل'] },
@@ -1983,6 +1993,20 @@ const CONCEPT_EXPANSIONS = {
   'greeting':     ['س ل م'],
   'safety':       ['ا م ن', 'س ل م'],
   'security':     ['ا م ن'],
+
+  // ── Help / Support / Aid ─────────────────────────────────────────────────
+  'help':         ['ن ص ر', 'ع و ن'],
+  'helper':       ['ن ص ر', 'ع و ن'],
+  'helping':      ['ن ص ر', 'ع و ن'],
+  'helped':       ['ن ص ر'],
+  'support':      ['ن ص ر', 'ع و ن', 'و ل ي'],
+  'supporter':    ['ن ص ر', 'و ل ي'],
+  'aid':          ['ن ص ر', 'ع و ن'],
+  'assist':       ['ع و ن', 'ن ص ر'],
+  'assistance':   ['ع و ن', 'ن ص ر'],
+  'victory':      ['ن ص ر', 'ف ت ح'],
+  'protection':   ['و ق ي', 'ح ف ظ', 'و ل ي'],
+  'protector':    ['و ل ي', 'ح ف ظ'],
 
   // ── Character virtues ─────────────────────────────────────────────────────
   'patience':     ['ص ب ر'],
