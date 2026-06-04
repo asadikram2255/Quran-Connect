@@ -880,6 +880,28 @@ class QuranApp {
       if (tgArr.filter(g => g.label !== 'Other references').length >= 2) return tgArr;
     }
 
+    // ── 2b. Exact-match grouping ────────────────────────────────────────────
+    // When EXACT_WORDS produced hits, show them as a priority group above
+    // the rest. This ensures e.g. "durood" shows 33:56 at the top, not
+    // buried under 93 Meccan ayaat that merely share root س ل م.
+    const exactResults = results.filter(r => r.isExact);
+    const nonExact     = results.filter(r => !r.isExact);
+    if (exactResults.length > 0 && nonExact.length > 0) {
+      const groups = [
+        { label: 'Exact Quranic matches', labelAr: '', results: exactResults },
+      ];
+      // Sub-group the rest by revelation period for structure
+      const mecR = nonExact.filter(r => r.ayah.place === 'Meccan');
+      const medR = nonExact.filter(r => r.ayah.place === 'Medinan');
+      if (mecR.length && medR.length) {
+        groups.push({ label: 'Meccan Revelation', labelAr: 'مَكِّي',  results: mecR });
+        groups.push({ label: 'Medinan Revelation', labelAr: 'مَدَنِي', results: medR });
+      } else {
+        groups.push({ label: 'Other references', labelAr: '', results: nonExact });
+      }
+      return groups;
+    }
+
     // ── 3. Revelation period grouping ──────────────────────────────────────
     const meccan  = results.filter(r => r.ayah.place === 'Meccan');
     const medinan = results.filter(r => r.ayah.place === 'Medinan');
