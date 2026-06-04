@@ -428,6 +428,11 @@ const TRANSLITERATIONS = {
   'adhan':      { english: ['call to prayer','announce prayer'], roots: ['ا ذ ن'] },
   'iqamah':     { english: ['prayer call','standing prayer'], roots: ['ق و م'] },
 
+  // ── Greeting & Peace ───────────────────────────────────────────────────────
+  'salam':      { english: ['peace','greeting','safety','security','submission'], roots: ['س ل م'] },
+  'salaam':     { english: ['peace','greeting','safety','security'], roots: ['س ل م'] },
+  'assalamu alaikum': { english: ['peace be upon you','greeting'], roots: ['س ل م'] },
+
   // ── Spiritual qualities ───────────────────────────────────────────────────
   'taqwa':      { english: ['piety','righteousness','god-fearing','devout','god-consciousness'], roots: ['و ق ي'] },
   'iman':       { english: ['faith','belief','believe','trust'], roots: ['ا م ن'] },
@@ -1965,6 +1970,10 @@ const CONCEPT_EXPANSIONS = {
   'remembrance':  ['ذ ك ر'],
   'blessings':    ['ص ل و', 'ب ر ك', 'ن ع م'],
   'salutations':  ['ص ل و', 'س ل م'],
+  'peace':        ['س ل م', 'ا م ن'],
+  'greeting':     ['س ل م'],
+  'safety':       ['ا م ن', 'س ل م'],
+  'security':     ['ا م ن'],
 
   // ── Character virtues ─────────────────────────────────────────────────────
   'patience':     ['ص ب ر'],
