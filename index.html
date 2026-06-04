@@ -343,8 +343,8 @@
                 </div>
                 <div class="anchorArabic" id="dArabic" dir="rtl"></div>
                 <div class="anchorEnglish" id="dEnglish"></div>
-                <div id="tafsirBlock" class="tafsirBlock hidden" aria-label="Tafsir commentary">
-                  <div class="tafsirHead">
+                <div id="tafsirBlock" class="tafsirBlock hidden collapsed" aria-label="Tafsir commentary">
+                  <div class="tafsirHead" id="tafsirToggle" title="Click to expand / collapse Tafsir">
                     <div class="tafsirHeadLeft">
                       <div class="tafsirLabel"></div>
                       <div class="tafsirTabs" role="tablist"></div>
@@ -352,6 +352,7 @@
                     <div class="tafsirHeadRight">
                       <button id="tafsirFontDecBtn" class="fontBtn" title="Decrease commentary text size" type="button">T−</button>
                       <button id="tafsirFontIncBtn" class="fontBtn" title="Increase commentary text size" type="button">T+</button>
+                      <span class="tafsirToggleIcon">▲</span>
                     </div>
                   </div>
                   <div class="tafsirText"></div>

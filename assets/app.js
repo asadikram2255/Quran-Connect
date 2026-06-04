@@ -1556,6 +1556,17 @@ document.addEventListener("click", (e) => {
   if (state.selectedAyahId) renderAnchorTafsir(state.selectedAyahId);
 });
 
+// Tafsir expand/collapse toggle
+document.addEventListener("click", (e) => {
+  const toggle = e.target.closest?.("#tafsirToggle");
+  if (!toggle) return;
+  // Don't collapse when clicking font-size buttons or tab buttons inside the header
+  if (e.target.closest?.(".fontBtn") || e.target.closest?.(".tafsirTab")) return;
+  const block = document.getElementById("tafsirBlock");
+  if (!block) return;
+  block.classList.toggle("collapsed");
+});
+
 function findHadithShardFileBySerial(serial) {
   for (const x of state.shardMapHadith || [])
     if (serial >= x.start && serial <= x.end) return x.file;
