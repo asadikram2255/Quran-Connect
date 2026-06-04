@@ -2402,8 +2402,21 @@ function parseQuery(rawQuery) {
   for (const concept of conceptKeys) {
     const esc = concept.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (new RegExp('(?:^|[^a-z])' + esc + '(?:$|[^a-z])', 'i').test(qNorm)) {
-      for (const root of CONCEPT_EXPANSIONS[concept]) {
+      const roots = CONCEPT_EXPANSIONS[concept];
+      for (const root of roots) {
         if (!matched.roots.includes(root)) matched.roots.push(root);
+      }
+      // Register in matchedConcepts so the concept bridge shows "✓ Concept match"
+      // instead of "~ Approximate match"
+      if (!matched.matchedConcepts.some(c => c.key === concept)) {
+        matched.matchedConcepts.push({
+          key:        concept,
+          label:      concept,
+          arabicWords: [],
+          roots:      roots,
+          confidence: 'concept',
+          source:     'concept-expansion',
+        });
       }
     }
   }
