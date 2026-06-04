@@ -3084,11 +3084,7 @@ body.view-mood .feelingsBtn { display: none; }
   color: var(--text-soft);
   white-space: nowrap;
 }
-.heroFeat:hover {
-  border-color: var(--accent-strong);
-  color: var(--text);
-  background: var(--accent-soft);
-}
+.heroFeat { pointer-events: none; }
 .heroFeatIcon {
   font-size: 14px;
   line-height: 1;
@@ -3141,85 +3137,131 @@ body.view-mood .feelingsBtn { display: none; }
 .moduleSelector {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  max-width: 560px;
-  margin: 4px auto 0;
+  max-width: 600px;
+  margin: 8px auto 0;
 }
+
 .moduleCard {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-radius: var(--r, 10px);
-  border: 1.5px solid var(--border);
-  background: var(--surface, #f5f5f5);
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-1);
   text-align: left;
   text-decoration: none;
   color: var(--text);
   cursor: pointer;
   font-family: inherit;
-  transition: border-color .15s, background .15s, box-shadow .15s, transform .1s;
+  overflow: hidden;
   position: relative;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+}
+.moduleCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.03) 0%, transparent 60%);
+  pointer-events: none;
 }
 .moduleCard:hover {
-  border-color: var(--accent);
-  background: var(--card-bg, #fff);
-  box-shadow: 0 4px 16px rgba(0,0,0,.08);
-  transform: translateY(-1px);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px var(--accent-strong), 0 8px 32px rgba(0,0,0,.35);
+  transform: translateY(-2px);
   text-decoration: none;
 }
-.moduleCardPrimary {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 6%, var(--surface, #f5f5f5));
+
+/* coloured top bar */
+.moduleCard::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent-strong);
+  opacity: 0;
+  transition: opacity .2s;
 }
-.moduleCardPrimary:hover {
-  background: color-mix(in srgb, var(--accent) 10%, var(--card-bg, #fff));
+.moduleCard:hover::after { opacity: 1; }
+.moduleCardPrimary::after { opacity: 1; }
+
+.moduleCardInner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 22px 18px;
 }
+
 .moduleCardIcon {
-  font-size: 1.7rem;
+  font-size: 2rem;
   flex-shrink: 0;
   line-height: 1;
+  margin-top: 2px;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
 }
+
 .moduleCardBody {
   flex: 1;
   min-width: 0;
 }
+
 .moduleCardTitle {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 3px;
+  margin-bottom: 5px;
   letter-spacing: -.2px;
 }
+
 .moduleCardDesc {
   font-size: 12.5px;
-  color: var(--text-soft, #666);
-  line-height: 1.5;
+  color: var(--text-soft);
+  line-height: 1.6;
 }
-.moduleCardArrow {
-  font-size: 1.1rem;
+
+.moduleCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 22px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.moduleCardCta {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--accent);
-  flex-shrink: 0;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+
+.moduleCardArrow {
+  font-size: 1rem;
+  color: var(--accent);
   font-weight: 700;
-  opacity: .7;
+  opacity: .55;
   transition: opacity .15s, transform .15s;
 }
 .moduleCard:hover .moduleCardArrow {
   opacity: 1;
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
+
+.moduleCardPrimary {
+  border-color: var(--accent-strong);
+  background: linear-gradient(145deg, rgba(245,183,94,.10) 0%, var(--surface-1) 55%);
+}
+.moduleCardPrimary .moduleCardFooter {
+  background: rgba(245,183,94,.06);
+}
+
 @media (min-width: 600px) {
   .moduleSelector {
     flex-direction: row;
   }
   .moduleCard {
     flex: 1;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .moduleCardArrow {
-    align-self: flex-end;
   }
 }
