@@ -1210,13 +1210,16 @@ function resolveDataPath(path) {
   return p.startsWith("data/") ? p : `data/${p}`;
 }
 
+const DATA_VERSION = "v3";  // bump to bust browser cache when data files change
+
 async function fetchJson(path) {
   const fp = resolveDataPath(path);
   if (state.jsonCache.has(fp))   return state.jsonCache.get(fp);
   if (state.pendingJson.has(fp)) return state.pendingJson.get(fp);
 
   const p = (async () => {
-    const res = await fetch(fp, { cache: "force-cache" });
+    const separator = fp.includes("?") ? "&" : "?";
+    const res = await fetch(`${fp}${separator}_v=${DATA_VERSION}`, { cache: "default" });
     if (!res.ok) {
       let txt = "";
       try { txt = await res.text(); } catch (_) {}
