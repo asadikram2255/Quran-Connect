@@ -741,6 +741,91 @@ const TRANSLITERATIONS = {
   'rasool':       { english: ['messenger','apostle','envoy'], roots: ['ر س ل'] },
   'rasul':        { english: ['messenger','apostle'], roots: ['ر س ل'] },
 
+  // ── Common Urdu search terms ──────────────────────────────────────────────
+
+  // World & life
+  'duniya':     { english: ['world','worldly life','this world','temporary world','material world'], roots: ['د ن و', 'ح ي ي'] },
+  'amal':       { english: ['deeds','actions','good deeds','righteous deeds','works'], roots: ['ع م ل'] },
+  'dil':        { english: ['heart','mind','soul','inner self'], roots: ['ق ل ب'] },
+  'sukoon':     { english: ['peace','tranquility','comfort','contentment','rest','serenity'], roots: ['س ك ن', 'ط م ن'] },
+  'itminan':    { english: ['contentment','peace of heart','reassurance','serenity'], roots: ['ط م ن'] },
+  'umeed':      { english: ['hope','expectation','wish','aspiration'], roots: ['ر ج و', 'ا م ل'] },
+  'salamti':    { english: ['safety','wellbeing','security','soundness'], roots: ['س ل م', 'ا م ن'] },
+  'daulat':     { english: ['wealth','riches','treasure','property','affluence'], roots: ['م ا ل', 'ث ر و'] },
+  'izzat':      { english: ['honour','dignity','respect','prestige'], roots: ['ع ز ز', 'ك ر م'] },
+  'dhillat':    { english: ['humiliation','disgrace','lowliness','abasement'], roots: ['ذ ل ل', 'خ ز ي'] },
+
+  // Emotions
+  'muhabbat':   { english: ['love','affection','fondness','devotion','deep love'], roots: ['ح ب ب', 'و د د'] },
+  'ulfat':      { english: ['love','affection','intimacy','fondness'], roots: ['ا ل ف', 'ح ب ب'] },
+  'gham':       { english: ['grief','sorrow','sadness','distress','affliction'], roots: ['ح ز ن', 'غ م م'] },
+  'khushi':     { english: ['happiness','joy','delight','pleasure'], roots: ['ف ر ح', 'س ر ر'] },
+
+  // Worship & practice
+  'bandagi':    { english: ['worship','servitude','devotion','obedience to allah','slavery to allah'], roots: ['ع ب د'] },
+  'banda':      { english: ['servant','slave of allah','worshipper','human being'], roots: ['ع ب د'] },
+  'tilawat':    { english: ['recitation of quran','reading quran','quran recitation'], roots: ['ت ل و', 'ق ر ا'] },
+  'taraweeh':   { english: ['night prayers in ramadan','ramadan prayers','extra night prayers'], roots: ['ص ل و', 'ق و م'] },
+  'tehajjud':   { english: ['night vigil prayer','late night prayer','optional night prayer'], roots: ['ه ج د', 'ص ل و'] },
+  'qurbani':    { english: ['sacrifice','animal sacrifice','eid sacrifice','slaughter for allah'], roots: ['ق ر ب', 'ذ ب ح'] },
+  'zabiha':     { english: ['slaughtered animal','halal slaughter','sacrifice'], roots: ['ذ ب ح'] },
+  'eid':        { english: ['celebration','festival','eid ul fitr','eid ul adha'], roots: ['ع ي د', 'ف ط ر'] },
+  'khatam':     { english: ['seal','completion','end','finish','seal of prophets'], roots: ['خ ت م'] },
+  'khatimah':   { english: ['ending','conclusion','seal','final outcome'], roots: ['خ ت م'] },
+  'janazah':    { english: ['funeral prayer','funeral','funeral rites','prayer for the dead'], roots: ['ص ل و', 'م و ت'] },
+  'wafat':      { english: ['death','passing away','natural death'], roots: ['و ف ي', 'م و ت'] },
+  'kafan':      { english: ['burial shroud','shroud','white cloth for burial'], roots: ['م و ت', 'ق ب ر'] },
+  'dafan':      { english: ['burial','to bury','interment'], roots: ['ق ب ر', 'م و ت'] },
+
+  // Fiqh categories
+  'halaal':     { english: ['permissible','lawful','allowed','permitted in islam'], roots: ['ح ل ل'] },
+  'haraam':     { english: ['forbidden','prohibited','unlawful','not permitted'], roots: ['ح ر م'] },
+  'makrooh':    { english: ['disliked','discouraged','reprehensible','detestable'], roots: ['ك ر ه'] },
+  'farz':       { english: ['obligatory','mandatory','compulsory duty','religious obligation'], roots: ['ف ر ض', 'و ج ب'] },
+  'wajib':      { english: ['obligatory','necessary','required','compulsory'], roots: ['و ج ب'] },
+  'sunnat':     { english: ['prophetic tradition','sunnah','way of the prophet','recommended'], roots: ['س ن ن'] },
+  'mustahab':   { english: ['recommended','praiseworthy','preferred','desirable'], roots: ['ح ب ب', 'ن د ب'] },
+  'mubah':      { english: ['permissible','neutral','neither forbidden nor obligatory'], roots: ['ب و ح', 'ح ل ل'] },
+
+  // Character & ethics
+  'naseehat':   { english: ['advice','counsel','sincere advice','guidance','admonition'], roots: ['ن ص ح', 'و ع ظ'] },
+  'ikhlaas':    { english: ['sincerity','purity of intention','devotion solely for allah'], roots: ['خ ل ص'] },
+  'iraadah':    { english: ['will','intention','desire','divine will'], roots: ['ر و د', 'ا ر د'] },
+  'naiki':      { english: ['good deed','righteousness','virtue','goodness'], roots: ['ح س ن', 'خ ي ر', 'ب ر ر'] },
+  'nek':        { english: ['righteous','good','virtuous','pious'], roots: ['ص ل ح', 'ب ر ر'] },
+  'burai':      { english: ['evil','bad deed','wickedness','wrongdoing'], roots: ['س و ا', 'ف ح ش', 'م ن ك'] },
+  'barkaat':    { english: ['blessings','divine blessings','abundance','increase in goodness'], roots: ['ب ر ك'] },
+  'shukrana':   { english: ['gratitude','thanksgiving','gratefulness','expression of thanks'], roots: ['ش ك ر'] },
+  'ziarat':     { english: ['visit','pilgrimage','visiting graves','sacred visit'], roots: ['ز و ر', 'ح ج ج'] },
+
+  // Social
+  'walidain':   { english: ['parents','father and mother','both parents','respect parents'], roots: ['و ل د', 'ا ب و'] },
+  'aulaad':     { english: ['children','offspring','sons and daughters','progeny'], roots: ['و ل د', 'ب ن و'] },
+  'ittehad':    { english: ['unity','solidarity','togetherness','oneness'], roots: ['و ح د', 'ا خ و'] },
+  'khidmat':    { english: ['service','serving others','helping others','duty'], roots: ['خ د م', 'ع م ل'] },
+
+  // Sin & forgiveness
+  'gunah':      { english: ['sin','crime','transgression','wrongdoing','evil act'], roots: ['ذ ن ب', 'ا ث م', 'خ ط ا'] },
+  'muaafi':     { english: ['forgiveness','pardon','amnesty','excuse','clemency'], roots: ['ع ف و', 'غ ف ر'] },
+  'bakshish':   { english: ['forgiveness','divine pardon','mercy','grant','gift'], roots: ['غ ف ر', 'ع ف و'] },
+  'afv':        { english: ['pardon','forgiveness','to overlook','to excuse'], roots: ['ع ف و'] },
+
+  // Knowledge & guidance
+  'sabaq':      { english: ['lesson','teaching','moral lesson','what to learn'], roots: ['ع ل م', 'ع ب ر'] },
+  'ahmiyat':    { english: ['importance','significance','value'], roots: ['ا ه م', 'ع ظ م'] },
+  'zaroorat':   { english: ['necessity','need','requirement'], roots: ['ض ر ر', 'ح ج ج'] },
+  'azmat':      { english: ['greatness','majesty','glory','magnificence'], roots: ['ع ظ م', 'ك ب ر'] },
+  'mushkil':    { english: ['difficulty','hardship','trouble','problem'], roots: ['ع س ر', 'ض ر ر'] },
+  'mushkilat':  { english: ['difficulties','hardships','problems','tribulations'], roots: ['ع س ر', 'ب ل و'] },
+
+  // Prophets (Urdu/Persian spellings)
+  'paighambar': { english: ['prophet','messenger','one who brings message from god'], roots: ['ن ب و', 'ر س ل'] },
+  'payambar':   { english: ['prophet','messenger'], roots: ['ن ب و', 'ر س ل'] },
+
+  // Mercy (Urdu spellings)
+  'rehmat':     { english: ['mercy','divine mercy','compassion','grace','blessing'], roots: ['ر ح م'] },
+  'rehman':     { english: ['the merciful','most gracious','attribute of allah'], roots: ['ر ح م'] },
+
   // ── Help / Aid / Victory ─────────────────────────────────────────────────
   'nasr':       { english: ['help','victory','support','divine aid'], roots: ['ن ص ر'] },
   'nusrat':     { english: ['help','support','assistance','divine help'], roots: ['ن ص ر'] },
