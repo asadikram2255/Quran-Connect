@@ -202,6 +202,10 @@ const EXACT_WORDS = {
   'sadiqeen':     ['الصادقين', 'الصادقون', 'صادقين'],
   'siddiqeen':    ['الصديقين', 'الصديقون'],
   'sadihin':      ['الصادقين', 'صادقين'],
+  'sabiqun':      ['السابقون', 'السابقين', 'سابقون', 'سابقين', 'والسابقون'],
+  'sabiqeen':     ['السابقون', 'السابقين', 'سابقون', 'سابقين'],
+  'saabiqun':     ['السابقون', 'السابقين', 'سابقون'],
+  'saabiqeen':    ['السابقون', 'السابقين'],
   'abrar':        ['الابرار', 'ابرار'],
   'rabbaniyin':   ['ربانيين', 'ربانيون', 'رباني'],
   'ulul albab':   ['الالباب', 'الالبب', 'لباب'],
@@ -436,6 +440,13 @@ const TRANSLITERATIONS = {
   'azan':       { english: ['call to prayer','adhan'], roots: ['ا ذ ن'] },
   'adhan':      { english: ['call to prayer','announce prayer'], roots: ['ا ذ ن'] },
   'iqamah':     { english: ['prayer call','standing prayer'], roots: ['ق و م'] },
+
+  // ── Forerunners / Sabiqun ─────────────────────────────────────────────────
+  'sabiqun':    { english: ['forerunners','foremost','pioneers','first in faith'], roots: ['س ب ق'] },
+  'sabiqeen':   { english: ['forerunners','foremost believers','those who are first'], roots: ['س ب ق'] },
+  'saabiqun':   { english: ['forerunners','foremost','first'], roots: ['س ب ق'] },
+  'saabiqeen':  { english: ['forerunners','foremost','first in faith'], roots: ['س ب ق'] },
+  'as-sabiqun': { english: ['the forerunners','the foremost','the first'], roots: ['س ب ق'] },
 
   // ── Greeting & Peace ───────────────────────────────────────────────────────
   'salam':      { english: ['peace','greeting','safety','security','submission'], roots: ['س ل م'] },
@@ -1993,6 +2004,15 @@ const CONCEPT_EXPANSIONS = {
   'greeting':     ['س ل م'],
   'safety':       ['ا م ن', 'س ل م'],
   'security':     ['ا م ن'],
+
+  // ── Forerunners / Race to good ───────────────────────────────────────────
+  'forerunners':  ['س ب ق'],
+  'forerunner':   ['س ب ق'],
+  'foremost':     ['س ب ق'],
+  'outrun':       ['س ب ق'],
+  'precede':      ['س ب ق'],
+  'race to good': ['س ب ق', 'خ ي ر'],
+  'compete':      ['س ب ق', 'خ ي ر'],
 
   // ── Help / Support / Aid ─────────────────────────────────────────────────
   'help':         ['ن ص ر', 'ع و ن'],
