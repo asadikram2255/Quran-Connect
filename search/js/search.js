@@ -129,114 +129,142 @@ class QuranSearch {
       if (label) reasons[id][type].add(label);
     };
 
-    // ── Step 1: Translate uncovered tokens to Arabic ─────────────────────────
+    // ── Step 1: Query expansion — LLM-first, translation pipeline fallback ──────
     //
-    // The concept layer (TRANSLITERATIONS + CONCEPT_EXPANSIONS) handles known
-    // Islamic/Urdu terms. For everything it DOESN'T recognise, the translation
-    // API fills the gap — turning any unknown English or Roman-Urdu word into
-    // Arabic roots on the fly.
+    // Layer A (Vercel):  /api/expand  — Claude understands any language/script
+    //   and returns Quranic roots + English keywords directly. One network call,
+    //   no translation noise, works for Roman Urdu, Urdu, Persian, mixed, slang.
     //
-    // Key principle: translate ONLY the tokens the concept layer left uncovered
-    // (these are in parsed.keywords — the _arabicPreciseTokens guard in
-    // parseQuery already removed anything handled by the concept layer).
-    // Then ADD the translation roots to the existing concept roots instead of
-    // replacing/suppressing them. This lets both layers work together.
+    // Layer B (GitHub Pages + Vercel fallback): MyMemory translation pipeline —
+    //   3-pass: en|ar → ur|ar → ur|en→concept layer. Used when /api/expand
+    //   is unavailable (GitHub Pages) or returns no useful roots.
     //
-    // Examples:
-    //   "tazkiya e nafs"  → "nafs" covered (ن ف س), "tazkiya" uncovered
-    //                     → translate "tazkiya" → ز ك و → both roots scored ✓
-    //   "ikhlaas"         → concept layer handles it precisely → skip translation ✓
-    //   "feeling hopeless"→ nothing covered → translate full query → ر ج و, ق ن ط ✓
-    //   "musibat zindagi" → both uncovered → translate both → ب ل و, ح ي ي ✓
+    // Same index.html is deployed to both hosts. The page detects capability
+    // at runtime via a fetch to /api/expand — 404 on GitHub Pages → falls through.
+    //
     onProgress?.('translate');
-    let arabicQuery = '';
+    let arabicQuery      = '';
     let translationRoots = [];
-    try {
-      // Build translation input from UNCOVERED tokens only.
-      // If the concept layer handled everything (no uncovered keywords and
-      // roots already exist), skip translation entirely.
-      const uncoveredKws = parsed.keywords.filter(k => k.length > 2).slice(0, 6);
-      const hasConceptCoverage = parsed.roots.length > 0 || (parsed.exactWords || []).length > 0;
-      const translationInput = uncoveredKws.length > 0
-        ? uncoveredKws.join(' ')                          // translate only the unknown parts
-        : hasConceptCoverage ? ''                         // fully covered — skip
-        : rawQuery.trim();                                // nothing covered — translate all
 
-      if (translationInput) {
-        // Pass 1 — English → Arabic
-        arabicQuery = await this._translateToArabic(translationInput, 'en|ar');
-        if (arabicQuery) {
-          translationRoots = this._extractRootsFromArabic(arabicQuery);
+    // ── Layer A: LLM expansion via /api/expand ────────────────────────────────
+    const llm = await this._expandQuery(rawQuery);
+
+    if (llm) {
+      // LLM succeeded — use its roots and keywords directly
+      arabicQuery = llm.understood_as || '';
+      const newLlmRoots = (llm.roots || []).filter(r => !parsed.roots.includes(r));
+
+      onProgress?.('roots');
+      for (const root of newLlmRoots) {
+        const ids = this.rootIdx[root];
+        if (ids) {
+          const w = this.rootIdf[root] || 4;
+          for (const id of ids) addScore(id, w, 'roots', root);
+        }
+      }
+
+      // Also score LLM keywords through BM25 (weighted lower than roots)
+      for (const kw of (llm.keywords || [])) {
+        const term = kw.toLowerCase();
+        const postings = this.invIndex[term] || {};
+        for (const idStr of Object.keys(postings)) {
+          const id = +idStr;
+          const sc = this._bm25(term, id);
+          if (sc > 0) addScore(id, sc * 0.7, 'keywords', term.length > 4 ? term : null);
+        }
+        const stemmed = this._stem(term);
+        if (stemmed !== term) {
+          const sp = this.invIndex[stemmed] || {};
+          for (const idStr of Object.keys(sp)) {
+            const id = +idStr;
+            const sc = this._bm25(stemmed, id);
+            if (sc > 0) addScore(id, sc * 0.5, 'keywords', null);
+          }
+        }
+      }
+
+      translationRoots = newLlmRoots;
+      onProgress?.('search');
+
+    } else {
+      // ── Layer B: MyMemory translation pipeline (fallback) ───────────────────
+      //
+      // The concept layer (TRANSLITERATIONS + CONCEPT_EXPANSIONS) handles known
+      // Islamic/Urdu terms. For everything it DOESN'T recognise, the translation
+      // API fills the gap — turning any unknown English or Roman-Urdu word into
+      // Arabic roots on the fly.
+      //
+      // Examples:
+      //   "tazkiya e nafs"  → "nafs" covered (ن ف س), "tazkiya" uncovered
+      //                     → translate "tazkiya" → ز ك و → both roots scored ✓
+      //   "ikhlaas"         → concept layer handles it precisely → skip translation ✓
+      //   "feeling hopeless"→ nothing covered → translate full query → ر ج و, ق ن ط ✓
+      //   "musibat zindagi" → both uncovered → translate both → ب ل و, ح ي ي ✓
+      try {
+        // Build translation input from UNCOVERED tokens only.
+        const uncoveredKws = parsed.keywords.filter(k => k.length > 2).slice(0, 6);
+        const hasConceptCoverage = parsed.roots.length > 0 || (parsed.exactWords || []).length > 0;
+        const translationInput = uncoveredKws.length > 0
+          ? uncoveredKws.join(' ')      // translate only the unknown parts
+          : hasConceptCoverage ? ''     // fully covered — skip
+          : rawQuery.trim();            // nothing covered — translate all
+
+        if (translationInput) {
+          // Pass 1 — English → Arabic
+          arabicQuery = await this._translateToArabic(translationInput, 'en|ar');
+          if (arabicQuery) {
+            translationRoots = this._extractRootsFromArabic(arabicQuery);
+          }
+
+          // Pass 2 — Urdu → Arabic fallback
+          if (!translationRoots.length) {
+            onProgress?.('roots');
+            const urduInput  = uncoveredKws.length > 0 ? uncoveredKws.join(' ') : rawQuery.trim();
+            const urduArabic = await this._translateToArabic(urduInput, 'ur|ar');
+            if (urduArabic) {
+              const urduRoots = this._extractRootsFromArabic(urduArabic);
+              if (urduRoots.length) {
+                arabicQuery      = urduArabic;
+                translationRoots = urduRoots;
+              }
+            }
+          }
+
+          // Pass 3 — Urdu/Roman → English → concept layer (deepest fallback)
+          if (!translationRoots.length && uncoveredKws.length > 0) {
+            const engText = await this._translate(uncoveredKws.join(' '), 'ur|en');
+            if (engText && /[a-z]/i.test(engText)) {
+              const engNorm = engText.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
+              const isSame  = engNorm === uncoveredKws.join(' ').toLowerCase();
+              if (!isSame && engNorm.length > 1) {
+                const engParsed = parseQuery(engNorm);
+                for (const root of engParsed.roots) {
+                  if (!translationRoots.includes(root)) translationRoots.push(root);
+                }
+                if (translationRoots.length && !arabicQuery) arabicQuery = engText;
+              }
+            }
+          }
         }
 
-        // Pass 2 — Urdu → Arabic fallback (MyMemory en|ar doesn't know Urdu/Persian)
-        if (!translationRoots.length) {
+        // Add translation roots that are genuinely NEW
+        const newRoots = translationRoots.filter(r => !parsed.roots.includes(r));
+        if (newRoots.length > 0) {
           onProgress?.('roots');
-          const urduInput  = uncoveredKws.length > 0 ? uncoveredKws.join(' ') : rawQuery.trim();
-          const urduArabic = await this._translateToArabic(urduInput, 'ur|ar');
-          if (urduArabic) {
-            const urduRoots = this._extractRootsFromArabic(urduArabic);
-            if (urduRoots.length) {
-              arabicQuery      = urduArabic;
-              translationRoots = urduRoots;
+          for (const root of newRoots) {
+            const ids = this.rootIdx[root];
+            if (ids) {
+              const w = this.rootIdf[root] || 4;
+              for (const id of ids) addScore(id, w, 'roots', root);
             }
           }
+          translationRoots = newRoots;
+        } else {
+          arabicQuery      = '';
+          translationRoots = [];
         }
-
-        // Pass 3 — Urdu/Roman → English → concept layer (deepest fallback)
-        //
-        // When Passes 1+2 fail to extract Arabic roots (the translated Arabic
-        // word form often doesn't appear verbatim in the Quran corpus), translate
-        // the uncovered tokens to ENGLISH and run the result through parseQuery.
-        // This lets the existing English concept layer do the heavy lifting:
-        //
-        //   "tazkiya"        → ur|en → "purification" → CONCEPT_EXPANSIONS → ز ك و
-        //   "husn e akhlaq"  → ur|en → "good character"  → خ ل ق
-        //   "musibat"        → ur|en → "calamity"         → ص ب ر, ب ل و
-        //   "qanaah"         → ur|en → "contentment"      → ق ن ع, ر ض ي
-        //   "zindagi"        → ur|en → "life"              → ح ي ي
-        //   "pareshani"      → ur|en → "anxiety"          → خ و ف, ت و ك ل
-        //
-        // Works for any Islamic/Urdu/Persian term without manual entries.
-        if (!translationRoots.length && uncoveredKws.length > 0) {
-          const engText = await this._translate(uncoveredKws.join(' '), 'ur|en');
-          if (engText && /[a-z]/i.test(engText)) {
-            const engNorm = engText.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
-            // Guard: skip if translation returned the same words (no-op translation)
-            const isSame = engNorm === uncoveredKws.join(' ').toLowerCase();
-            if (!isSame && engNorm.length > 1) {
-              const engParsed = parseQuery(engNorm);
-              for (const root of engParsed.roots) {
-                if (!translationRoots.includes(root)) translationRoots.push(root);
-              }
-              // Use the English translation as the UI label if we got useful roots
-              if (translationRoots.length && !arabicQuery) {
-                arabicQuery = engText;  // show what the engine understood
-              }
-            }
-          }
-        }
-      }
-
-      // Add translation roots that are genuinely NEW — not already covered by
-      // the concept layer. This avoids double-counting roots that both layers found.
-      const newRoots = translationRoots.filter(r => !parsed.roots.includes(r));
-      if (newRoots.length > 0) {
-        onProgress?.('roots');
-        for (const root of newRoots) {
-          const ids = this.rootIdx[root];
-          if (ids) {
-            const w = this.rootIdf[root] || 4;
-            for (const id of ids) addScore(id, w, 'roots', root);
-          }
-        }
-        translationRoots = newRoots;  // expose only the net-new roots to the UI strip
-      } else {
-        // Translation found nothing new — hide the strip to avoid clutter
-        arabicQuery      = '';
-        translationRoots = [];
-      }
-    } catch (_) { /* translation failed — concept roots already scored, continue */ }
+      } catch (_) { /* translation failed — concept roots already scored, continue */ }
+    }
 
     // ── Step 2: Arabic pattern matching (addressees) ───────────────────────
     onProgress?.('search');
@@ -392,6 +420,34 @@ class QuranSearch {
   }
 
   // ── Translation API ───────────────────────────────────────────────────────
+
+  // ── LLM query expansion ──────────────────────────────────────────────────
+  //
+  // Calls /api/expand (Vercel serverless) — Claude understands any language
+  // and returns Quranic roots + English keywords directly.
+  //
+  // On GitHub Pages: endpoint doesn't exist → returns null → falls back to
+  // the MyMemory translation pipeline below. Same page, same code, same URL.
+  // On Vercel: works → much richer root coverage for any language/script.
+  //
+  async _expandQuery(query) {
+    try {
+      const res = await Promise.race([
+        fetch('/api/expand', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ query }),
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+      ]);
+      if (!res.ok) return null;
+      const data = await res.json();
+      // Return null if no usable roots (endpoint present but returned empty)
+      return (Array.isArray(data?.roots) && data.roots.length > 0) ? data : null;
+    } catch {
+      return null; // Endpoint missing (GitHub Pages) or network error — fall through
+    }
+  }
 
   // langpair: 'en|ar' (default) or 'ur|ar' for Urdu input
   async _translateToArabic(query, langpair = 'en|ar') {

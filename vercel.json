@@ -3,6 +3,12 @@
     "api/search.js": {
       "maxDuration": 30,
       "includeFiles": "data/embeddings/**"
+    },
+    "api/expand.js": {
+      "maxDuration": 15
+    },
+    "api/rerank.js": {
+      "maxDuration": 20
     }
   },
   "headers": [

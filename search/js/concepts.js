@@ -1051,20 +1051,20 @@ const TRANSLITERATIONS = {
   'nafs':       { english: ['soul','self','ego','inner self'], roots: ['ن ف س'] },
 
   // ── Sacrifice / selling soul / martyrdom (Urdu terms) ────────────────────
-  'bechna':     { english: ['sell','trade','give in exchange','sacrifice','sold'], roots: ['ب ي ع'] },
-  'bech':       { english: ['sell','selling','give away','traded'], roots: ['ب ي ع'] },
+  'bechna':     { english: ['sell','trade','give in exchange','sacrifice','sold'], roots: ['ب ي ع', 'ش ر ي'] },
+  'bech':       { english: ['sell','selling','give away','traded'], roots: ['ب ي ع', 'ش ر ي'] },
   'khareedna':  { english: ['buy','purchase','acquire'], roots: ['ب ي ع', 'ش ر ي'] },
   'kharidna':   { english: ['buy','purchase'], roots: ['ب ي ع', 'ش ر ي'] },
-  // compound sacrifice phrases
-  'jaan dena':     { english: ['sacrifice life','give life','die for cause','lay down life','martyrdom'], roots: ['ن ف س', 'ج ه د', 'ش ه د', 'ب ي ع'] },
-  'jaan nisaar':   { english: ['self-sacrifice','devoted completely','life devoted'], roots: ['ن ف س', 'ج ه د', 'ش ه د'] },
-  'jaan qurban':   { english: ['sacrifice life','life as sacrifice'], roots: ['ن ف س', 'ق ر ب', 'ش ه د'] },
-  'fidaa hona':    { english: ['sacrifice','devote','give life for','ransom'], roots: ['ف د ي', 'ن ف س'] },
+  // compound sacrifice phrases — ش ر ي is the root used in 2:207 (يشري نفسه) and 9:111 (اشترى)
+  'jaan dena':     { english: ['sacrifice life','give life','die for cause','lay down life','martyrdom'], roots: ['ن ف س', 'ج ه د', 'ش ه د', 'ش ر ي', 'ب ي ع'] },
+  'jaan nisaar':   { english: ['self-sacrifice','devoted completely','life devoted'], roots: ['ن ف س', 'ج ه د', 'ش ه د', 'ش ر ي'] },
+  'jaan qurban':   { english: ['sacrifice life','life as sacrifice'], roots: ['ن ف س', 'ق ر ب', 'ش ه د', 'ش ر ي'] },
+  'fidaa hona':    { english: ['sacrifice','devote','give life for','ransom'], roots: ['ف د ي', 'ن ف س', 'ش ر ي'] },
   'shaheed hona':  { english: ['martyrdom','die as martyr','die in path of allah'], roots: ['ش ه د', 'ج ه د'] },
   'shaheed':       { english: ['martyr','witness','die for allah'], roots: ['ش ه د'] },
-  // the Quranic transaction — Allah bought the believers' lives (9:111)
-  'jaan bechna':   { english: ['sell life for allah','sacrifice soul','trade life for paradise'], roots: ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د', 'ر ض ي'] },
-  'jaan ko bech':  { english: ['selling life','sacrifice soul for allah','trade soul'], roots: ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'] },
+  // the Quranic transaction — 2:207 يشري نفسه ابتغاء مرضات الله & 9:111 اشترى من المؤمنين
+  'jaan bechna':   { english: ['sell life for allah','sacrifice soul','trade life for paradise'], roots: ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د', 'ر ض ي'] },
+  'jaan ko bech':  { english: ['selling life','sacrifice soul for allah','trade soul'], roots: ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'] },
 
   // ── Emotional / psychological states (Urdu/Islamic terms) ───────────────
   'musibah':    { english: ['calamity','hardship','affliction','disaster','trial'], roots: ['ص ب ر', 'ب ل و'] },
@@ -2272,18 +2272,21 @@ const CONCEPT_EXPANSIONS = {
   'tranquility':    ['ط م ن', 'س ك ن', 'ذ ك ر'],
 
   // ── Sacrifice / martyrdom / selling soul ─────────────────────────────────
-  'sell soul':          ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
-  'selling soul':       ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
-  'sell life':          ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
-  'selling life':       ['ب ي ع', 'ن ف س', 'ج ه د'],
-  'lay down life':      ['ن ف س', 'ج ه د', 'ش ه د', 'ب ي ع'],
-  'sacrifice life':     ['ن ف س', 'ج ه د', 'ش ه د', 'ق ر ب', 'ب ي ع'],
-  'sacrifice soul':     ['ن ف س', 'ب ي ع', 'ج ه د', 'ش ه د'],
-  'give life for allah':['ب ي ع', 'ن ف س', 'ج ه د', 'ر ض ي', 'ش ه د'],
-  'bought souls':       ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
-  'purchased souls':    ['ب ي ع', 'ن ف س', 'ج ه د'],
-  'martyr':             ['ش ه د', 'ج ه د', 'ب ي ع'],
-  'martyrdom':          ['ش ه د', 'ج ه د', 'ن ف س', 'ب ي ع'],
+  // ش ر ي = root of يَشْرِي (2:207) and اشْتَرَىٰ (9:111) — THE Quranic root for this concept
+  'sell soul':          ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'selling soul':       ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'sell life':          ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'selling life':       ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د'],
+  'lay down life':      ['ن ف س', 'ج ه د', 'ش ه د', 'ش ر ي', 'ب ي ع'],
+  'sacrifice life':     ['ن ف س', 'ج ه د', 'ش ه د', 'ش ر ي', 'ق ر ب', 'ب ي ع'],
+  'sacrifice soul':     ['ن ف س', 'ش ر ي', 'ب ي ع', 'ج ه د', 'ش ه د'],
+  'give life for allah':['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ر ض ي', 'ش ه د'],
+  'bought souls':       ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'purchased souls':    ['ش ر ي', 'ب ي ع', 'ن ف س', 'ج ه د'],
+  'sell yourself':      ['ش ر ي', 'ن ف س', 'ر ض ي'],
+  'sold himself':       ['ش ر ي', 'ن ف س', 'ر ض ي'],
+  'martyr':             ['ش ه د', 'ج ه د', 'ش ر ي', 'ب ي ع'],
+  'martyrdom':          ['ش ه د', 'ج ه د', 'ن ف س', 'ش ر ي', 'ب ي ع'],
   // ── Divine pleasure ──────────────────────────────────────────────────────
   'pleasure of allah':  ['ر ض ي', 'ر ض و', 'ج ه د', 'ص ل و'],
   'divine pleasure':    ['ر ض ي', 'ر ض و'],
