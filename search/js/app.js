@@ -4,6 +4,16 @@
 
 const PAGE_SIZE = 20;
 
+// ── Optional AI reranking (improvement #7) ───────────────────────────────────
+// Automatically enabled when running on a Vercel deployment or local dev.
+// Falls back gracefully to BM25+root order if unavailable or slow (>4 s).
+const RERANK_ENDPOINT = (() => {
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return '/api/rerank';
+  if (h.endsWith('vercel.app')) return '/api/rerank';
+  return '';   // static host (GitHub Pages, etc.) — skip reranking
+})();
+
 class QuranApp {
   constructor() {
     this.ayaat          = null;
@@ -24,6 +34,8 @@ class QuranApp {
     this._flatIdx        = 0;      // current position in _flatResults during pagination
     this._renderedCount  = 0;      // number of result cards rendered so far
     this._rootToLabel    = null;   // lazy cache: root → { ar, en }
+    this._rerankActive   = false;  // true when AI reranker improved this result set (#7)
+    this._topScore       = 1;      // highest raw score in current result set (#2)
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────
@@ -241,11 +253,16 @@ class QuranApp {
     this._showProgress('translate');
 
     try {
-      // Parse first so we can choose the right search limit
+      // Parse first so we can choose the right search limit (#5 — intent-tuned limits)
       const parsed        = parseQuery(query);
       const useExhaustive = (parsed.exhaustive || parsed.intents.includes('count'))
                             && parsed.exactWords.length > 0;
-      const searchLimit   = useExhaustive ? 6236 : 200;
+      const wordCount     = query.trim().split(/\s+/).length;
+      const isSharpQuery  = wordCount <= 2 && parsed.matchedConcepts.some(c => c.confidence === 'exact');
+      const searchLimit   = useExhaustive ? 6236
+                          : isSharpQuery  ? 60    // single precise concept → quality over quantity
+                          : wordCount <= 3 ? 120
+                          : 200;
 
       const { results, arabicQuery, extractedRoots, exactCount, totalMatched } = await this.engine.search(
         query, this.filters, searchLimit,
@@ -255,6 +272,19 @@ class QuranApp {
       // A newer search has started — discard these results entirely
       if (this._searchGen !== myGen) return;
 
+      // ── #7: Optional AI reranking ──────────────────────────────────────────
+      // Re-rank the top-50 results using the cross-encoder if the endpoint is
+      // configured. Falls back silently to BM25+root order on any error/timeout.
+      this._rerankActive = false;
+      let finalResults = results;
+      if (RERANK_ENDPOINT && results.length >= 5 && !useExhaustive) {
+        try {
+          finalResults = await this._rerank(query, results);
+          if (this._searchGen !== myGen) return;
+          this._rerankActive = true;
+        } catch (_) { /* silent fallback — use original order */ }
+      }
+
       const answerType = this._detectAnswerType(query, parsed);
 
       this._lastKeywords = parsed.keywords;
@@ -262,8 +292,11 @@ class QuranApp {
 
       // Exhaustive mode: only surface the exact-match hits (all of them, Quran-ordered)
       const displayResults = (useExhaustive && exactCount > 0)
-        ? results.filter(r => r.isExact)
-        : results;
+        ? finalResults.filter(r => r.isExact)
+        : finalResults;
+
+      // Store top score for relative confidence display (#2)
+      this._topScore = displayResults[0]?.score || 1;
 
       this._allResults  = displayResults;
       this.results      = displayResults;
@@ -284,6 +317,12 @@ class QuranApp {
       }
 
       this._renderPage(false);
+
+      // #3 — Weak match banner (shown when results are few and confidence is low)
+      this._renderWeakMatchHint(query, parsed, displayResults, exactCount);
+
+      // #6 — Record successful search in history
+      if (displayResults.length > 0) this._trackQuery(query);
 
       document.getElementById('filter-bar').hidden = false;
       document.getElementById('results-section').hidden = false;
@@ -556,11 +595,16 @@ class QuranApp {
       ? `Found in <strong>${totalMatched}</strong> ayaat across the Quran (showing top ${displayCount})`
       : `Found in <strong>${displayCount}</strong> ayaat across the Quran`;
 
+    const rerankBadge = this._rerankActive
+      ? `<span class="cb-ai-badge" title="Results re-ordered by AI cross-encoder">✦ AI-enhanced</span>`
+      : '';
+
     el.innerHTML = `
       <div class="cb-row">
         <span class="cb-label">You searched</span>
         <span class="cb-query">${this._esc(query)}</span>
         <span class="cb-confidence ${confidence}">${confidenceLabel}</span>
+        ${rerankBadge}
       </div>
       ${conceptsHtml ? `
       <div class="cb-row">
@@ -970,6 +1014,11 @@ class QuranApp {
     const card = document.createElement('article');
     card.className = 'result-card';
 
+    // #2 — Confidence indicator: normalize score against the top result's score
+    const rel = Math.min(1, (score || 0) / (this._topScore || 1));
+    const confLevel = rel >= 0.65 ? 'conf-high' : rel >= 0.35 ? 'conf-mid' : 'conf-low';
+    card.classList.add(confLevel);
+
     const placeClass = ayah.place === 'Meccan' ? 'badge-mecca' : 'badge-medina';
 
     const allTrans = [ayah.en, ayah.t1, ayah.t2, ayah.t3].filter(Boolean);
@@ -1004,11 +1053,16 @@ class QuranApp {
          </button>`
       : '';
 
+    // Confidence dots: filled/empty circles  ●●○ / ●●● / ●○○
+    const dots = [rel >= 0.35, rel >= 0.65, rel >= 0.85]
+      .map(f => `<span class="conf-dot${f ? ' filled' : ''}"></span>`).join('');
+
     card.innerHTML = `
       <div class="card-meta">
         <span class="ref-badge">${this._esc(ayah.sne)} ${ayah.sn}:${ayah.an}</span>
         <span class="badge ${placeClass}">${ayah.place}</span>
         <span class="badge badge-juz">Juz ${ayah.juz}</span>
+        <span class="conf-dots" title="Relevance: ${Math.round(rel * 100)}%">${dots}</span>
       </div>
       <div class="ayah-arabic" dir="rtl" lang="ar">${this._esc(ayah.ar)}</div>
       <div class="ayah-translation">
@@ -1047,6 +1101,120 @@ class QuranApp {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  // ── #3 Weak match detection & suggestion chips ───────────────────────────
+
+  _renderWeakMatchHint(query, parsed, results, exactCount) {
+    // Remove any previous hint
+    const existing = document.getElementById('weak-match-hint');
+    if (existing) existing.remove();
+
+    // Conditions for "weak match": very few results, no exact words found,
+    // and no strong concept anchors (concept layer found nothing meaningful)
+    const isWeak = results.length < 8
+      && exactCount === 0
+      && parsed.roots.length < 2
+      && parsed.matchedConcepts.every(c => c.confidence !== 'exact');
+
+    if (!isWeak) return;
+
+    const curated = [
+      'patience in hardship', 'anxiety and worry', 'trust in Allah',
+      'forgiveness and mercy', 'hope after despair', 'gratitude for blessings',
+      'grief and sadness', 'Day of Judgment', 'seeking guidance',
+    ].filter(s => s.toLowerCase() !== query.toLowerCase());
+
+    const history = this._getHistory()
+      .filter(q => q.toLowerCase() !== query.toLowerCase())
+      .slice(0, 3);
+
+    const suggestions = [...new Set([...history, ...curated])].slice(0, 6);
+
+    const chips = suggestions.map(s =>
+      `<button type="button" class="hint-chip" data-q="${this._esc(s)}">${this._esc(s)}</button>`
+    ).join('');
+
+    const hint = document.createElement('div');
+    hint.id = 'weak-match-hint';
+    hint.className = 'weak-match-hint';
+    hint.innerHTML = `
+      <p class="hint-title">Low confidence match for <em>"${this._esc(query)}"</em> — try a more conceptual phrasing:</p>
+      <div class="hint-chips">${chips}</div>`;
+
+    hint.querySelectorAll('.hint-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById('search-input');
+        input.value = btn.dataset.q;
+        this.page = 0;
+        this._run(btn.dataset.q);
+      });
+    });
+
+    // Insert above results grid
+    const grid = document.getElementById('results-grid');
+    grid.parentNode.insertBefore(hint, grid);
+  }
+
+  // ── #6 Query history (localStorage) ─────────────────────────────────────
+
+  _trackQuery(query) {
+    const q = query.trim();
+    if (!q || q.length < 3) return;
+    try {
+      const raw  = localStorage.getItem('qsm_history');
+      let hist   = raw ? JSON.parse(raw) : [];
+      // Remove duplicate then push to front
+      hist = hist.filter(h => h.q.toLowerCase() !== q.toLowerCase());
+      hist.unshift({ q, t: Date.now() });
+      hist = hist.slice(0, 20);   // keep last 20
+      localStorage.setItem('qsm_history', JSON.stringify(hist));
+    } catch (_) { /* localStorage unavailable */ }
+  }
+
+  _getHistory() {
+    try {
+      const raw = localStorage.getItem('qsm_history');
+      if (!raw) return [];
+      return JSON.parse(raw).map(h => h.q);
+    } catch (_) { return []; }
+  }
+
+  // ── #7 AI reranking (optional — only when RERANK_ENDPOINT is set) ────────
+
+  async _rerank(query, results) {
+    const TIMEOUT_MS = 4000;
+    const top50 = results.slice(0, 50);
+    const passages = top50.map(r => [r.ayah.en, r.ayah.t1, r.ayah.t2, r.ayah.t3]
+      .filter(Boolean)[0] || r.ayah.ar || '');
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    const res = await fetch(RERANK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, passages }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Rerank API ${res.status}`);
+    const { scores } = await res.json();
+
+    if (!Array.isArray(scores) || scores.length !== top50.length) {
+      throw new Error('Unexpected rerank response shape');
+    }
+
+    // Merge rerank scores into result objects, sort top-50 by rerank score
+    const reranked = top50
+      .map((r, i) => ({ ...r, _rerankScore: scores[i] }))
+      .sort((a, b) => b._rerankScore - a._rerankScore);
+
+    // Append remaining results (below top-50) unchanged after reranked
+    return [...reranked, ...results.slice(50)];
+  }
+
+  // ── Text helpers ─────────────────────────────────────────────────────────
 
   _highlight(rawText, keywords) {
     if (!rawText) return '';

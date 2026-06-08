@@ -929,3 +929,80 @@ mark {
   .sidebar-roots { display: none; }
   .root-modal { max-height: 92vh; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Improvement additions
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* #2 — Confidence dots on result cards */
+.conf-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  opacity: .7;
+}
+.conf-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-sec);
+  background: transparent;
+  display: inline-block;
+  transition: background .15s;
+}
+.conf-dot.filled { background: var(--accent); border-color: var(--accent); }
+.conf-low  .conf-dot.filled { background: #94a3b8; border-color: #94a3b8; }
+.conf-mid  .conf-dot.filled { background: #f59e0b; border-color: #f59e0b; }
+.conf-high .conf-dot.filled { background: var(--accent); border-color: var(--accent); }
+
+/* #3 — Weak match hint banner */
+.weak-match-hint {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 0 0 20px 0;
+}
+.hint-title {
+  font-size: .88rem;
+  color: var(--text-sec);
+  margin: 0 0 10px 0;
+}
+.hint-title em { color: var(--text); font-style: normal; font-weight: 600; }
+.hint-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.hint-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 13px;
+  font-size: .82rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+.hint-chip:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--accent);
+}
+
+/* #7 — AI-enhanced badge in concept bridge */
+.cb-ai-badge {
+  font-size: .72rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border-radius: 5px;
+  padding: 2px 8px;
+  letter-spacing: .2px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+[data-theme="dark"] .cb-ai-badge {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}

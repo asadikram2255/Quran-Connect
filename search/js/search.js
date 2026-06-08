@@ -61,6 +61,16 @@ class QuranSearch {
       }
     }
     this.avgLen = total / this.N;
+
+    // Pre-compute IDF weight for each root:
+    //   rootIdf[root] = log(N / |ayaatContainingRoot| + 1) × 2
+    // Rarer roots score higher; ubiquitous roots (ق و ل, ك و ن) score ~0.5.
+    // Result is clamped to [0.5, 8] so no root dominates or disappears.
+    this.rootIdf = {};
+    for (const [root, ids] of Object.entries(this.rootIdx)) {
+      const raw = Math.log(this.N / ids.size + 1) * 2;
+      this.rootIdf[root] = Math.min(8, Math.max(0.5, raw));
+    }
   }
 
   // ── Tokenize / Stem ──────────────────────────────────────────────────────
@@ -164,7 +174,8 @@ class QuranSearch {
         for (const root of translationRoots) {
           const ids = this.rootIdx[root];
           if (ids) {
-            for (const id of ids) addScore(id, 4, 'roots', root);
+            const w = this.rootIdf[root] || 4;
+            for (const id of ids) addScore(id, w, 'roots', root);
           }
         }
       } else if (conceptRootsExist) {
@@ -187,13 +198,15 @@ class QuranSearch {
       }
     }
 
-    // ── Step 3: Concept root matching (supplementary, no double-count) ────
+    // ── Step 3: Concept root matching — IDF-weighted ─────────────────────
+    // Rarer roots (e.g. و س ل → 2 ayaat) score much higher than common ones
+    // (e.g. ق و ل → 1000+ ayaat). Floor/ceil keep scores meaningful.
     for (const root of parsed.roots) {
       if (translationRoots.includes(root)) continue;
       const ids = this.rootIdx[root];
       if (ids) {
-        const topic = TOPICS.find(t => t.roots.includes(root));
-        for (const id of ids) addScore(id, 2, 'roots', root);
+        const w = this.rootIdf[root] || 2;
+        for (const id of ids) addScore(id, w, 'roots', root);
       }
     }
 
