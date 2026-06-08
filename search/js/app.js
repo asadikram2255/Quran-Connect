@@ -5,13 +5,12 @@
 const PAGE_SIZE = 20;
 
 // ── Optional AI reranking (improvement #7) ───────────────────────────────────
-// Automatically enabled when running on a Vercel deployment or local dev.
-// Falls back gracefully to BM25+root order if unavailable or slow (>4 s).
+// Enabled only on Vercel deployments where /api/rerank is a real serverless function.
+// Disabled for static servers (GitHub Pages, npx serve, etc.) to avoid 404 hangs.
 const RERANK_ENDPOINT = (() => {
   const h = window.location.hostname;
-  if (h === 'localhost' || h === '127.0.0.1') return '/api/rerank';
   if (h.endsWith('vercel.app')) return '/api/rerank';
-  return '';   // static host (GitHub Pages, etc.) — skip reranking
+  return '';   // disabled on static hosts — enable by setting to your Vercel URL
 })();
 
 class QuranApp {

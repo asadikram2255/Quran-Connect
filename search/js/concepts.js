@@ -3019,27 +3019,16 @@ function parseQuery(rawQuery) {
   // Phase A — exact regex match for all keys (handles multi-word keys like
   //           'allahu akbar', 'la ilaha illallah', 'siratal mustaqeem').
   const _seenTranslitKeys = new Set();
+  // Tracks every raw query token that was resolved to Arabic roots by the
+  // concept layer (TRANSLITERATIONS exact or fuzzy match).  These tokens must
+  // NOT re-enter BM25 or the translation pipeline — doing so inflates results
+  // with unrelated ayaat (e.g. "dua" → BM25 on the word "dua" in translations).
+  const _arabicPreciseTokens = new Set();
+
   const _addConcept = (key, expansion, confidence, source) => {
     if (_seenTranslitKeys.has(key)) return;
     _seenTranslitKeys.add(key);
 
-    // ── Core rule: Arabic-precise vs English-fallback ──────────────────────
-    // When a term has specific Arabic word forms in EXACT_WORDS, those are
-    // used for precise Quranic word matching (+30 score in search.js Step 6).
-    // In that case, DO NOT also push English keywords into BM25 — doing so
-    // causes severe result inflation because common English words like "means",
-    // "medium", "access" appear in thousands of unrelated ayah translations.
-    //
-    // Example: 'waseela' has EXACT_WORDS → الوسيله, وسيله
-    //   Without this guard: 'means' hits 3,939 ayaat via BM25
-    //   With this guard:    only the 2 ayaat containing الوسيلة are found ✓
-    //
-    // English keywords are ONLY added when no exact Arabic form is known —
-    // they serve as a fallback to catch thematic context the Arabic lookup
-    // would miss.
-    // Suppress English BM25 keywords when we have Arabic-level precision:
-    // either explicit word forms (EXACT_WORDS) or Arabic roots.
-    // English keywords are ONLY a fallback for entries with zero Arabic signal.
     const hasArabicPrecision = !!(
       (EXACT_WORDS[key] && EXACT_WORDS[key].length > 0) ||
       (expansion.roots && expansion.roots.length > 0)
@@ -3053,9 +3042,16 @@ function parseQuery(rawQuery) {
     for (const root of expansion.roots) {
       if (!matched.roots.includes(root)) matched.roots.push(root);
     }
-    // Collect Arabic word forms for this concept from EXACT_WORDS (if available)
     const arabicWords = EXACT_WORDS[key] ? [...EXACT_WORDS[key]] : [];
     matched.matchedConcepts.push({ key, label: key, arabicWords, roots: expansion.roots, confidence, source });
+
+    // Mark each word of the key as Arabic-precise so downstream steps don't
+    // re-add them as raw BM25 keywords (TOPICS loop / step 5 tokenization).
+    if (hasArabicPrecision) {
+      for (const part of key.toLowerCase().split(/\s+/)) {
+        if (part.length > 2) _arabicPreciseTokens.add(part);
+      }
+    }
   };
 
   for (const [term, expansion] of Object.entries(TRANSLITERATIONS)) {
@@ -3074,6 +3070,9 @@ function parseQuery(rawQuery) {
     const hit = _lookupTranslit(token);
     if (hit) {
       _addConcept(hit.key, hit.entry, hit.confidence === 'exact' ? 'exact' : 'concept', 'fuzzy-translit');
+      // Also mark the original query form (e.g. "ikhlaas" when key is "ikhlas")
+      // so spelling variants don't leak into BM25 / translation.
+      if (hit.entry.roots && hit.entry.roots.length > 0) _arabicPreciseTokens.add(token);
     }
   }
 
@@ -3136,7 +3135,9 @@ function parseQuery(rawQuery) {
     if (hits.length > 0) {
       matched.topicIds.push(topic.id);
       matched.roots.push(...topic.roots);
-      matched.keywords.push(...hits);
+      // Skip keywords that are already handled by Arabic-precise TRANSLITERATIONS
+      const newHits = hits.filter(h => !_arabicPreciseTokens.has(h.toLowerCase()));
+      matched.keywords.push(...newHits);
       // Record for bridge panel (only if not already covered by a transliteration)
       if (!matched.matchedConcepts.some(c => c.roots.some(r => topic.roots.includes(r)))) {
         const arMatch = topic.label.match(/\(([^)]+)\)/);
@@ -3153,11 +3154,12 @@ function parseQuery(rawQuery) {
   }
 
   // 5. Generic tokenization of remaining meaningful words
+  // Skip tokens already handled at Arabic precision — must not enter BM25.
   const tokens = rawQuery
     .toLowerCase()
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
-    .filter(t => t.length > 2 && !STOP_WORDS.has(t));
+    .filter(t => t.length > 2 && !STOP_WORDS.has(t) && !_arabicPreciseTokens.has(t));
 
   for (const t of tokens) {
     if (!matched.keywords.includes(t)) matched.keywords.push(t);

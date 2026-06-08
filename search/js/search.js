@@ -129,62 +129,114 @@ class QuranSearch {
       if (label) reasons[id][type].add(label);
     };
 
-    // ── Step 1: Translate to Arabic ───────────────────────────────────────
-    // Strategy: try English→Arabic first. If no roots come back (word is
-    // Urdu/Persian/etc. that the English translator doesn't know), fall back
-    // to Urdu→Arabic. This handles any non-English Islamic term dynamically —
-    // sifarish, muhabbat, musibat, zindagi — without hardcoding anything.
+    // ── Step 1: Translate uncovered tokens to Arabic ─────────────────────────
+    //
+    // The concept layer (TRANSLITERATIONS + CONCEPT_EXPANSIONS) handles known
+    // Islamic/Urdu terms. For everything it DOESN'T recognise, the translation
+    // API fills the gap — turning any unknown English or Roman-Urdu word into
+    // Arabic roots on the fly.
+    //
+    // Key principle: translate ONLY the tokens the concept layer left uncovered
+    // (these are in parsed.keywords — the _arabicPreciseTokens guard in
+    // parseQuery already removed anything handled by the concept layer).
+    // Then ADD the translation roots to the existing concept roots instead of
+    // replacing/suppressing them. This lets both layers work together.
+    //
+    // Examples:
+    //   "tazkiya e nafs"  → "nafs" covered (ن ف س), "tazkiya" uncovered
+    //                     → translate "tazkiya" → ز ك و → both roots scored ✓
+    //   "ikhlaas"         → concept layer handles it precisely → skip translation ✓
+    //   "feeling hopeless"→ nothing covered → translate full query → ر ج و, ق ن ط ✓
+    //   "musibat zindagi" → both uncovered → translate both → ب ل و, ح ي ي ✓
     onProgress?.('translate');
     let arabicQuery = '';
     let translationRoots = [];
     try {
-      // Send content keywords rather than the full question string.
-      const contentWords = parsed.keywords.filter(k => k.length > 3).slice(0, 6);
-      const translationInput = contentWords.length >= 2
-        ? contentWords.join(' ')
-        : rawQuery.trim();
+      // Build translation input from UNCOVERED tokens only.
+      // If the concept layer handled everything (no uncovered keywords and
+      // roots already exist), skip translation entirely.
+      const uncoveredKws = parsed.keywords.filter(k => k.length > 2).slice(0, 6);
+      const hasConceptCoverage = parsed.roots.length > 0 || (parsed.exactWords || []).length > 0;
+      const translationInput = uncoveredKws.length > 0
+        ? uncoveredKws.join(' ')                          // translate only the unknown parts
+        : hasConceptCoverage ? ''                         // fully covered — skip
+        : rawQuery.trim();                                // nothing covered — translate all
 
-      // Pass 1 — English → Arabic
-      arabicQuery = await this._translateToArabic(translationInput, 'en|ar');
-      if (arabicQuery) {
-        translationRoots = this._extractRootsFromArabic(arabicQuery);
-      }
+      if (translationInput) {
+        // Pass 1 — English → Arabic
+        arabicQuery = await this._translateToArabic(translationInput, 'en|ar');
+        if (arabicQuery) {
+          translationRoots = this._extractRootsFromArabic(arabicQuery);
+        }
 
-      // Pass 2 — Urdu → Arabic (fallback when English translation yielded no roots)
-      // Covers native Urdu/Persian terms that MyMemory's en|ar pair doesn't recognise.
-      if (!translationRoots.length) {
-        onProgress?.('roots');
-        const urduArabic = await this._translateToArabic(rawQuery.trim(), 'ur|ar');
-        if (urduArabic) {
-          const urduRoots = this._extractRootsFromArabic(urduArabic);
-          if (urduRoots.length) {
-            arabicQuery       = urduArabic;   // show the better translation in the UI
-            translationRoots  = urduRoots;
+        // Pass 2 — Urdu → Arabic fallback (MyMemory en|ar doesn't know Urdu/Persian)
+        if (!translationRoots.length) {
+          onProgress?.('roots');
+          const urduInput  = uncoveredKws.length > 0 ? uncoveredKws.join(' ') : rawQuery.trim();
+          const urduArabic = await this._translateToArabic(urduInput, 'ur|ar');
+          if (urduArabic) {
+            const urduRoots = this._extractRootsFromArabic(urduArabic);
+            if (urduRoots.length) {
+              arabicQuery      = urduArabic;
+              translationRoots = urduRoots;
+            }
+          }
+        }
+
+        // Pass 3 — Urdu/Roman → English → concept layer (deepest fallback)
+        //
+        // When Passes 1+2 fail to extract Arabic roots (the translated Arabic
+        // word form often doesn't appear verbatim in the Quran corpus), translate
+        // the uncovered tokens to ENGLISH and run the result through parseQuery.
+        // This lets the existing English concept layer do the heavy lifting:
+        //
+        //   "tazkiya"        → ur|en → "purification" → CONCEPT_EXPANSIONS → ز ك و
+        //   "husn e akhlaq"  → ur|en → "good character"  → خ ل ق
+        //   "musibat"        → ur|en → "calamity"         → ص ب ر, ب ل و
+        //   "qanaah"         → ur|en → "contentment"      → ق ن ع, ر ض ي
+        //   "zindagi"        → ur|en → "life"              → ح ي ي
+        //   "pareshani"      → ur|en → "anxiety"          → خ و ف, ت و ك ل
+        //
+        // Works for any Islamic/Urdu/Persian term without manual entries.
+        if (!translationRoots.length && uncoveredKws.length > 0) {
+          const engText = await this._translate(uncoveredKws.join(' '), 'ur|en');
+          if (engText && /[a-z]/i.test(engText)) {
+            const engNorm = engText.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
+            // Guard: skip if translation returned the same words (no-op translation)
+            const isSame = engNorm === uncoveredKws.join(' ').toLowerCase();
+            if (!isSame && engNorm.length > 1) {
+              const engParsed = parseQuery(engNorm);
+              for (const root of engParsed.roots) {
+                if (!translationRoots.includes(root)) translationRoots.push(root);
+              }
+              // Use the English translation as the UI label if we got useful roots
+              if (translationRoots.length && !arabicQuery) {
+                arabicQuery = engText;  // show what the engine understood
+              }
+            }
           }
         }
       }
 
-      // Only use translation-derived roots when the concept layer (TRANSLITERATIONS,
-      // EXACT_WORDS, CONCEPT_EXPANSIONS) found NO roots. When concept roots exist,
-      // they're more precise — the translation API often misinterprets Islamic terms
-      // (e.g. translating "ikhlaas" as "سورة الإخلاص" instead of the concept).
-      const conceptRootsExist = parsed.roots.length > 0 || (parsed.exactWords || []).length > 0;
-      if (translationRoots.length && !conceptRootsExist) {
+      // Add translation roots that are genuinely NEW — not already covered by
+      // the concept layer. This avoids double-counting roots that both layers found.
+      const newRoots = translationRoots.filter(r => !parsed.roots.includes(r));
+      if (newRoots.length > 0) {
         onProgress?.('roots');
-        for (const root of translationRoots) {
+        for (const root of newRoots) {
           const ids = this.rootIdx[root];
           if (ids) {
             const w = this.rootIdf[root] || 4;
             for (const id of ids) addScore(id, w, 'roots', root);
           }
         }
-      } else if (conceptRootsExist) {
-        // Concept layer handled it — clear translation data so it doesn't
-        // show misleading info in the pipeline strip
+        translationRoots = newRoots;  // expose only the net-new roots to the UI strip
+      } else {
+        // Translation found nothing new — hide the strip to avoid clutter
         arabicQuery      = '';
         translationRoots = [];
       }
-    } catch (_) { /* translation failed — continue with English-only */ }
+    } catch (_) { /* translation failed — concept roots already scored, continue */ }
 
     // ── Step 2: Arabic pattern matching (addressees) ───────────────────────
     onProgress?.('search');
@@ -363,21 +415,61 @@ class QuranSearch {
     return result;
   }
 
+  // Generic translation — returns whatever the API gives, no Arabic filter.
+  // Used for ur|en (Urdu → English) so the result can feed the English concept layer.
+  async _translate(query, langpair) {
+    const key = `qt_${langpair}_${query.trim().toLowerCase()}`;
+    if (this._cache[key] !== undefined) return this._cache[key];
+    try {
+      const stored = sessionStorage.getItem(key);
+      if (stored !== null) { this._cache[key] = stored; return stored; }
+    } catch (_) {}
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(query)}&langpair=${langpair}`;
+    const res = await Promise.race([
+      fetch(url).then(r => r.json()),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+    ]);
+    const text = (res?.responseData?.translatedText || '').trim();
+    this._cache[key] = text;
+    try { if (text) sessionStorage.setItem(key, text); } catch (_) {}
+    return text;
+  }
+
   // ── Root extraction from Arabic text ─────────────────────────────────────
 
   _extractRootsFromArabic(arabicText) {
     const roots = [];
     const norm  = normalizeArabic(arabicText);
     const words = norm.split(/\s+/).filter(w => w.length > 1);
-    // Common Arabic attached prefixes that translation APIs emit
+
+    // Common attached prefixes that translation APIs emit
     const PREFIXES = ['ال','وال','فال','بال','كال','ولل','فلل','لل','و','ف','ب','ك','ل'];
+
+    // Expand a single stem into lookup candidates by stripping common suffixes.
+    // Many Arabic nouns/gerunds returned by translation APIs end in ة (normalized
+    // to ه), but word_roots.json indexes the stem WITHOUT the taa marbuta.
+    // e.g. تزكيه → تزكي (root ز ك و)  |  رحمه → رحم (root ر ح م)
+    // We also try stripping pronoun suffixes (ها، هم، كم، نا) and plural ون/ين.
+    const _stems = stem => {
+      const out = [stem];
+      const SUFFIXES = ['ها','هم','هن','كم','كن','نا','ني','هو','ون','ين','ات','وا','ه'];
+      for (const sfx of SUFFIXES) {
+        if (stem.endsWith(sfx) && stem.length > sfx.length + 1)
+          out.push(stem.slice(0, -sfx.length));
+      }
+      return out;
+    };
+
     for (const word of words) {
-      // Try the word as-is, then with each prefix stripped
-      const candidates = [word];
+      // Build the full candidate set: word + prefix-stripped + suffix-stripped combos
+      const prefixForms = [word];
       for (const pfx of PREFIXES) {
         if (word.startsWith(pfx) && word.length > pfx.length + 1)
-          candidates.push(word.slice(pfx.length));
+          prefixForms.push(word.slice(pfx.length));
       }
+      // Apply suffix stripping to every prefix form
+      const candidates = [...new Set(prefixForms.flatMap(_stems))];
+
       for (const cand of candidates) {
         for (const root of (this.wordRoots[cand] || [])) {
           if (!roots.includes(root)) roots.push(root);
