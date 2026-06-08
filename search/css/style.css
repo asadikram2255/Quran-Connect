@@ -938,6 +938,48 @@ mark {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   Autocomplete suggestion dropdown
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.search-box {
+  position: relative; /* anchor for dropdown */
+}
+
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--card-bg, #1a1a2e);
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  z-index: 200;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.sg-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--text-secondary, rgba(255,255,255,.75));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background .1s, color .1s;
+}
+.sg-item:hover,
+.sg-item.active {
+  background: rgba(255,255,255,.07);
+  color: var(--text, #fff);
+}
+.sg-mark {
+  background: none;
+  color: var(--accent, #4ade80);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    Improvement additions
    ══════════════════════════════════════════════════════════════════════════ */
 

@@ -143,7 +143,19 @@ class QuranApp {
     };
 
     btn.addEventListener('click', doSearch);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { this._hideSuggestions(); doSearch(); }
+      if (e.key === 'ArrowDown') this._navigateSuggestion(1, e);
+      if (e.key === 'ArrowUp')   this._navigateSuggestion(-1, e);
+      if (e.key === 'Escape')    this._hideSuggestions();
+    });
+    input.addEventListener('input', () => this._updateSuggestions(input.value));
+    input.addEventListener('focus', () => { if (input.value.trim().length >= 2) this._updateSuggestions(input.value); });
+    document.addEventListener('click', e => {
+      const sg = document.getElementById('search-suggestions');
+      if (sg && !input.contains(e.target) && !sg.contains(e.target)) this._hideSuggestions();
+    });
+    this._initSuggestions();
 
     const filterChange = () => {
       this.filters.place = fPlace.value;
@@ -1099,6 +1111,132 @@ class QuranApp {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  // ── Autocomplete suggestion dropdown ─────────────────────────────────────
+  //
+  // Works entirely client-side — no API call while typing.
+  // Sources: all TRANSLITERATIONS keys + curated conceptual queries.
+  // Fuzzy matches as user types, shows inline dropdown like Google.
+  //
+
+  _initSuggestions() {
+    // Build from TRANSLITERATIONS keys (already loaded via concepts.js)
+    // + a curated set of natural English/conceptual queries
+    const fromTranslit = typeof TRANSLITERATIONS !== 'undefined'
+      ? Object.keys(TRANSLITERATIONS).filter(k => k.length >= 3 && k.length <= 30)
+      : [];
+
+    const curated = [
+      // Common Islamic concepts
+      'mercy and forgiveness', 'patience in hardship', 'trust in Allah',
+      'gratitude for blessings', 'anxiety and worry', 'Day of Judgment',
+      'paradise and hellfire', 'rights of parents', 'seeking guidance',
+      'repentance and forgiveness', 'rizq and provision', 'love of Allah',
+      'fear of Allah taqwa', 'hope after despair', 'knowledge and wisdom',
+      'justice and oppression', 'marriage and family', 'wealth and charity',
+      'death and afterlife', 'prayers and worship', 'purpose of life',
+      'signs of Allah in creation', 'prophets and messengers',
+      'angels and jinn', 'quran and its virtues', 'fasting ramadan',
+      'making dua supplication', 'seeking forgiveness istighfar',
+      'unity of Allah tawhid', 'rights of neighbours',
+      'truthfulness and honesty', 'arrogance and pride',
+      'envy and jealousy', 'backbiting and slander',
+      'hardship and ease', 'trials and tribulations',
+      'gratitude shukr', 'repentance tawbah',
+      'remembrance of Allah dhikr', 'heart and soul',
+      'good character akhlaq', 'rights of others',
+      'spending in path of allah', 'night prayer tahajjud',
+      'martyrdom shaheed', 'sacrifice for Allah',
+      'sell soul for Allah', 'divine pleasure ridha',
+      'anger of Allah maghzoob', 'going astray dhalleen',
+      'believers muttaqeen', 'disbelievers kafiroon',
+    ];
+
+    this._suggestionPool = [...new Set([...fromTranslit, ...curated])];
+
+    // Create the dropdown element once
+    const wrapper = document.querySelector('.search-box');
+    if (!wrapper) return;
+    if (document.getElementById('search-suggestions')) return;
+
+    const sg = document.createElement('div');
+    sg.id        = 'search-suggestions';
+    sg.className = 'search-suggestions';
+    sg.setAttribute('role', 'listbox');
+    sg.hidden    = true;
+    wrapper.appendChild(sg);
+  }
+
+  _updateSuggestions(val) {
+    const sg = document.getElementById('search-suggestions');
+    if (!sg) return;
+    const q = val.trim().toLowerCase();
+    if (q.length < 2) { sg.hidden = true; return; }
+
+    // Score: prefix match → 2, word-start match → 1.5, contains → 1
+    const scored = this._suggestionPool
+      .filter(s => s.toLowerCase().includes(q))
+      .map(s => {
+        const sl = s.toLowerCase();
+        const score = sl.startsWith(q) ? 3
+          : sl.split(/\s+/).some(w => w.startsWith(q)) ? 2
+          : 1;
+        return { text: s, score };
+      })
+      .sort((a, b) => b.score - a.score || a.text.length - b.text.length)
+      .slice(0, 6);
+
+    if (!scored.length) { sg.hidden = true; return; }
+
+    sg.innerHTML = scored.map((s, i) =>
+      `<div class="sg-item" role="option" data-q="${this._esc(s.text)}" data-idx="${i}">
+        ${this._highlightMatch(s.text, q)}
+      </div>`
+    ).join('');
+
+    sg.querySelectorAll('.sg-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault(); // keep focus on input
+        const input = document.getElementById('search-input');
+        input.value = item.dataset.q;
+        this._hideSuggestions();
+        this.page = 0;
+        this._run(item.dataset.q);
+      });
+    });
+
+    sg.hidden = false;
+  }
+
+  _hideSuggestions() {
+    const sg = document.getElementById('search-suggestions');
+    if (sg) sg.hidden = true;
+  }
+
+  _navigateSuggestion(dir, e) {
+    const sg = document.getElementById('search-suggestions');
+    if (!sg || sg.hidden) return;
+    e.preventDefault();
+    const items  = [...sg.querySelectorAll('.sg-item')];
+    if (!items.length) return;
+    const active = sg.querySelector('.sg-item.active');
+    const idx    = active ? items.indexOf(active) : -1;
+    const next   = items[Math.max(0, Math.min(items.length - 1, idx + dir))];
+    items.forEach(i => i.classList.remove('active'));
+    if (next) {
+      next.classList.add('active');
+      document.getElementById('search-input').value = next.dataset.q;
+    }
+  }
+
+  _highlightMatch(text, query) {
+    const lo  = text.toLowerCase();
+    const idx = lo.indexOf(query.toLowerCase());
+    if (idx === -1) return this._esc(text);
+    return this._esc(text.slice(0, idx))
+      + `<mark class="sg-mark">${this._esc(text.slice(idx, idx + query.length))}</mark>`
+      + this._esc(text.slice(idx + query.length));
   }
 
   // ── #3 Weak match detection & suggestion chips ───────────────────────────
