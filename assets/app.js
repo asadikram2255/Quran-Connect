@@ -2489,7 +2489,11 @@ async function init() {
       els.mainQuery.value = ayahParam;
       showLanding(false);
       enterResearchView();
-      runSearch();
+      await runSearch();
+      // Auto-open the detail/pairs panel for the requested ayah
+      const normId = ayahParam.replace(/\s/g, '').replace(/\s*:\s*/, ':');
+      const [sn, an] = normId.split(':').map(Number);
+      if (sn && an) openDetail(`${sn}:${an}`);
     }
 
   } catch (err) {
