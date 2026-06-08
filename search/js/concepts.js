@@ -548,7 +548,7 @@ const TRANSLITERATIONS = {
 
   // ── Soul / metaphysics ────────────────────────────────────────────────────
   'ruh':        { english: ['spirit','soul','breath of life'], roots: ['ر و ح'] },
-  'nafs':       { english: ['soul','self','ego','inner self','person', 'individual', 'one's own self', 'every soul', 'each person'], roots: ['ن ف س'] },
+  'nafs':       { english: ['soul','self','ego','inner self','person','individual','own self','every soul','each person'], roots: ['ن ف س'] },
   'qalb':       { english: ['heart','spiritual heart','mind'], roots: ['ق ل ب'] },
   'noor':       { english: ['light','divine light','guidance'], roots: ['ن و ر'] },
   'nur':        { english: ['light','divine light'], roots: ['ن و ر'] },
@@ -864,8 +864,8 @@ const TRANSLITERATIONS = {
   'muhasabah':           { english: ['self-accountability', 'self-reckoning'], roots: ['ح س ب'] },
   'muraqabah':           { english: ['self-awareness', 'watchfulness', 'allah is watching'], roots: ['ر ق ب'] },
   'naar':                { english: ['hellfire', 'fire of hell'], roots: ['ن ا ر', 'ج ح م'] },
-  'ni'mah':              { english: ['blessing', 'bounty', 'favour'], roots: ['ن ع م'] },
-  'ni'mat':              { english: ['blessings', 'favours'], roots: ['ن ع م'] },
+  'nimah':               { english: ['blessing', 'bounty', 'favour'], roots: ['ن ع م'] },
+  'nimat':               { english: ['blessings', 'favours'], roots: ['ن ع م'] },
   'nifaq':               { english: ['hypocrisy', 'two-facedness'], roots: ['ن ف ق'] },
   'nikah':               { english: ['marriage', 'islamic matrimony'], roots: ['ن ك ح'] },
   'nikkah':              { english: ['marriage', 'islamic marriage', 'matrimony'], roots: ['ن ك ح'] },
