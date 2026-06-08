@@ -35,6 +35,8 @@ class QuranApp {
     this._rootToLabel    = null;   // lazy cache: root → { ar, en }
     this._rerankActive   = false;  // true when AI reranker improved this result set (#7)
     this._topScore       = 1;      // highest raw score in current result set (#2)
+    this.hadithEngine    = new HadithSearch();
+    this._hadithBook     = '';     // active hadith collection filter
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────
@@ -120,6 +122,17 @@ class QuranApp {
       opt.textContent = `Juz ${j}`;
       juzSel.appendChild(opt);
     }
+
+    // Populate hadith book filter once the index is loaded
+    this.hadithEngine.ensureLoaded().then(() => {
+      const bookSel = document.getElementById('filter-hadith-book');
+      for (const book of this.hadithEngine.books) {
+        const opt = document.createElement('option');
+        opt.value = book;
+        opt.textContent = book;
+        bookSel.appendChild(opt);
+      }
+    }).catch(() => {});
   }
 
   // ── Event binding ────────────────────────────────────────────────────────
@@ -172,6 +185,14 @@ class QuranApp {
       this.filters = { place: '', surah: '', juz: '' };
       if (input.value.trim()) { this.page = 0; this._run(input.value.trim()); }
     });
+
+    const fHadithBook = document.getElementById('filter-hadith-book');
+    if (fHadithBook) {
+      fHadithBook.addEventListener('change', () => {
+        this._hadithBook = fHadithBook.value;
+        if (this._lastKeywords.length) this._runHadithSearch(this._lastKeywords);
+      });
+    }
 
     more.addEventListener('click', () => {
       this.page++;
@@ -354,6 +375,13 @@ class QuranApp {
       }
       const countEl = document.getElementById('results-count');
       countEl.textContent = countText;
+
+      // Update Quran column count badge
+      const quranColCount = document.getElementById('quran-col-count');
+      if (quranColCount) quranColCount.textContent = displayResults.length ? `${displayResults.length}` : '';
+
+      // Trigger hadith search in parallel
+      this._runHadithSearch(parsed.keywords);
 
       document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -1068,6 +1096,8 @@ class QuranApp {
     const dots = [rel >= 0.35, rel >= 0.65, rel >= 0.85]
       .map(f => `<span class="conf-dot${f ? ' filled' : ''}"></span>`).join('');
 
+    const pairsUrl = `../?ayah=${ayah.sn}:${ayah.an}`;
+
     card.innerHTML = `
       <div class="card-meta">
         <span class="ref-badge"><span class="ref-surah-ar" dir="rtl" lang="ar">${this._esc(ayah.sna)}</span> ${ayah.sn}:${ayah.an}</span>
@@ -1085,6 +1115,10 @@ class QuranApp {
         <span class="match-via">Matched via</span>
         ${rootChips}${kwChips}${patternChips}
       </div>` : ''}
+      <a href="${pairsUrl}" class="see-pairs-btn" title="Explore thematic connections for this ayah">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        See Pairs
+      </a>
     `;
 
     const toggleBtn = card.querySelector('.toggle-trans');
@@ -1100,6 +1134,68 @@ class QuranApp {
     }
 
     return card;
+  }
+
+  // ── Hadith search ────────────────────────────────────────────────────────
+
+  async _runHadithSearch(keywords) {
+    const grid = document.getElementById('hadith-grid');
+    if (!grid) return;
+
+    if (!keywords || !keywords.length) {
+      grid.innerHTML = `<div class="hadith-placeholder">
+        <span class="hadith-placeholder-icon">📜</span>
+        <p>Search to find related Hadith from the six major collections.</p>
+      </div>`;
+      const cc = document.getElementById('hadith-col-count');
+      if (cc) cc.textContent = '';
+      return;
+    }
+
+    grid.innerHTML = `<div class="hadith-loading">
+      <div class="hadith-loading-spinner"></div>
+      Searching hadith…
+    </div>`;
+
+    try {
+      await this.hadithEngine.ensureLoaded();
+      const results = this.hadithEngine.search(keywords, this._hadithBook, 20);
+      this._renderHadithResults(results);
+    } catch (e) {
+      grid.innerHTML = `<div class="hadith-placeholder"><p>Hadith search unavailable.</p></div>`;
+      const cc = document.getElementById('hadith-col-count');
+      if (cc) cc.textContent = '';
+    }
+  }
+
+  _renderHadithResults(results) {
+    const grid = document.getElementById('hadith-grid');
+    const cc   = document.getElementById('hadith-col-count');
+    if (!grid) return;
+
+    if (cc) cc.textContent = results.length ? `${results.length}` : '';
+
+    if (!results.length) {
+      grid.innerHTML = `<div class="hadith-placeholder">
+        <span class="hadith-placeholder-icon">📜</span>
+        <p>No related hadith found for this query.</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = '';
+    for (const h of results) {
+      const card = document.createElement('article');
+      card.className = 'hadith-card';
+      card.innerHTML = `
+        <div class="hadith-card-meta">
+          <span class="hadith-collection-badge">${this._esc(h.book)}</span>
+          ${h.ref ? `<span class="hadith-ref">${this._esc(h.ref)}</span>` : ''}
+        </div>
+        <p class="hadith-text">${this._esc(h.text)}</p>
+      `;
+      grid.appendChild(card);
+    }
   }
 
   // ── Text helpers ─────────────────────────────────────────────────────────

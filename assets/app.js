@@ -2481,6 +2481,17 @@ async function init() {
       });
     });
 
+    // Handle ?ayah=SN:AN deep-link from "See Pairs" button in the search module
+    const ayahParam = new URLSearchParams(window.location.search).get('ayah');
+    if (ayahParam && /^\d+:\d+$/.test(ayahParam)) {
+      state.modeWasManual = true;
+      setSearchType('id');
+      els.mainQuery.value = ayahParam;
+      showLanding(false);
+      enterResearchView();
+      runSearch();
+    }
+
   } catch (err) {
     console.error("init error:", err);
     setBadge("err", String(err.message || err).slice(0,140));

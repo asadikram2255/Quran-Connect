@@ -614,6 +614,163 @@ mark {
   max-width: 440px; margin: 0 auto; line-height: 1.6;
 }
 
+/* ── Dual-results layout ─────────────────────────────────────────────────── */
+.dual-results {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.results-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.quran-col  { flex: 3; }
+.hadith-col { flex: 2; }
+
+/* Column header */
+.col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 12px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+.col-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.col-icon  { font-size: 1.1rem; }
+.col-title {
+  font-family: var(--font-display);
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .01em;
+}
+.col-count {
+  font-size: .78rem;
+  color: var(--text-ter);
+  background: var(--surface2);
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+
+/* ── Hadith grid & cards ─────────────────────────────────────────────────── */
+.hadith-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hadith-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-ter);
+  gap: 10px;
+}
+.hadith-placeholder-icon { font-size: 2rem; }
+.hadith-placeholder p    { font-size: .85rem; line-height: 1.6; max-width: 240px; }
+
+.hadith-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 0;
+  color: var(--text-ter);
+  font-size: .85rem;
+  gap: 8px;
+}
+.hadith-loading-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+.hadith-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color var(--trans), box-shadow var(--trans);
+}
+.hadith-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px var(--accent-dim);
+}
+
+.hadith-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hadith-collection-badge {
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+.hadith-ref {
+  font-size: .72rem;
+  color: var(--text-ter);
+}
+
+.hadith-text {
+  font-size: .84rem;
+  line-height: 1.65;
+  color: var(--text-sec);
+}
+
+/* ── See Pairs button ─────────────────────────────────────────────────────── */
+.see-pairs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  margin-top: 6px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid transparent;
+  border-radius: 20px;
+  padding: 4px 11px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--trans), border-color var(--trans), color var(--trans);
+}
+.see-pairs-btn:hover {
+  background: var(--accent-mid);
+  border-color: var(--accent);
+  color: var(--accent-hov);
+}
+.see-pairs-btn svg {
+  flex-shrink: 0;
+}
+
+/* ── Sidebar hadith filter ───────────────────────────────────────────────── */
+.sidebar-hadith-filters {
+  margin-top: 2px;
+}
+
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 .footer {
   border-top: 1px solid var(--border);
@@ -663,6 +820,8 @@ mark {
 
   .content-pane { padding: 16px 18px 36px; }
   .results-grid { grid-template-columns: 1fr; }
+  .dual-results { flex-direction: column; }
+  .quran-col, .hadith-col { flex: none; width: 100%; }
 }
 
 @media (max-width: 600px) {
