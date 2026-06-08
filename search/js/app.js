@@ -22,7 +22,7 @@ class QuranApp {
     this.results        = [];
     this.page           = 0;
     this.filters        = { place: '', surah: '', juz: '' };
-    this.dark            = localStorage.getItem('theme') === 'dark';
+    this.dark            = localStorage.getItem('theme') !== 'light'; // default dark
     this._lastQuery      = '';
     this._lastKeywords   = [];
     this._lastParsed     = null;   // last parseQuery() result — shared across re-renders

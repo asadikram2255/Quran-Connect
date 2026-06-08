@@ -1,23 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600&display=swap');
+/* Fonts loaded via <link> in HTML to avoid render-blocking @import */
 
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --bg:           #ffffff;
-  --surface:      #f7f8fa;
-  --surface2:     #eef0f3;
-  --border:       #e3e6eb;
-  --text:         #111827;
-  --text-sec:     #6b7280;
-  --text-ter:     #9ca3af;
-  --accent:       #059669;
-  --accent-hov:   #047857;
-  --accent-dim:   color-mix(in srgb, #059669 11%, transparent);
-  --accent-mid:   color-mix(in srgb, #059669 20%, transparent);
+  /* Light mode — warm parchment */
+  --bg:           #fdf9f2;
+  --surface:      #f4ede0;
+  --surface2:     #ebe0cc;
+  --border:       #d9cbb5;
+  --text:         #1a1208;
+  --text-sec:     #6b5c44;
+  --text-ter:     #9c8b74;
+  --accent:       #b07d1a;
+  --accent-hov:   #8a5f0d;
+  --accent-dim:   color-mix(in srgb, #b07d1a 11%, transparent);
+  --accent-mid:   color-mix(in srgb, #b07d1a 20%, transparent);
   --card-shad:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   --card-shad-hov:0 8px 24px rgba(0,0,0,.10);
   --radius:       12px;
   --radius-sm:    7px;
   --font:         'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', 'Newsreader', Georgia, serif;
   --font-ar:      'Amiri Quran', 'Noto Naskh Arabic', 'Amiri', serif;
   --trans:        .16s ease;
   --header-h:     58px;
@@ -25,19 +27,20 @@
 }
 
 [data-theme="dark"] {
-  --bg:           #0d1117;
-  --surface:      #161b22;
-  --surface2:     #1c2128;
-  --border:       #30363d;
-  --text:         #e6edf3;
-  --text-sec:     #8b949e;
-  --text-ter:     #6e7681;
-  --accent:       #3fb87a;
-  --accent-hov:   #56d68f;
-  --accent-dim:   color-mix(in srgb, #3fb87a 13%, transparent);
-  --accent-mid:   color-mix(in srgb, #3fb87a 22%, transparent);
-  --card-shad:    0 1px 3px rgba(0,0,0,.4);
-  --card-shad-hov:0 8px 26px rgba(0,0,0,.55);
+  /* Dark mode — matches landing page (aubergine/violet + warm gold) */
+  --bg:           #0e0816;
+  --surface:      #1a0f2e;
+  --surface2:     #2b1551;
+  --border:       rgba(255, 240, 230, .12);
+  --text:         #faf7f2;
+  --text-sec:     #d6c9b8;
+  --text-ter:     #9c8d7e;
+  --accent:       #f5b75e;
+  --accent-hov:   #e0a042;
+  --accent-dim:   rgba(245, 183, 94, .14);
+  --accent-mid:   rgba(245, 183, 94, .22);
+  --card-shad:    0 1px 3px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.28);
+  --card-shad-hov:0 8px 28px rgba(0,0,0,.55);
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────── */
@@ -53,6 +56,13 @@ body {
   flex-direction: column;
   transition: background var(--trans), color var(--trans);
   line-height: 1.6;
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% -10%, rgba(180, 83, 9, .10), transparent 65%),
+    linear-gradient(180deg, #0e0816 0%, #100920 100%);
+  background-attachment: fixed;
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -71,6 +81,10 @@ button { cursor: pointer; font-family: inherit; }
   border-bottom: 1px solid var(--border);
   backdrop-filter: saturate(180%) blur(12px);
   -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+
+[data-theme="dark"] .header {
+  background: rgba(14, 8, 22, .85);
 }
 .header .container {
   display: flex; align-items: center; justify-content: space-between;
@@ -100,8 +114,9 @@ button { cursor: pointer; font-family: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-icon { font-size: 1.35rem; color: var(--accent); }
 .brand-name {
-  font-size: 1.05rem; font-weight: 700;
-  letter-spacing: -.3px; color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.1rem; font-weight: 600;
+  letter-spacing: -.2px; color: var(--text);
 }
 .theme-btn {
   background: none; border: 1px solid var(--border);
@@ -136,7 +151,8 @@ button { cursor: pointer; font-family: inherit; }
 .search-hero { text-align: center; }
 .hero-intro { margin-bottom: 32px; }
 .hero-title {
-  font-size: 2.3rem; font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 2.3rem; font-weight: 600;
   letter-spacing: -.6px; line-height: 1.2;
   color: var(--text); margin-bottom: 14px;
 }
@@ -949,13 +965,17 @@ mark {
   position: absolute;
   top: calc(100% + 4px);
   left: 0; right: 0;
-  background: var(--card-bg, #1a1a2e);
-  border: 1px solid var(--border, rgba(255,255,255,.12));
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  box-shadow: 0 8px 32px rgba(0,0,0,.22);
   z-index: 200;
   overflow: hidden;
   padding: 4px 0;
+}
+
+[data-theme="dark"] .search-suggestions {
+  box-shadow: 0 8px 32px rgba(0,0,0,.55);
 }
 
 .sg-item {
@@ -965,7 +985,7 @@ mark {
   padding: 9px 14px;
   cursor: pointer;
   font-size: .88rem;
-  color: var(--text-secondary, rgba(255,255,255,.75));
+  color: var(--text-sec);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -973,24 +993,24 @@ mark {
 }
 .sg-item:hover,
 .sg-item.active {
-  background: rgba(255,255,255,.07);
-  color: var(--text, #fff);
+  background: var(--accent-dim);
+  color: var(--text);
 }
 .sg-icon {
   font-size: .75rem;
-  opacity: .45;
+  opacity: .5;
   flex-shrink: 0;
   width: 14px;
   text-align: center;
 }
 .sg-item.sg-llm .sg-icon {
-  opacity: .7;
-  color: var(--accent, #4ade80);
+  opacity: .8;
+  color: var(--accent);
 }
 .sg-text { overflow: hidden; text-overflow: ellipsis; }
 .sg-mark {
   background: none;
-  color: var(--accent, #4ade80);
+  color: var(--accent);
   font-weight: 600;
 }
 

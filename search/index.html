@@ -3,9 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quran Search — Quran Better For Me</title>
+  <title>Quran Search — Quran Connect</title>
   <meta name="description" content="Search the Quran in natural language. Powered by Arabic root-word analysis and semantic translation — no presets, no limits.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%E2%98%BE%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme');
+      document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+    })();
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,15 +23,15 @@
   <header class="header">
     <div class="container">
       <div class="header-left">
-        <a href="../" class="back-home-link" title="Back to Quran Better For Me">
+        <a href="../" class="back-home-link" title="Back to Quran Connect">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
-          <span>Back</span>
+          <span>Quran Connect</span>
         </a>
         <div class="brand">
           <span class="brand-icon">☾</span>
-          <span class="brand-name">Quran Search</span>
+          <span class="brand-name">Keyword Search</span>
         </div>
       </div>
       <button id="theme-toggle" class="theme-btn" title="Toggle dark / light mode">◑</button>
@@ -176,7 +185,7 @@
   <footer class="footer">
     <p>Grounded in authentic Quranic datasets · Arabic root-word aware · Three English translations per ayah</p>
     <p>
-      <a href="../">← Back to Quran Better For Me</a>
+      <a href="../">← Back to Quran Connect</a>
       &nbsp;·&nbsp;
       <a href="https://github.com/asadikram2255/Quran-Search-Engine" target="_blank" rel="noopener">View on GitHub</a>
     </p>
@@ -184,6 +193,6 @@
 
   <script src="js/concepts.js?v=44"></script>
   <script src="js/search.js?v=44"></script>
-  <script src="js/app.js?v=46"></script>
+  <script src="js/app.js?v=47"></script>
 </body>
 </html>
