@@ -1059,7 +1059,7 @@ class QuranApp {
 
     card.innerHTML = `
       <div class="card-meta">
-        <span class="ref-badge">${this._esc(ayah.sne)} ${ayah.sn}:${ayah.an}</span>
+        <span class="ref-badge"><span class="ref-surah-ar" dir="rtl" lang="ar">${this._esc(ayah.sna)}</span> ${ayah.sn}:${ayah.an}</span>
         <span class="badge ${placeClass}">${ayah.place}</span>
         <span class="badge badge-juz">Juz ${ayah.juz}</span>
         <span class="conf-dots" title="Relevance: ${Math.round(rel * 100)}%">${dots}</span>
