@@ -19,6 +19,11 @@ const STOP_WORDS = new Set([
   'surah','chapter','almighty','lord','says','said','tell','tells','mentioned',
   'mention','mentions','found','find','show','shows','list','give','provides',
   'describe','describes','talk','talks','speak','speaks','discuss','discusses',
+  // Urdu grammatical particles (prepositions, conjunctions, verb suffixes — carry no concept meaning)
+  'liye','liyay','liye','wala','wale','wali','dalna','karna','hona','dena',
+  'lena','nahi','nahin','nahe','kyun','kyon','kyunke','isliye','isliyay',
+  'phir','lekin','magar','lakin','agar','jaise','jaisa','jaisi','waisa',
+  'waqa','raha','rahe','rahi','gaya','gayi','gaye','aaya','aayi','aaye',
 ]);
 
 /**
@@ -1027,6 +1032,39 @@ const TRANSLITERATIONS = {
   'idrees':       { english: ['enoch','prophet idris'], roots: ['د ر س'] },
   'idriss':       { english: ['enoch','prophet idris'], roots: ['د ر س'] },
   'loot':         { english: ['lot','prophet lot','sodom'], roots: ['ل و ط'] },
+
+  // ── Allah's pleasure / Ridha (Urdu terms) ────────────────────────────────
+  'khushnudi':  { english: ['pleasure of allah','divine pleasure','allah pleased','satisfaction','contentment'], roots: ['ر ض ي', 'ر ض و'] },
+  'khushnood':  { english: ['pleased','satisfied','content','allah pleased'], roots: ['ر ض ي'] },
+  'ridha':      { english: ['divine pleasure','satisfaction of allah','contentment'], roots: ['ر ض ي', 'ر ض و'] },
+  'ridhwan':    { english: ['pleasure of allah','allah pleased','divine satisfaction'], roots: ['ر ض ي', 'ر ض و'] },
+  'ridwan':     { english: ['divine pleasure','allah pleased'], roots: ['ر ض ي', 'ر ض و'] },
+  // compound phrase — most natural Urdu query form
+  'allah ki khushnudi': { english: ['allah pleasure','seeking allah satisfaction','allah pleased','divine approval'], roots: ['ر ض ي', 'ر ض و'] },
+  'khushnudi k liyay':  { english: ['for pleasure of allah','seeking divine pleasure'], roots: ['ر ض ي', 'ر ض و'] },
+
+  // ── Soul / life / self (Urdu terms) ──────────────────────────────────────
+  'jaan':       { english: ['soul','life','self','one life','beloved'], roots: ['ن ف س', 'ر و ح'] },
+  'jan':        { english: ['soul','life','self'], roots: ['ن ف س', 'ر و ح'] },
+  'rooh':       { english: ['soul','spirit','ruh','breath of life'], roots: ['ر و ح'] },
+  'ruh':        { english: ['soul','spirit','the spirit'], roots: ['ر و ح'] },
+  'nafs':       { english: ['soul','self','ego','inner self'], roots: ['ن ف س'] },
+
+  // ── Sacrifice / selling soul / martyrdom (Urdu terms) ────────────────────
+  'bechna':     { english: ['sell','trade','give in exchange','sacrifice','sold'], roots: ['ب ي ع'] },
+  'bech':       { english: ['sell','selling','give away','traded'], roots: ['ب ي ع'] },
+  'khareedna':  { english: ['buy','purchase','acquire'], roots: ['ب ي ع', 'ش ر ي'] },
+  'kharidna':   { english: ['buy','purchase'], roots: ['ب ي ع', 'ش ر ي'] },
+  // compound sacrifice phrases
+  'jaan dena':     { english: ['sacrifice life','give life','die for cause','lay down life','martyrdom'], roots: ['ن ف س', 'ج ه د', 'ش ه د', 'ب ي ع'] },
+  'jaan nisaar':   { english: ['self-sacrifice','devoted completely','life devoted'], roots: ['ن ف س', 'ج ه د', 'ش ه د'] },
+  'jaan qurban':   { english: ['sacrifice life','life as sacrifice'], roots: ['ن ف س', 'ق ر ب', 'ش ه د'] },
+  'fidaa hona':    { english: ['sacrifice','devote','give life for','ransom'], roots: ['ف د ي', 'ن ف س'] },
+  'shaheed hona':  { english: ['martyrdom','die as martyr','die in path of allah'], roots: ['ش ه د', 'ج ه د'] },
+  'shaheed':       { english: ['martyr','witness','die for allah'], roots: ['ش ه د'] },
+  // the Quranic transaction — Allah bought the believers' lives (9:111)
+  'jaan bechna':   { english: ['sell life for allah','sacrifice soul','trade life for paradise'], roots: ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د', 'ر ض ي'] },
+  'jaan ko bech':  { english: ['selling life','sacrifice soul for allah','trade soul'], roots: ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'] },
 
   // ── Emotional / psychological states (Urdu/Islamic terms) ───────────────
   'musibah':    { english: ['calamity','hardship','affliction','disaster','trial'], roots: ['ص ب ر', 'ب ل و'] },
@@ -2232,6 +2270,29 @@ const CONCEPT_EXPANSIONS = {
   'trials':         ['ب ل و', 'ف ت ن'],
   'inner peace':    ['ط م ن', 'ذ ك ر', 'س ل م'],
   'tranquility':    ['ط م ن', 'س ك ن', 'ذ ك ر'],
+
+  // ── Sacrifice / martyrdom / selling soul ─────────────────────────────────
+  'sell soul':          ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'selling soul':       ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'sell life':          ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'selling life':       ['ب ي ع', 'ن ف س', 'ج ه د'],
+  'lay down life':      ['ن ف س', 'ج ه د', 'ش ه د', 'ب ي ع'],
+  'sacrifice life':     ['ن ف س', 'ج ه د', 'ش ه د', 'ق ر ب', 'ب ي ع'],
+  'sacrifice soul':     ['ن ف س', 'ب ي ع', 'ج ه د', 'ش ه د'],
+  'give life for allah':['ب ي ع', 'ن ف س', 'ج ه د', 'ر ض ي', 'ش ه د'],
+  'bought souls':       ['ب ي ع', 'ن ف س', 'ج ه د', 'ش ه د'],
+  'purchased souls':    ['ب ي ع', 'ن ف س', 'ج ه د'],
+  'martyr':             ['ش ه د', 'ج ه د', 'ب ي ع'],
+  'martyrdom':          ['ش ه د', 'ج ه د', 'ن ف س', 'ب ي ع'],
+  // ── Divine pleasure ──────────────────────────────────────────────────────
+  'pleasure of allah':  ['ر ض ي', 'ر ض و', 'ج ه د', 'ص ل و'],
+  'divine pleasure':    ['ر ض ي', 'ر ض و'],
+  'allah pleased':      ['ر ض ي', 'ر ض و', 'ا م ن'],
+  'seek allah pleasure':['ر ض ي', 'ر ض و', 'ع ب د', 'ج ه د'],
+  'pleasing allah':     ['ر ض ي', 'ر ض و', 'ع ب د'],
+  'allah approval':     ['ر ض ي', 'ر ض و'],
+  'allah satisfaction': ['ر ض ي', 'ر ض و'],
+  'ridwan':             ['ر ض ي', 'ر ض و'],
 
   // ── Worship ───────────────────────────────────────────────────────────────
   'worship':      ['ع ب د', 'ص ل و'],
