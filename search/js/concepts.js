@@ -421,13 +421,28 @@ const TRANSLITERATIONS = {
   'shahadah':   { english: ['testimony','testify','witness','declaration of faith'], roots: ['ش ه د'] },
 
   // ── Purification ──────────────────────────────────────────────────────────
-  'wudu':       { english: ['ablution','purification','wash','cleanse'], roots: ['و ض ا','ط ه ر'] },
-  'wudhu':      { english: ['ablution','purification','wash'], roots: ['و ض ا','ط ه ر'] },
-  'ghusl':      { english: ['ritual bath','purification','wash'], roots: ['غ س ل','ط ه ر'] },
-  'tayammum':   { english: ['dry ablution','purification with dust'], roots: ['ي م م','ط ه ر'] },
-  'tahara':     { english: ['purification','purity','clean'], roots: ['ط ه ر'] },
-  'taharah':    { english: ['purification','purity','clean'], roots: ['ط ه ر'] },
-  'najis':      { english: ['impure','unclean','filth'], roots: ['ن ج س'] },
+  'wudu':         { english: ['ablution','purification','wash','cleanse'], roots: ['و ض ا','ط ه ر'] },
+  'wudhu':        { english: ['ablution','purification','wash'], roots: ['و ض ا','ط ه ر'] },
+  'ghusl':        { english: ['ritual bath','purification','wash'], roots: ['غ س ل','ط ه ر'] },
+  'tayammum':     { english: ['dry ablution','purification with dust'], roots: ['ي م م','ط ه ر'] },
+  'tahara':       { english: ['purification','purity','clean'], roots: ['ط ه ر'] },
+  'taharah':      { english: ['purification','purity','clean'], roots: ['ط ه ر'] },
+  'najis':        { english: ['impure','unclean','filth'], roots: ['ن ج س'] },
+  // Tazkiyah — spiritual purification of the soul (تزكية النفس)
+  // Root: ز ك و (same as Zakat — growth/purification). Distinct from ط ه ر (ritual purity).
+  'tazkiya':      { english: ['purification of soul','self-purification','spiritual growth','cleansing heart'], roots: ['ز ك و'] },
+  'tazkiyah':     { english: ['purification of soul','spiritual purification','self-growth'], roots: ['ز ك و'] },
+  'tazkiyya':     { english: ['purification of soul','spiritual purification'], roots: ['ز ك و'] },
+  'tazkiyyah':    { english: ['purification of soul','self-purification'], roots: ['ز ك و'] },
+  'tazkia':       { english: ['purification','self-purification','spiritual growth'], roots: ['ز ك و'] },
+  'tazkiye':      { english: ['purification of soul','spiritual purification'], roots: ['ز ك و'] },
+  'tazkiyae':     { english: ['purification of soul'], roots: ['ز ك و'] },
+  'tazkiyat':     { english: ['purification','spiritual cleansing'], roots: ['ز ك و'] },
+  'tazkiyatun':   { english: ['purification of soul'], roots: ['ز ك و'] },
+  // Common Urdu compound forms — matched as whole phrases
+  'tazkiya e nafs':  { english: ['purification of soul','spiritual self-development'], roots: ['ز ك و','ن ف س'] },
+  'tazkiyah e nafs': { english: ['purification of soul','spiritual growth'], roots: ['ز ك و','ن ف س'] },
+  'tazkiye nafs':    { english: ['purification of soul'], roots: ['ز ك و','ن ف س'] },
 
   // ── Prayer postures ────────────────────────────────────────────────────────
   'sujood':     { english: ['prostration','prostrate','bow down'], roots: ['س ج د'] },
@@ -2226,7 +2241,11 @@ const CONCEPT_EXPANSIONS = {
   'charity':      ['ص د ق', 'ز ك و', 'ن ف ق'],
   'alms':         ['ز ك و', 'ص د ق'],
   'pilgrimage':   ['ح ج ج', 'ط و ف'],
-  'purification': ['ط ه ر', 'غ س ل'],
+  'purification': ['ط ه ر', 'غ س ل', 'ز ك و'],
+  'purification of soul':  ['ز ك و', 'ن ف س'],
+  'soul purification':     ['ز ك و', 'ن ف س'],
+  'spiritual purification':['ز ك و', 'ن ف س'],
+  'self purification':     ['ز ك و', 'ن ف س'],
   'remembrance':  ['ذ ك ر'],
   'blessings':    ['ص ل و', 'ب ر ك', 'ن ع م'],
   'salutations':  ['ص ل و', 'س ل م'],
