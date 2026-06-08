@@ -1115,89 +1115,140 @@ class QuranApp {
 
   // ── Autocomplete suggestion dropdown ─────────────────────────────────────
   //
-  // Works entirely client-side — no API call while typing.
-  // Sources: all TRANSLITERATIONS keys + curated conceptual queries.
-  // Fuzzy matches as user types, shows inline dropdown like Google.
+  // Two-tier: instant static completions first, then LLM-powered completions
+  // replace them after a 400ms debounce (on Vercel). Like Google — fast first
+  // pass, then smarter suggestions arrive without any visible "loading" jank.
   //
 
   _initSuggestions() {
-    // Build from TRANSLITERATIONS keys (already loaded via concepts.js)
-    // + a curated set of natural English/conceptual queries
-    const fromTranslit = typeof TRANSLITERATIONS !== 'undefined'
-      ? Object.keys(TRANSLITERATIONS).filter(k => k.length >= 3 && k.length <= 30)
-      : [];
-
-    const curated = [
-      // Common Islamic concepts
-      'mercy and forgiveness', 'patience in hardship', 'trust in Allah',
-      'gratitude for blessings', 'anxiety and worry', 'Day of Judgment',
-      'paradise and hellfire', 'rights of parents', 'seeking guidance',
-      'repentance and forgiveness', 'rizq and provision', 'love of Allah',
-      'fear of Allah taqwa', 'hope after despair', 'knowledge and wisdom',
-      'justice and oppression', 'marriage and family', 'wealth and charity',
-      'death and afterlife', 'prayers and worship', 'purpose of life',
-      'signs of Allah in creation', 'prophets and messengers',
-      'angels and jinn', 'quran and its virtues', 'fasting ramadan',
-      'making dua supplication', 'seeking forgiveness istighfar',
-      'unity of Allah tawhid', 'rights of neighbours',
-      'truthfulness and honesty', 'arrogance and pride',
-      'envy and jealousy', 'backbiting and slander',
-      'hardship and ease', 'trials and tribulations',
-      'gratitude shukr', 'repentance tawbah',
-      'remembrance of Allah dhikr', 'heart and soul',
-      'good character akhlaq', 'rights of others',
-      'spending in path of allah', 'night prayer tahajjud',
-      'martyrdom shaheed', 'sacrifice for Allah',
-      'sell soul for Allah', 'divine pleasure ridha',
-      'anger of Allah maghzoob', 'going astray dhalleen',
-      'believers muttaqeen', 'disbelievers kafiroon',
-    ];
-
-    this._suggestionPool = [...new Set([...fromTranslit, ...curated])];
-
-    // Create the dropdown element once
     const wrapper = document.querySelector('.search-box');
-    if (!wrapper) return;
-    if (document.getElementById('search-suggestions')) return;
+    if (!wrapper || document.getElementById('search-suggestions')) return;
 
     const sg = document.createElement('div');
-    sg.id        = 'search-suggestions';
+    sg.id = 'search-suggestions';
     sg.className = 'search-suggestions';
     sg.setAttribute('role', 'listbox');
-    sg.hidden    = true;
+    sg.hidden = true;
     wrapper.appendChild(sg);
+
+    this._sgDebounce = null;
+    this._sgLastQuery = '';
   }
 
   _updateSuggestions(val) {
-    const sg = document.getElementById('search-suggestions');
-    if (!sg) return;
-    const q = val.trim().toLowerCase();
-    if (q.length < 2) { sg.hidden = true; return; }
+    const q = val.trim();
+    if (q.length < 2) { this._hideSuggestions(); return; }
 
-    // Score: prefix match → 2, word-start match → 1.5, contains → 1
-    const scored = this._suggestionPool
-      .filter(s => s.toLowerCase().includes(q))
-      .map(s => {
-        const sl = s.toLowerCase();
-        const score = sl.startsWith(q) ? 3
-          : sl.split(/\s+/).some(w => w.startsWith(q)) ? 2
+    // Tier 1 — instant static completions from a curated phrase list
+    this._showStaticSuggestions(q);
+
+    // Tier 2 — LLM completions after 400ms debounce (Vercel only)
+    clearTimeout(this._sgDebounce);
+    this._sgDebounce = setTimeout(() => this._fetchLlmSuggestions(q), 400);
+  }
+
+  _showStaticSuggestions(q) {
+    // Curated list of natural-language queries covering all major Islamic topics
+    // Intentionally phrased like real user queries — not just Islamic terms
+    const PHRASES = [
+      // Emotional & spiritual
+      'how to find peace in hardship','mercy of Allah for sinners',
+      'what does the Quran say about anxiety','trust in Allah tawakkul',
+      'hope after despair and grief','how to seek forgiveness from Allah',
+      'gratitude and shukr blessings','patience in trials and tribulations',
+      'love of Allah in the Quran','fear of Allah and taqwa',
+      'how to strengthen iman faith','signs of a true believer',
+      // Worship
+      'how to make dua supplication','importance of tahajjud night prayer',
+      'virtues of dhikr remembrance','fasting and ramadan',
+      'spending in path of Allah sadaqah','hajj and pilgrimage',
+      'importance of salah prayer','zakat and charity',
+      // Character & ethics
+      'rights of parents in Islam','how to treat neighbours',
+      'honesty and truthfulness sidq','good character akhlaq',
+      'justice and fairness adl','arrogance and pride kibr',
+      'envy and jealousy hasad','backbiting and slander',
+      'forgiveness and pardoning others',
+      // Afterlife
+      'Day of Judgment and hisab','paradise jannah description',
+      'hellfire jahannam warning','death and afterlife barzakh',
+      'intercession shafaah','resurrection qiyamah',
+      // Knowledge
+      'seeking knowledge in Islam','wisdom and hikmah',
+      'purpose of creation','signs of Allah in creation',
+      'Quran and its virtues','following the Prophet sunnah',
+      // Sacrifice & striving
+      'selling soul for Allah 2:207','jihad striving in path of Allah',
+      'martyrdom shaheed','sacrifice qurbani',
+      'divine pleasure ridha Allah','Allah ki khushnudi',
+      // Sin & repentance
+      'repentance tawbah how to repent','seeking forgiveness istighfar',
+      'major sins in Islam','shirk polytheism',
+      'hypocrisy nifaq munafiq','disbelief kufr',
+      // Specific terms (common searches)
+      'maghzoob those upon whom Allah is angry',
+      'dhalleen those who went astray','muttaqeen people of taqwa',
+      'muhsineen doers of good','sabireen patient ones',
+      'taqwa God-consciousness','ikhlas sincerity intention',
+      'tazkiya purification of soul','barakah blessing abundance',
+      'rizq provision from Allah','shukr gratitude',
+    ];
+
+    const ql = q.toLowerCase();
+    const scored = PHRASES
+      .filter(p => p.toLowerCase().includes(ql))
+      .map(p => {
+        const pl = p.toLowerCase();
+        const score = pl.startsWith(ql) ? 3
+          : pl.split(/\s+/).some(w => w.startsWith(ql)) ? 2
           : 1;
-        return { text: s, score };
+        return { text: p, score };
       })
       .sort((a, b) => b.score - a.score || a.text.length - b.text.length)
-      .slice(0, 6);
+      .slice(0, 5);
 
-    if (!scored.length) { sg.hidden = true; return; }
+    if (scored.length) this._renderSuggestions(scored.map(s => s.text), q, false);
+  }
 
-    sg.innerHTML = scored.map((s, i) =>
-      `<div class="sg-item" role="option" data-q="${this._esc(s.text)}" data-idx="${i}">
-        ${this._highlightMatch(s.text, q)}
+  async _fetchLlmSuggestions(q) {
+    if (q === this._sgLastQuery) return;
+    this._sgLastQuery = q;
+    try {
+      const res = await Promise.race([
+        fetch('/api/expand', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, mode: 'suggest' }),
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(), 3500)),
+      ]);
+      if (!res.ok) return;
+      const data = await res.json();
+      const suggestions = data?.suggestions;
+      // Only update if still typing same prefix and we got good results
+      const current = document.getElementById('search-input')?.value?.trim() ?? '';
+      if (Array.isArray(suggestions) && suggestions.length > 0
+          && current.toLowerCase().startsWith(q.slice(0, 3).toLowerCase())) {
+        this._renderSuggestions(suggestions, current, true);
+      }
+    } catch { /* LLM unavailable — keep static suggestions */ }
+  }
+
+  _renderSuggestions(items, query, isLlm) {
+    const sg = document.getElementById('search-suggestions');
+    if (!sg) return;
+    const ql = query.toLowerCase();
+
+    sg.innerHTML = items.map((text, i) =>
+      `<div class="sg-item${isLlm ? ' sg-llm' : ''}" role="option" data-q="${this._esc(text)}" data-idx="${i}">
+        <span class="sg-icon">${isLlm ? '✦' : '🔍'}</span>
+        <span class="sg-text">${this._highlightMatch(text, ql)}</span>
       </div>`
     ).join('');
 
     sg.querySelectorAll('.sg-item').forEach(item => {
       item.addEventListener('mousedown', e => {
-        e.preventDefault(); // keep focus on input
+        e.preventDefault();
         const input = document.getElementById('search-input');
         input.value = item.dataset.q;
         this._hideSuggestions();
@@ -1211,7 +1262,7 @@ class QuranApp {
 
   _hideSuggestions() {
     const sg = document.getElementById('search-suggestions');
-    if (sg) sg.hidden = true;
+    if (sg) { sg.hidden = true; this._sgLastQuery = ''; }
   }
 
   _navigateSuggestion(dir, e) {

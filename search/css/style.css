@@ -959,7 +959,10 @@ mark {
 }
 
 .sg-item {
-  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
   cursor: pointer;
   font-size: .88rem;
   color: var(--text-secondary, rgba(255,255,255,.75));
@@ -973,6 +976,18 @@ mark {
   background: rgba(255,255,255,.07);
   color: var(--text, #fff);
 }
+.sg-icon {
+  font-size: .75rem;
+  opacity: .45;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+.sg-item.sg-llm .sg-icon {
+  opacity: .7;
+  color: var(--accent, #4ade80);
+}
+.sg-text { overflow: hidden; text-overflow: ellipsis; }
 .sg-mark {
   background: none;
   color: var(--accent, #4ade80);

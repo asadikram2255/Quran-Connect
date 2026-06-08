@@ -181,6 +181,26 @@ RULES:
 - NEVER return empty roots[] for a real Islamic/Arabic/Urdu query — always map to the correct root
 - For compound queries include roots for ALL concepts mentioned`;
 
+// Suggest mode: given a partial query, return 5 natural completions.
+// Called on debounce while typing — like Google autocomplete.
+const SUGGEST_PROMPT = `You are an autocomplete assistant for a Quran search engine.
+Given a partial search query (in any language — English, Roman Urdu, Urdu, Arabic, transliterated Arabic), suggest 5 natural, complete search queries that someone might be looking for.
+
+Rules:
+- Suggest full, natural-language queries — not just single words
+- Complete the user's partial thought intelligently
+- Include a mix of English and common Islamic terms where relevant
+- Each suggestion should be a distinct topic
+- Keep suggestions concise (3-8 words)
+- Return JSON only: { "suggestions": ["...", "...", "...", "...", "..."] }
+
+Examples:
+- "mer" → ["mercy of Allah", "mercy and forgiveness", "merciful to others", "mercy in hardship", "allah is most merciful"]
+- "Allah ki" → ["Allah ki rehmat", "Allah ki khushnudi", "Allah ki qudrat", "Allah ki naimat", "Allah ki mohabbat"]
+- "how" → ["how to seek forgiveness", "how to make dua", "how should I treat my parents", "how to have tawakkul", "how to repent sincerely"]
+- "taq" → ["taqwa and God-consciousness", "taqwa meaning and importance", "how to attain taqwa", "taqwa in daily life", "muttaqeen people of taqwa"]
+- "mag" → ["maghzoob those upon whom anger fell", "maghfirah seeking forgiveness", "maghrib prayer importance"]`;
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -192,8 +212,39 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
+  // suggest mode: returns autocomplete completions
+  const mode  = String(body?.mode ?? 'expand');
   const query = String(body?.query ?? '').trim().slice(0, 300);
   if (!query) return res.status(400).json({ error: "Missing 'query'" });
+
+  if (mode === 'suggest') {
+    try {
+      const resp = await Promise.race([
+        fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          body: JSON.stringify({
+            model: MODEL, max_tokens: 200,
+            system: SUGGEST_PROMPT,
+            messages: [{ role: 'user', content: `Partial query: "${query}"` }],
+          }),
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+      ]);
+      if (!resp.ok) throw new Error(`Anthropic ${resp.status}`);
+      const data  = await resp.json();
+      const text  = data?.content?.[0]?.text || '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('No JSON');
+      const parsed      = JSON.parse(match[0]);
+      const suggestions = (Array.isArray(parsed.suggestions) ? parsed.suggestions : [])
+        .filter(s => typeof s === 'string' && s.trim().length > 1)
+        .slice(0, 5);
+      return res.status(200).json({ suggestions });
+    } catch (e) {
+      return res.status(200).json({ suggestions: [], error: e.message });
+    }
+  }
 
   try {
     const t0   = Date.now();
