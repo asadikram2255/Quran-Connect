@@ -10,7 +10,7 @@
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MODEL        = 'llama-3.3-70b-versatile';
-const MAX_TOKENS   = 2000;
+const MAX_TOKENS   = 4000;
 const TIMEOUT_MS   = 18000;
 
 const SYSTEM_PROMPT = `You are a precise Quranic scholar extracting deep, specific knowledge from verses. You do NOT write vague summaries — every point must be a specific, non-obvious fact grounded in the verse text.
@@ -55,7 +55,8 @@ QUERY TYPE — adapt your STRUCTURE to what is being asked:
 CITATION RULES:
 1. Every point needs at least one ref in format "SN:AN" (e.g. "2:153") from the provided verse list
 2. Use ONLY what the verses say — no outside knowledge
-3. 4-6 sections, 2-4 points each
+3. For CATEGORY queries: create as many sections as groups exist in the verses — do NOT stop at 6. Every distinct named group = its own section. Aim for completeness.
+   For CONCEPT queries: 4-6 sections, 2-4 points each.
 4. Be scholarly and precise — a student should learn something new from every point`;
 
 export default async function handler(req, res) {
@@ -70,7 +71,7 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
   const query    = String(body?.query ?? '').trim().slice(0, 300);
-  const verses   = Array.isArray(body?.verses) ? body.verses.slice(0, 35) : [];
+  const verses   = Array.isArray(body?.verses) ? body.verses.slice(0, 60) : [];
   const subtopics = Array.isArray(body?.subtopics) ? body.subtopics.slice(0, 6) : [];
 
   if (!query || !verses.length) {
@@ -139,7 +140,7 @@ export default async function handler(req, res) {
           .slice(0, 5),
       }))
       .filter(s => s.points.length > 0)
-      .slice(0, 6);
+      .slice(0, 20);
 
     return res.status(200).json({
       theme:     String(parsed.theme || query).slice(0, 80),

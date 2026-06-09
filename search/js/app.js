@@ -1154,7 +1154,7 @@ class QuranApp {
 
   async _startSynthesis(query, results, subtopics, gen) {
     try {
-      const verses = results.slice(0, 35).map(r => ({
+      const verses = results.slice(0, 60).map(r => ({
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
         text: (r.ayah.en || r.ayah.t1 || '').slice(0, 220),
       }));
