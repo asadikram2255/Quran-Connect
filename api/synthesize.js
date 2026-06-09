@@ -8,7 +8,7 @@
 // Called by app.js after verse results are rendered. Returns 200 with empty sections
 // on any error so the verse list always remains the fallback.
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.Quran_Connect_Claude;
 const MODEL             = 'claude-3-5-haiku-20241022';
 const MAX_TOKENS        = 1400;
 const TIMEOUT_MS        = 18000;

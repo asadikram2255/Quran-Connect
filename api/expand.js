@@ -9,7 +9,7 @@
 //
 // Response: { roots: string[], keywords: string[], understood_as: string, timing_ms: number }
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.Quran_Connect_Claude;
 const MODEL             = 'claude-3-5-haiku-20241022';
 const MAX_TOKENS        = 800;
 
