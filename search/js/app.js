@@ -371,11 +371,9 @@ class QuranApp {
       console.log('[QC expand]', { subtopics, displayResults: displayResults.length, totalMatched });
 
       const isIdQuery = /^\d+\s*:\s*\d+/.test(query.trim());
-      if (!isIdQuery && subtopics && subtopics.length > 0 && displayResults.length > 0) {
+      if (!isIdQuery && displayResults.length > 0) {
         this._renderSynthesisLoading(query, subtopics);
         this._startSynthesis(query, displayResults, subtopics, myGen);
-      } else if (!isIdQuery) {
-        console.warn('[QC synthesis skipped]', { subtopicsLength: subtopics?.length, results: displayResults.length });
       }
 
     } catch (err) {
