@@ -9,7 +9,7 @@
 // on any error so the verse list always remains the fallback.
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.Quran_Connect_Claude;
-const MODEL             = 'claude-3-5-haiku-20241022';
+const MODEL             = 'claude-haiku-4-5';
 const MAX_TOKENS        = 1400;
 const TIMEOUT_MS        = 18000;
 

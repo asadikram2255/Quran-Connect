@@ -10,7 +10,7 @@
 // Response: { roots: string[], keywords: string[], understood_as: string, timing_ms: number }
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.Quran_Connect_Claude;
-const MODEL             = 'claude-3-5-haiku-20241022';
+const MODEL             = 'claude-haiku-4-5';
 const MAX_TOKENS        = 800;
 
 // Comprehensive root reference — covers 200+ Islamic/Arabic/Urdu terms so
@@ -295,9 +295,16 @@ export default async function handler(req, res) {
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    // Validate: roots must look like Arabic 3-letter roots
+    // Validate Arabic root: must split into exactly 3 parts, each 1-4 Arabic Unicode chars.
+    // Using split(/\s+/) instead of a strict regex so minor spacing/Unicode variants don't fail.
+    const isValidRoot = r => {
+      if (typeof r !== 'string') return false;
+      const parts = r.trim().split(/\s+/);
+      return parts.length === 3 && parts.every(p => /^[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]{1,4}$/.test(p));
+    };
+
     const roots = (Array.isArray(parsed.roots) ? parsed.roots : [])
-      .filter(r => typeof r === 'string' && /^[؀-ۿ]{1,2} [؀-ۿ]{1,2} [؀-ۿ]{1,2}$/.test(r.trim()))
+      .filter(isValidRoot)
       .slice(0, 8);
 
     const keywords = (Array.isArray(parsed.keywords) ? parsed.keywords : [])
@@ -305,15 +312,13 @@ export default async function handler(req, res) {
       .map(k => k.toLowerCase().trim())
       .slice(0, 8);
 
-    // Validate subtopics
+    // Validate subtopics — use same lenient root check
     const subtopics = (Array.isArray(parsed.subtopics) ? parsed.subtopics : [])
       .filter(s => s && typeof s.name === 'string' && Array.isArray(s.roots))
       .map(s => ({
         name:     String(s.name).slice(0, 40),
         arabic:   String(s.arabic || '').slice(0, 40),
-        roots:    (s.roots || [])
-          .filter(r => typeof r === 'string' && /^[؀-ۿ]{1,2} [؀-ۿ]{1,2} [؀-ۿ]{1,2}$/.test(r.trim()))
-          .slice(0, 3),
+        roots:    (s.roots || []).filter(isValidRoot).slice(0, 3),
         keywords: (s.keywords || [])
           .filter(k => typeof k === 'string' && k.length >= 2)
           .map(k => k.toLowerCase().trim())
@@ -326,8 +331,10 @@ export default async function handler(req, res) {
       roots,
       keywords,
       subtopics,
-      understood_as: String(parsed.understood_as || '').slice(0, 100),
-      timing_ms:     Date.now() - t0,
+      understood_as:   String(parsed.understood_as || '').slice(0, 100),
+      timing_ms:       Date.now() - t0,
+      // DEBUG: raw subtopics before validation — remove after confirming
+      _raw_subtopics:  parsed.subtopics || [],
     });
 
   } catch (e) {
