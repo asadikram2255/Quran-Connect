@@ -1154,11 +1154,24 @@ class QuranApp {
 
   // Returns true if the query is asking for an exhaustive list/enumeration
   _isCategoryQuery(q) {
-    return /\b(list|all|every|each|types? of|categories|enumerate|how many|what are the)\b/i.test(q);
+    return /\b(list|all|every|each|types? of|categories|enumerate|how many|what are the|mention(ed)?|named)\b/i.test(q);
   }
 
-  // All known Quranic categories of people — used both as search terms
-  // and passed to synthesis so the model knows exactly what to cover.
+  // Detects which curated catalog best matches the query topic.
+  // Returns one of: 'prophets' | 'haram_foods' | 'jannah' | 'jahannam' |
+  //                 'major_sins' | 'divine_names' | 'worship' | 'people_groups'
+  _detectCatalogType(q) {
+    const l = q.toLowerCase();
+    if (/\b(prophet|messenger|nabi|rasul|anbiya|apostle|25 prophet)\b/.test(l))                                     return 'prophets';
+    if (/\b(haram|forbidden|prohibited|impermissible).{0,30}(food|eat|drink|diet)\b|(food|drink|eat).{0,30}(haram|forbidden|prohibited)\b|\bdietary\b/.test(l)) return 'haram_foods';
+    if (/\b(jannah|paradise|firdaus|heaven(?!ly fire)|rivers? of paradise|features? of paradise|description.? of paradise)\b/.test(l)) return 'jannah';
+    if (/\b(jahannam|hellfire|hell fire|levels? of hell|gates? of (hell|jahannam)|punishment.{0,20}(hell|fire)|description.? of hell)\b/.test(l)) return 'jahannam';
+    if (/\b(major sins?|grave sins?|kaba.ir|biggest sins?|worst sins?|list.{0,10}sins?)\b/.test(l))                return 'major_sins';
+    if (/\b(asma.?ul.?husna|names? of allah|attributes? of allah|divine names?|99 names?|beautiful names? of allah)\b/.test(l)) return 'divine_names';
+    if (/\b(acts? of worship|ibadat|pillars? of islam|obligations? in islam|forms? of worship)\b/.test(l))          return 'worship';
+    return 'people_groups';
+  }
+
   // prettier-ignore
   static QURAN_PEOPLE_GROUPS = [
     { name: 'Mu\'minoon — True Believers',           query: 'mu\'minoon believers faith iman prayer charity' },
@@ -1198,22 +1211,192 @@ class QuranApp {
     { name: 'Awliyaa Shaytan — Allies of Satan',     query: 'awliyaa shaytan allies satan fight disbelievers' },
   ];
 
-  // For category queries: search the database for each known Quranic group
-  // and return their top verses + the group names list for the model.
-  // 100% grounded — no model knowledge used. Content comes from quran.json.
-  async _gatherCategoryVerses() {
+  // prettier-ignore
+  static QURAN_PROPHETS = [
+    { name: 'Adam — The First Man',                  query: 'adam first man clay created garden forbidden tree' },
+    { name: 'Idris — Enoch',                         query: 'idris enoch elevated exalted rank truthful patient' },
+    { name: 'Nuh — Noah',                            query: 'nuh noah ark flood disbelievers saved warning' },
+    { name: 'Hud — Prophet to \'Aad',               query: 'hud aad nation wind punishment storm destroyed' },
+    { name: 'Salih — Prophet to Thamud',             query: 'salih thamud camel she-camel hamstring earthquake destroyed' },
+    { name: 'Ibrahim — Abraham',                     query: 'ibrahim abraham fire monotheism idols hanif khalilullah friend' },
+    { name: 'Lut — Lot',                             query: 'lut lot sodom immorality transgression destroyed saved angels' },
+    { name: 'Ismail — Ishmael',                      query: 'ismail ishmael kaaba makkah patient sacrifice promise' },
+    { name: 'Ishaq — Isaac',                         query: 'ishaq isaac blessed righteous son ibrahim gift' },
+    { name: 'Yaqub — Jacob/Israel',                  query: 'yaqub jacob israel son isaac children tribes covenant' },
+    { name: 'Yusuf — Joseph',                        query: 'yusuf joseph egypt dream well prison aziz minister' },
+    { name: 'Shuayb — Jethro',                       query: 'shuayb madyan midian measure weight honest trade warned' },
+    { name: 'Ayyub — Job',                           query: 'ayyub job patience suffering illness hardship reward restored' },
+    { name: 'Musa — Moses',                          query: 'musa moses pharaoh firaun staff sea banu israel tawrat' },
+    { name: 'Harun — Aaron',                         query: 'harun aaron brother musa assistant spokesman support' },
+    { name: 'Dhul-Kifl — Ezekiel',                  query: 'dhul-kifl righteous patient persevering steadfast' },
+    { name: 'Dawud — David',                         query: 'dawud david zabur psalms jalut goliath kingdom wisdom iron' },
+    { name: 'Sulayman — Solomon',                    query: 'sulayman solomon wind jinn birds ant bilqis sheba throne' },
+    { name: 'Ilyas — Elijah',                        query: 'ilyas elijah ba\'l idol people fire mountain' },
+    { name: 'Al-Yasa\' — Elisha',                   query: 'al-yasa elisha chosen righteous among the best guided' },
+    { name: 'Yunus — Jonah',                         query: 'yunus jonah whale fish dhul-noon nineveh darkness glorified' },
+    { name: 'Zakariyya — Zechariah',                 query: 'zakariyya zechariah yahya son prayer old age miracle' },
+    { name: 'Yahya — John the Baptist',              query: 'yahya john baptist wisdom child chaste righteous noble' },
+    { name: 'Isa — Jesus',                           query: 'isa jesus miracles mary maryam injeel gospel born virgin' },
+    { name: 'Muhammad ﷺ — Seal of Prophets',         query: 'muhammad messenger seal prophets khatam quran revelation warner' },
+  ];
+
+  // prettier-ignore
+  static QURAN_HARAM_FOODS = [
+    { name: 'Maytah — Carrion (Dead Animals)',                query: 'maytah carrion dead animals forbidden eat impure' },
+    { name: 'Dam — Flowing Blood',                            query: 'dam blood poured flowing forbidden impure unclean' },
+    { name: 'Lahm al-Khinzir — Pork',                        query: 'khinzir pork pig swine forbidden impure abomination' },
+    { name: 'Ma Uhilla li-Ghayri Allah — Dedicated to Idols',query: 'slaughtered name other allah idols dedicated impure forbidden' },
+    { name: 'Al-Munkhaniqah — Strangled Animals',             query: 'strangled choked suffocated dead animal forbidden' },
+    { name: 'Al-Mawqudah — Beaten to Death',                  query: 'beaten killed blow struck dead forbidden' },
+    { name: 'Al-Mutaraddiyah — Fallen to Death',              query: 'fallen fell height dead forbidden unless slaughtered' },
+    { name: 'Al-Natihah — Gored by Horns',                    query: 'gored horns killed dead animal forbidden' },
+    { name: 'Ma Akala Al-Sabu\' — Mauled by Predators',      query: 'eaten predator wild animal mauled partial forbidden' },
+    { name: 'Ma Dhubiha \'Ala Al-Nusub — Altar Sacrifice',   query: 'sacrificed altars stones idols pagan divination forbidden' },
+    { name: 'Khamr — Intoxicants and Alcohol',                query: 'khamr alcohol intoxicants wine forbidden rijs abomination shaytan' },
+  ];
+
+  // prettier-ignore
+  static QURAN_JANNAH_FEATURES = [
+    { name: 'Al-Firdaus — The Highest Garden',               query: 'firdaus highest paradise garden inherit dwell' },
+    { name: 'Anhar — Rivers of Paradise',                    query: 'rivers water milk honey wine paradise flowing beneath' },
+    { name: 'Ghurfat — Elevated Chambers',                   query: 'chambers rooms elevated lofty paradise dwellings built' },
+    { name: 'Hur al-\'Ayn — Beautiful Companions',           query: 'hur al-ayn beautiful companions paradise pure restrained gaze' },
+    { name: 'Wildaan Mukhalladoon — Immortal Youths',        query: 'wildaan youths immortal eternal servants paradise scattered pearls' },
+    { name: 'Silk and Gold Garments',                        query: 'bracelets gold silk green garments adorned paradise clothing' },
+    { name: 'Fruits and Food of Paradise',                   query: 'fruits paradise thornless lote-tree banana grape date food never forbidden' },
+    { name: 'Salam — Peace and Greetings',                   query: 'salam peace greeting paradise salutation blessed angels' },
+    { name: 'Vision of Allah — The Greatest Reward',         query: 'see allah face vision greatest reward paradise hearts' },
+    { name: 'No Grief, Fatigue, or Sorrow',                  query: 'no grief fatigue toil weariness sorrow pain removed paradise' },
+    { name: '\'Illiyin — The Highest Record',                query: 'illiyin highest record register righteous near allah' },
+    { name: 'Nearness to Allah — Muqarraboon',               query: 'nearness allah close elevated rank muqarraboon foremost' },
+    { name: 'Eternal Bliss — No Death, No Aging',            query: 'eternal immortal no death no aging no toil lasting reward' },
+  ];
+
+  // prettier-ignore
+  static QURAN_JAHANNAM_FEATURES = [
+    { name: 'Seven Gates of Jahannam',                       query: 'gates jahannam hell seven portion assigned each gate' },
+    { name: 'Fuel — Humans and Stones Kindle the Fire',      query: 'fuel fire hell humans stones kindle burn prepared' },
+    { name: 'Punishment of Burning Skin',                    query: 'burn fire skin punishment roast replaced disbelievers' },
+    { name: 'Zaqqum — The Bitter Tree of Hell',              query: 'zaqqum tree hell bitter food boiling oil bellies' },
+    { name: 'Boiling Water and Ghassaq — Pus',               query: 'ghassaq pus discharge drink boiling scalding water hell' },
+    { name: 'Chains, Shackles, and Yokes',                   query: 'chains shackles yokes collars neck hellfire dragged bound' },
+    { name: 'Calling Out — Wishing for Death',               query: 'call out death wish remain punishment no exit eternal' },
+    { name: 'Zabaniyah — Guardian Angels of Hell',           query: 'zabaniyah guardians angels punishment drag seize hell nineteen' },
+    { name: 'No Intercession for Its People',                query: 'intercession shafa\'ah will not benefit wrongdoers companions fire' },
+    { name: 'The Inhabitants Who Enter Jahannam',            query: 'disbelievers arrogant oppressors wrongdoers enter jahannam fire punishment' },
+    { name: 'The Levels — Al-Laza, Hutama, Sa\'ir, Saqar',  query: 'laza hutama sair saqar jahim hawiya levels fire hell names' },
+    { name: 'Regret and Pleading to Return',                 query: 'return world believe regret wish lord take us out' },
+  ];
+
+  // prettier-ignore
+  static QURAN_MAJOR_SINS = [
+    { name: 'Shirk — Associating Partners with Allah',       query: 'shirk associate partners allah polytheism unforgivable greatest sin' },
+    { name: 'Qatl — Unjust Killing/Murder',                  query: 'qatl murder kill unlawfully blood innocent severe punishment eternal' },
+    { name: 'Zina — Adultery and Fornication',               query: 'zina adultery fornication lashes punishment forbidden approach' },
+    { name: 'Riba — Usury and Interest',                     query: 'riba usury interest war allah messenger forbidden devour' },
+    { name: 'Qazf — False Accusation of Chastity',           query: 'qazf false accusation chastity lashes slander believer woman' },
+    { name: '\'Uquq al-Walidayn — Disobedience to Parents',  query: 'parents disobedience disrespect say uff harsh forbidden command' },
+    { name: 'Akl Mal al-Yatim — Devouring Orphan\'s Wealth', query: 'orphan wealth consume devour unjustly fire sin belly' },
+    { name: 'Kibr — Arrogance and Pride',                    query: 'kibr arrogance pride mutakabbireen forbidden paradise haughty' },
+    { name: 'Nifaq — Hypocrisy',                             query: 'nifaq hypocrites deceive hell lowest level punishment' },
+    { name: 'Fasad — Spreading Corruption in the Land',      query: 'fasad corruption spreading land forbidden severe punishment' },
+    { name: 'Sihr — Sorcery and Magic',                      query: 'sihr sorcery magic forbidden disbelief harm separate spouses' },
+    { name: 'Sariqah — Theft',                               query: 'sariqah theft cut hand punishment amputate steal recompense' },
+    { name: 'Kufr — Ingratitude and Disbelief',              query: 'kufr disbelief ingratitude reject truth punishment severe' },
+    { name: 'Abandoning Prayer',                             query: 'abandon neglect prayer heedless woe punishment fire saqar' },
+    { name: 'Consuming Haram Wealth Unjustly',               query: 'consume devour wealth unjustly wrongdoing property people' },
+  ];
+
+  // prettier-ignore
+  static QURAN_DIVINE_NAMES = [
+    { name: 'Al-Rahman — The Most Gracious',                 query: 'rahman most gracious mercy vast compassion creation' },
+    { name: 'Al-Rahim — The Most Merciful',                  query: 'rahim merciful mercy forgiveness believers specific' },
+    { name: 'Al-Malik — The Sovereign King',                 query: 'malik king sovereign dominion master day judgment' },
+    { name: 'Al-Quddus — The Holy, The Pure',                query: 'quddus holy pure sanctified glorified free defects' },
+    { name: 'Al-Salam — The Source of Peace',                query: 'salam peace source security safety greeting paradise' },
+    { name: 'Al-Mu\'min — The Granter of Security',         query: 'mu\'min granter security faithful protects believers guardian faith' },
+    { name: 'Al-Muhaymin — The Overseer',                    query: 'muhaymin overseer watchful guardian dominant witness' },
+    { name: 'Al-\'Aziz — The Almighty',                     query: 'aziz almighty powerful might honor dominant' },
+    { name: 'Al-Jabbar — The Compeller',                     query: 'jabbar compeller overpowering irresistible omnipotent' },
+    { name: 'Al-Mutakabbir — The Supremely Great',           query: 'mutakabbir supreme pride greatness majesty exalted above all' },
+    { name: 'Al-Khaliq — The Creator',                       query: 'khaliq creator creation brings existence nothing' },
+    { name: 'Al-Bari\' — The Originator',                   query: 'bari originator producer fashioner separates forms' },
+    { name: 'Al-Musawwir — The Shaper of Forms',             query: 'musawwir shaper forms fashions shapes womb images' },
+    { name: 'Al-Ghaffar — The Perpetual Forgiver',           query: 'ghaffar perpetual forgiver forgiveness repeated sins' },
+    { name: 'Al-Qahhaar — The Subduer',                      query: 'qahhar subduer dominant overpowers everything irresistible' },
+    { name: 'Al-Wahhab — The Bestower of Gifts',             query: 'wahhab bestower gifts bounties grants without measure' },
+    { name: 'Al-Razzaq — The Provider',                      query: 'razzaq provider sustainer rizq provision without account' },
+    { name: 'Al-\'Alim — The All-Knowing',                  query: 'alim all-knowing knowledge everything seen unseen hidden apparent' },
+    { name: 'Al-Hayy Al-Qayyum — The Living, Self-Subsisting',query: 'hayy qayyum living self-subsisting eternal never dies slumber' },
+    { name: 'Al-Samee\' — The All-Hearing',                 query: 'samee all-hearing hears prayers calls responds every sound' },
+    { name: 'Al-Baseer — The All-Seeing',                    query: 'baseer all-seeing sees everything observes witnesses actions' },
+    { name: 'Al-Tawwab — The Acceptor of Repentance',        query: 'tawwab acceptor repentance returns forgives tawbah turn' },
+    { name: 'Al-Ghafur — The Oft-Forgiving',                 query: 'ghafur oft-forgiving forgives sins pardon overlooking' },
+    { name: 'Al-Wadud — The Most Loving',                    query: 'wadud most loving affectionate love believers warm' },
+    { name: 'Al-Majid — The Glorious',                       query: 'majid glorious majestic honor praised exalted throne' },
+    { name: 'Al-Ba\'ith — The Resurrector',                  query: 'ba\'ith resurrector raises dead resurrection day judgment' },
+    { name: 'Al-Shaheed — The Witness',                      query: 'shaheed witness witnesses all actions aware sufficient' },
+    { name: 'Al-Haqq — The Truth',                           query: 'haqq absolute truth real certain manifest clear' },
+    { name: 'Al-Wakeel — The Trustee',                       query: 'wakeel trustee guardian sufficient protector rely upon' },
+    { name: 'Al-Qadir / Al-Qadeer — The All-Powerful',       query: 'qadir qadeer all-powerful capable able everything' },
+    { name: 'Al-\'Afuw — The Pardoner',                     query: 'afuw pardoner erases wipes sins forgives pardons' },
+    { name: 'Al-Nur — The Light',                            query: 'nur light heavens earth parable niche lamp' },
+    { name: 'Al-Hadi — The Guide',                           query: 'hadi guide guidance leads right path straight' },
+    { name: 'Al-Badi\' — The Originator of Creation',        query: 'badi originator heavens earth created without precedent' },
+    { name: 'Al-Baqi — The Ever-Lasting',                    query: 'baqi everlasting endures remains face allah eternal' },
+  ];
+
+  // prettier-ignore
+  static QURAN_WORSHIP_ACTS = [
+    { name: 'Salah — Obligatory Prayer',                     query: 'salah prayer establish iqamat obligatory prescribed times' },
+    { name: 'Zakat — Obligatory Almsgiving',                 query: 'zakat obligatory charity purification wealth poor needy' },
+    { name: 'Sawm — Fasting in Ramadan',                     query: 'sawm fasting ramadan month prescribed abstain dawn sunset' },
+    { name: 'Hajj — Pilgrimage to Makkah',                   query: 'hajj pilgrimage makkah kaaba obligatory afford once tawaf' },
+    { name: 'Dhikr — Remembrance of Allah',                  query: 'dhikr remembrance allah mention hearts tranquil glorify morning evening' },
+    { name: 'Dua — Supplication',                            query: 'dua supplication call upon ask invoke respond near' },
+    { name: 'Tilawat — Recitation of the Quran',             query: 'recite quran follow guidance hearts heal listen attentively' },
+    { name: 'Tawbah — Sincere Repentance',                   query: 'tawbah repentance return sincere forgiveness cleanse turn' },
+    { name: 'Jihad — Striving in Allah\'s Way',              query: 'jihad strive path allah effort sacrifice wealth lives' },
+    { name: 'Infaq — Spending Charity for Allah',            query: 'infaq spend charity path allah generosity righteous give' },
+    { name: 'Sabr — Patience and Perseverance',              query: 'sabr patience steadfast trials tribulations reward believers' },
+    { name: 'Tawakkul — Complete Reliance on Allah',         query: 'tawakkul reliance trust allah sufficient guardian depend' },
+    { name: 'Shukr — Gratitude to Allah',                    query: 'shukr gratitude thanks grateful blessings increase deny' },
+    { name: 'Tafakkur — Contemplation of Creation',          query: 'tafakkur contemplate reflect ponder creation signs heavens earth' },
+    { name: 'Amr bil Ma\'ruf — Enjoining Good',             query: 'amr ma\'ruf enjoin good command righteous community best' },
+    { name: 'Nahy \'an al-Munkar — Forbidding Evil',         query: 'nahy munkar forbidding evil preventing wrong society' },
+    { name: 'Tawadu\' — Humility',                           query: 'tawadu humility humble walk gentle meek not arrogant' },
+    { name: '\'Itikaf and Night Prayer — Qiyam al-Layl',    query: 'night prayer qiyam tahajjud stand portion night gift' },
+  ];
+
+  // Picks the right curated catalog for a given query type.
+  _getCatalog(type) {
+    switch (type) {
+      case 'prophets':     return QuranApp.QURAN_PROPHETS;
+      case 'haram_foods':  return QuranApp.QURAN_HARAM_FOODS;
+      case 'jannah':       return QuranApp.QURAN_JANNAH_FEATURES;
+      case 'jahannam':     return QuranApp.QURAN_JAHANNAM_FEATURES;
+      case 'major_sins':   return QuranApp.QURAN_MAJOR_SINS;
+      case 'divine_names': return QuranApp.QURAN_DIVINE_NAMES;
+      case 'worship':      return QuranApp.QURAN_WORSHIP_ACTS;
+      default:             return QuranApp.QURAN_PEOPLE_GROUPS;
+    }
+  }
+
+  // For category queries: search the database for each item in the chosen catalog
+  // and return their top verses. 100% grounded — content from quran.json only.
+  async _gatherCategoryVerses(catalog) {
     const seen = new Set();
     const pool = [];
-    for (const group of QuranApp.QURAN_PEOPLE_GROUPS) {
+    for (const item of catalog) {
       try {
-        const { results } = await this.engine.search(group.query, {}, 6);
+        const { results } = await this.engine.search(item.query, {}, 6);
         for (const r of results) {
           if (!seen.has(r.ayah.id)) {
             seen.add(r.ayah.id);
             pool.push(r);
           }
         }
-      } catch (_) { /* skip failed group */ }
+      } catch (_) { /* skip failed item */ }
     }
     return pool;
   }
@@ -1221,17 +1404,19 @@ class QuranApp {
   async _startSynthesis(query, results, subtopics, gen) {
     try {
       // For "list all / every / categories" queries: gather targeted verses
-      // per Quranic group from the actual database instead of using generic results
+      // per catalog item from the actual database instead of using generic results
       let versePool = results;
       let groupNames = [];
       if (this._isCategoryQuery(query)) {
-        const categoryVerses = await this._gatherCategoryVerses();
+        const catalogType  = this._detectCatalogType(query);
+        const catalog      = this._getCatalog(catalogType);
+        const categoryVerses = await this._gatherCategoryVerses(catalog);
         if (this._searchGen !== gen) return; // aborted
         const seen = new Set(categoryVerses.map(r => r.ayah.id));
         const extra = results.filter(r => !seen.has(r.ayah.id));
         versePool = [...categoryVerses, ...extra];
-        groupNames = QuranApp.QURAN_PEOPLE_GROUPS.map(g => g.name);
-        console.log('[QC synthesize] category mode — verse pool:', versePool.length, 'groups:', groupNames.length);
+        groupNames = catalog.map(g => g.name);
+        console.log('[QC synthesize] category mode —', catalogType, '| verse pool:', versePool.length, '| items:', groupNames.length);
       }
 
       const verses = versePool.slice(0, 210).map(r => ({
