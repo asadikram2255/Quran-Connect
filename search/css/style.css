@@ -1439,9 +1439,26 @@ mark {
   100% { box-shadow: none; }
 }
 
+/* ── Prose response layout ───────────────────────────────────────────────── */
+.syn-prose {
+  padding: 4px 0 2px;
+}
+.syn-para {
+  font-size: .92rem;
+  line-height: 1.75;
+  color: var(--text);
+  margin: 0 0 1.1em;
+}
+.syn-para:last-child { margin-bottom: 0; }
+.syn-para strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .synthesis-panel { padding: 14px 14px; border-radius: 10px; }
   .syn-section-header { padding: 9px 11px; }
   .syn-points { padding: 9px 11px; }
+  .syn-para { font-size: .875rem; }
 }

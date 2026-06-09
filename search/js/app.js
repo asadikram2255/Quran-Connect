@@ -1224,7 +1224,7 @@ class QuranApp {
       if (this._searchGen !== gen) { console.log('[QC synthesize] aborted (gen mismatch)'); return; }
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      console.log('[QC synthesize] response', { theme: data.theme, sections: data.sections?.length, error: data.error });
+      console.log('[QC synthesize] response', { theme: data.theme, responseLen: data.response?.length, error: data.error });
       if (this._searchGen !== gen) return;
       this._renderSynthesisPanel(data, results);
     } catch (e) {
@@ -1233,68 +1233,65 @@ class QuranApp {
     }
   }
 
-  _renderSynthesisPanel(data, results) {
+  _renderSynthesisPanel(data, allResults) {
     const p = document.getElementById('synthesis-panel');
     if (!p) return;
 
-    const sections = data?.sections;
-    if (!sections || !sections.length) { this._hideSynthesisPanel(); return; }
+    const prose = data?.response;
+    if (!prose || !prose.trim()) { this._hideSynthesisPanel(); return; }
 
-    // Build a ref → ayah.id map for scroll-to links
+    // Build a ref → ayah.id map for all results (for scroll-to on citation click)
     const refMap = {};
-    for (const r of results) refMap[`${r.ayah.sn}:${r.ayah.an}`] = r.ayah.id;
+    for (const r of allResults) refMap[`${r.ayah.sn}:${r.ayah.an}`] = r.ayah.id;
 
-    const TYPE_META = {
-      definition:   { icon: '📖', label: 'Definition'   },
-      command:      { icon: '⚡', label: 'Command'       },
-      quality:      { icon: '✨', label: 'Qualities'     },
-      reward:       { icon: '🌿', label: 'Rewards'       },
-      warning:      { icon: '⚠️', label: 'Warning'       },
-      example:      { icon: '📿', label: 'Examples'      },
-      condition:    { icon: '🔍', label: 'Conditions'    },
-      relationship: { icon: '🔗', label: 'Connections'   },
-    };
+    // Convert prose to safe HTML:
+    // 1. Escape HTML entities first
+    // 2. Convert **bold** to <strong>
+    // 3. Replace [SN:AN] citations with clickable chips
+    // 4. Split into paragraphs on double newlines
+    const renderProse = (text) => {
+      // Split into paragraphs
+      const paras = text.split(/\n\n+/).filter(s => s.trim());
+      return paras.map(para => {
+        // Escape HTML
+        let html = para
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
 
-    const sectionsHtml = sections.map(sec => {
-      const meta = TYPE_META[sec.type] || { icon: '📖', label: sec.type };
-      const pointsHtml = (sec.points || []).map(pt => {
-        const refsHtml = (pt.refs || []).map(ref => {
+        // Bold: **text**
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+        // Inline citations: [SN:AN] e.g. [2:177] or [9:112]
+        html = html.replace(/\[(\d+:\d+)\]/g, (_, ref) => {
           const ayahId = refMap[ref];
           if (ayahId) {
             return `<a class="syn-ref" href="#card-${ayahId}"
               onclick="var el=document.getElementById('card-${ayahId}');
-                       if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
-                       el.classList.add('syn-highlight');
-                       setTimeout(()=>el.classList.remove('syn-highlight'),1800);}
-                       return false;">${this._esc(ref)}</a>`;
+                if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
+                el.classList.add('syn-highlight');
+                setTimeout(function(){el.classList.remove('syn-highlight');},1800);}
+                return false;">${ref}</a>`;
           }
-          return `<span class="syn-ref syn-ref-dead">${this._esc(ref)}</span>`;
-        }).join('');
-        return `<li class="syn-point">
-          <span class="syn-point-text">${this._esc(pt.text)}</span>
-          ${refsHtml ? `<span class="syn-refs">${refsHtml}</span>` : ''}
-        </li>`;
-      }).join('');
+          return `<span class="syn-ref syn-ref-dead">${ref}</span>`;
+        });
 
-      return `<details class="syn-section" open>
-        <summary class="syn-section-header">
-          <span class="syn-icon">${meta.icon}</span>
-          <span class="syn-title">${this._esc(sec.title)}</span>
-          <span class="syn-type-badge">${this._esc(meta.label)}</span>
-        </summary>
-        <ul class="syn-points">${pointsHtml}</ul>
-      </details>`;
-    }).join('');
+        // Single newlines → <br>
+        html = html.replace(/\n/g, '<br>');
+
+        return `<p class="syn-para">${html}</p>`;
+      }).join('');
+    };
 
     p.innerHTML = `
       <div class="syn-header">
         <span class="syn-header-icon">🌟</span>
         <div class="syn-header-text">
-          <span class="syn-header-title">Quranic Knowledge: ${this._esc(data.theme || '')}</span>
-          <span class="syn-header-note">AI-synthesised · every claim grounded in retrieved verses</span>
+          <span class="syn-header-title">${this._esc(data.theme || 'Quranic Knowledge')}</span>
+          <span class="syn-header-note">Grounded in retrieved verses · every citation links to the ayah below</span>
         </div>
       </div>
-      <div class="syn-sections">${sectionsHtml}</div>`;
+      <div class="syn-prose">${renderProse(prose)}</div>`;
     p.hidden = false;
   }
 
