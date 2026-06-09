@@ -8,10 +8,10 @@
 // Called by app.js after verse results are rendered. Returns 200 with empty sections
 // on any error so the verse list always remains the fallback.
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.Quran_Connect_Claude;
-const MODEL             = 'claude-haiku-4-5';
-const MAX_TOKENS        = 1400;
-const TIMEOUT_MS        = 18000;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const MODEL        = 'llama-3.3-70b-versatile';
+const MAX_TOKENS   = 1400;
+const TIMEOUT_MS   = 18000;
 
 const SYSTEM_PROMPT = `You are a Quranic scholar. Given a search query and a numbered list of relevant Quranic verses, extract and organise ALL knowledge those verses contain about the topic.
 
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!ANTHROPIC_API_KEY)      return res.status(200).json({ sections: [], error: 'Missing ANTHROPIC_API_KEY' });
+  if (!GROQ_API_KEY)           return res.status(200).json({ sections: [], error: 'Missing GROQ_API_KEY' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -80,18 +80,19 @@ export default async function handler(req, res) {
   try {
     const t0   = Date.now();
     const resp = await Promise.race([
-      fetch('https://api.anthropic.com/v1/messages', {
+      fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:  'POST',
         headers: {
-          'x-api-key':         ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type':      'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type':  'application/json',
         },
         body: JSON.stringify({
           model:      MODEL,
           max_tokens: MAX_TOKENS,
-          system:     SYSTEM_PROMPT,
-          messages:   [{ role: 'user', content: userMessage }],
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user',   content: userMessage },
+          ],
         }),
       }),
       new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), TIMEOUT_MS)),
@@ -99,11 +100,11 @@ export default async function handler(req, res) {
 
     if (!resp.ok) {
       const err = await resp.text();
-      throw new Error(`Anthropic ${resp.status}: ${err.slice(0, 200)}`);
+      throw new Error(`Groq ${resp.status}: ${err.slice(0, 200)}`);
     }
 
     const data = await resp.json();
-    const text = data?.content?.[0]?.text || '';
+    const text = data?.choices?.[0]?.message?.content || '';
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON in response');

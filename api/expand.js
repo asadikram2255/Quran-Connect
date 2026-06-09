@@ -9,9 +9,9 @@
 //
 // Response: { roots: string[], keywords: string[], understood_as: string, timing_ms: number }
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || process.env.Quran_Connect_Claude;
-const MODEL             = 'claude-haiku-4-5';
-const MAX_TOKENS        = 800;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const MODEL        = 'llama-3.1-8b-instant';
+const MAX_TOKENS   = 800;
 
 // Comprehensive root reference — covers 200+ Islamic/Arabic/Urdu terms so
 // Claude Haiku doesn't need to "guess" for standard vocabulary.
@@ -222,7 +222,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!ANTHROPIC_API_KEY)      return res.status(200).json({ roots: [], keywords: [], subtopics: [], understood_as: '', error: 'Missing ANTHROPIC_API_KEY' });
+  if (!GROQ_API_KEY)           return res.status(200).json({ roots: [], keywords: [], subtopics: [], understood_as: '', error: 'Missing GROQ_API_KEY' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -235,20 +235,22 @@ export default async function handler(req, res) {
   if (mode === 'suggest') {
     try {
       const resp = await Promise.race([
-        fetch('https://api.anthropic.com/v1/messages', {
+        fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
-          headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: MODEL, max_tokens: 200,
-            system: SUGGEST_PROMPT,
-            messages: [{ role: 'user', content: `Partial query: "${query}"` }],
+            messages: [
+              { role: 'system', content: SUGGEST_PROMPT },
+              { role: 'user',   content: `Partial query: "${query}"` },
+            ],
           }),
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
       ]);
-      if (!resp.ok) throw new Error(`Anthropic ${resp.status}`);
+      if (!resp.ok) throw new Error(`Groq ${resp.status}`);
       const data  = await resp.json();
-      const text  = data?.content?.[0]?.text || '';
+      const text  = data?.choices?.[0]?.message?.content || '';
       const match = text.match(/\{[\s\S]*\}/);
       if (!match) throw new Error('No JSON');
       const parsed      = JSON.parse(match[0]);
@@ -264,30 +266,31 @@ export default async function handler(req, res) {
   try {
     const t0   = Date.now();
     const resp = await Promise.race([
-      fetch('https://api.anthropic.com/v1/messages', {
+      fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'x-api-key':         ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type':      'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type':  'application/json',
         },
         body: JSON.stringify({
           model:      MODEL,
           max_tokens: MAX_TOKENS,
-          system:     SYSTEM_PROMPT,
-          messages:   [{ role: 'user', content: `Query: "${query}"` }],
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user',   content: `Query: "${query}"` },
+          ],
         }),
       }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('Anthropic timeout')), 8000)),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Groq timeout')), 8000)),
     ]);
 
     if (!resp.ok) {
       const err = await resp.text();
-      throw new Error(`Anthropic ${resp.status}: ${err.slice(0, 200)}`);
+      throw new Error(`Groq ${resp.status}: ${err.slice(0, 200)}`);
     }
 
     const data = await resp.json();
-    const text = data?.content?.[0]?.text || '';
+    const text = data?.choices?.[0]?.message?.content || '';
 
     // Extract JSON from response (model may wrap with backticks)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
