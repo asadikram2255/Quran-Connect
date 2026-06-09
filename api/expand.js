@@ -186,10 +186,13 @@ RULES:
 - For compound queries include roots for ALL concepts mentioned
 
 SUBTOPICS RULES:
-- Return 3-6 Quranic sub-concepts that are DIRECTLY related to the main query
-- Each subtopic must appear in the Quran — no invented concepts
+- Return 3-6 Quranic sub-concepts that ARE the core aspects of the query (not its consequences)
 - Each subtopic: name (Roman English), arabic (1-2 word Arabic form), roots (1-3 roots), keywords (2-4 English terms)
-- Subtopics should cover the full breadth of the topic (e.g. for "patience": Sabr, Tawakkul, Shukr, Ridha, Istishad)
+- ROOTS must be for the sub-concept ITSELF — not for rewards, warnings, or outcomes associated with it
+  Example WRONG: query "patience" → subtopic "Rewards of Sabr" → roots [ج ن ن] (paradise) — WRONG, jannah is a consequence not the concept
+  Example RIGHT: query "patience" → subtopic "Sabr" → roots [ص ب ر]; subtopic "Tawakkul" → roots [و ك ل]
+- For "categories of humans" queries: subtopics = the CATEGORIES (e.g. Mu'minoon, Kafireen, Munafiqoon, Muhsinoon, Fasiqoon)
+- Do NOT add generic roots like ا م ن (faith), ن ع م (blessing), ع ذ ب (punishment) unless the query is specifically about those
 - For a narrow query (e.g. "Al-Fatiha"), return 2-3 subtopics only
 - The main concept's root must appear in subtopics[0]`;
 

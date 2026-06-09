@@ -367,10 +367,15 @@ class QuranApp {
       // Only runs on Vercel (where /api/synthesize exists). Shows a loading state
       // immediately; replaces it with structured knowledge when Claude responds.
       // ID-type queries (e.g. "2:255") skip synthesis — they have a single verse.
+      // Diagnostic — visible in browser DevTools console
+      console.log('[QC expand]', { subtopics, displayResults: displayResults.length, totalMatched });
+
       const isIdQuery = /^\d+\s*:\s*\d+/.test(query.trim());
       if (!isIdQuery && subtopics && subtopics.length > 0 && displayResults.length > 0) {
         this._renderSynthesisLoading(query, subtopics);
         this._startSynthesis(query, displayResults, subtopics, myGen);
+      } else if (!isIdQuery) {
+        console.warn('[QC synthesis skipped]', { subtopicsLength: subtopics?.length, results: displayResults.length });
       }
 
     } catch (err) {

@@ -155,12 +155,14 @@ class QuranSearch {
       arabicQuery    = llm.understood_as || '';
       llmSubtopics   = llm.subtopics || [];
 
-      // Merge roots from top-level array + all subtopic roots for maximum coverage
+      // Merge roots: top-level first, then subtopic roots — cap at 6 total to prevent
+      // recall explosion (too many roots unioned → thousands of irrelevant matches)
       const subtopicRoots = llmSubtopics.flatMap(s => s.roots || []);
       const newLlmRoots   = [...new Set([
         ...(llm.roots || []),
         ...subtopicRoots,
-      ])].filter(r => !parsed.roots.includes(r));
+      ])].filter(r => !parsed.roots.includes(r)).slice(0, 6);
+      console.log('[QC search roots]', { parsed: parsed.roots, llm: newLlmRoots, subtopics: llmSubtopics.map(s => s.name) });
 
       onProgress?.('roots');
       for (const root of newLlmRoots) {
