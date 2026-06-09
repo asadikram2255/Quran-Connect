@@ -10,10 +10,10 @@
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MODEL        = 'llama-3.3-70b-versatile';
-const MAX_TOKENS   = 1400;
+const MAX_TOKENS   = 2000;
 const TIMEOUT_MS   = 18000;
 
-const SYSTEM_PROMPT = `You are a Quranic scholar. Given a search query and a numbered list of relevant Quranic verses, extract and organise ALL knowledge those verses contain about the topic.
+const SYSTEM_PROMPT = `You are a precise Quranic scholar extracting deep, specific knowledge from verses. You do NOT write vague summaries — every point must be a specific, non-obvious fact grounded in the verse text.
 
 Return ONLY valid JSON — no prose, no markdown fences:
 {
@@ -23,42 +23,40 @@ Return ONLY valid JSON — no prose, no markdown fences:
       "type": "definition|command|quality|reward|warning|example|condition|relationship",
       "title": "Section heading (4-8 words)",
       "points": [
-        { "text": "One clear statement from the verses (max 160 chars)", "refs": ["2:153", "3:200"] }
+        { "text": "Specific Quranic statement (max 160 chars)", "refs": ["2:153"] }
       ]
     }
   ]
 }
 
-STRICT RULES:
-1. Every point MUST cite at least one verse ref from the provided list, using EXACT format "SURAH:AYAH" (e.g. "2:153", "49:13"). The ref MUST appear in the verse list given to you.
-2. Use ONLY knowledge present in the provided verses — no additions from outside
-3. 3-6 sections, 2-5 points each
-4. Points must be concise (max 160 characters)
-5. Each section type may appear at most once
+DEPTH RULES — your points must be SPECIFIC, not vague:
+BAD (too vague): "Believers have good qualities"
+BAD (too vague): "Disbelievers will be punished"
+GOOD (specific): "Believers are described as those who bow, prostrate, enjoin good and forbid evil (9:112)"
+GOOD (specific): "Disbelievers are called 'worst of creatures' — worse than animals who have no reason (98:6, 8:22)"
+GOOD (specific): "Hypocrites outwardly claim faith but their hearts are sealed — they mock believers secretly (2:14-15)"
 
-QUERY TYPE ADAPTATION — choose your structure based on what is being asked:
+QUERY TYPE — adapt your STRUCTURE to what is being asked:
 
-• If the query asks about CATEGORIES / TYPES / GROUPS of people (e.g. "categories of human beings", "types of people in Quran", "who are the muttaqeen"):
-  - Make EACH SECTION one category/group (e.g. "Mu'minoon — Believers", "Kafireen — Disbelievers", "Munafiqoon — Hypocrites")
-  - Use type: "quality" for sections describing a group's characteristics
-  - Use type: "reward" for a group's good outcomes, type: "warning" for their punishment
-  - List each group's defining qualities AND their outcomes in the points
+▶ CATEGORIES / GROUPS query (e.g. "categories of human beings", "types of people", "who are the muttaqeen"):
+  • Scan ALL verses — identify EVERY distinct named group (Mu'minoon, Kafireen, Munafiqoon, Muttaqoon, Muhsinoon, Fasiqoon, Mushrikeen, Zalimoon, Abrar, etc.)
+  • Create ONE section per group found in the verses
+  • Section title = the group's name + Arabic term (e.g. "Mu'minoon — True Believers")
+  • Section type = "quality" for characteristics, "reward" for their outcome, "warning" for punishment
+  • Points: list their SPECIFIC defining traits AND their specific outcomes/reward/punishment from the verses
+  • Do NOT merge all groups into one section — each group = its own section
 
-• If the query asks about a SINGLE CONCEPT (e.g. "patience", "forgiveness", "tawakkul"):
-  - Use the section type guide below to organise by aspect
+▶ SINGLE CONCEPT query (e.g. "patience", "tawakkul", "forgiveness"):
+  • Organise by aspect: definition → command → qualities of those who embody it → rewards → warnings
 
-• If the query asks HOW TO DO something or COMMANDS:
-  - Lead with "command" sections, follow with "quality" and "reward"
+▶ HOW-TO / COMMAND query:
+  • Lead with commands, follow with qualities and rewards
 
-SECTION TYPE GUIDE:
-- definition  → what this concept IS in Quranic terms
-- command     → what Allah explicitly instructs
-- quality     → attributes of those who embody this
-- reward      → blessings and outcomes for those who follow
-- warning     → consequences and cautions
-- example     → Prophetic or narrative examples
-- condition   → conditions under which something applies
-- relationship→ how this connects to other Quranic themes`;
+CITATION RULES:
+1. Every point needs at least one ref in format "SN:AN" (e.g. "2:153") from the provided verse list
+2. Use ONLY what the verses say — no outside knowledge
+3. 4-6 sections, 2-4 points each
+4. Be scholarly and precise — a student should learn something new from every point`;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
