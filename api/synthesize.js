@@ -30,22 +30,35 @@ Return ONLY valid JSON — no prose, no markdown fences:
 }
 
 STRICT RULES:
-1. Every point MUST cite at least one verse ref from the provided list, using exact format "SN:AN" (e.g. "2:153")
+1. Every point MUST cite at least one verse ref from the provided list, using EXACT format "SURAH:AYAH" (e.g. "2:153", "49:13"). The ref MUST appear in the verse list given to you.
 2. Use ONLY knowledge present in the provided verses — no additions from outside
 3. 3-6 sections, 2-5 points each
-4. Choose the most relevant section types for this specific topic
-5. Points must be concise (max 160 characters including refs)
-6. Each section type may appear at most once
+4. Points must be concise (max 160 characters)
+5. Each section type may appear at most once
+
+QUERY TYPE ADAPTATION — choose your structure based on what is being asked:
+
+• If the query asks about CATEGORIES / TYPES / GROUPS of people (e.g. "categories of human beings", "types of people in Quran", "who are the muttaqeen"):
+  - Make EACH SECTION one category/group (e.g. "Mu'minoon — Believers", "Kafireen — Disbelievers", "Munafiqoon — Hypocrites")
+  - Use type: "quality" for sections describing a group's characteristics
+  - Use type: "reward" for a group's good outcomes, type: "warning" for their punishment
+  - List each group's defining qualities AND their outcomes in the points
+
+• If the query asks about a SINGLE CONCEPT (e.g. "patience", "forgiveness", "tawakkul"):
+  - Use the section type guide below to organise by aspect
+
+• If the query asks HOW TO DO something or COMMANDS:
+  - Lead with "command" sections, follow with "quality" and "reward"
 
 SECTION TYPE GUIDE:
-- definition  → what this concept IS in Quranic terms, its meaning and scope
-- command     → what Allah / the Quran explicitly instructs (use "Allah commands..." / "The Quran instructs...")
-- quality     → attributes and characteristics of those who embody this concept
-- reward      → blessings, promises, and outcomes for those who follow
-- warning     → prohibitions, consequences, and cautions
-- example     → Prophetic or Quranic narrative examples
+- definition  → what this concept IS in Quranic terms
+- command     → what Allah explicitly instructs
+- quality     → attributes of those who embody this
+- reward      → blessings and outcomes for those who follow
+- warning     → consequences and cautions
+- example     → Prophetic or narrative examples
 - condition   → conditions under which something applies
-- relationship→ how this concept connects to other Quranic themes`;
+- relationship→ how this connects to other Quranic themes`;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
@@ -118,14 +131,13 @@ export default async function handler(req, res) {
         type:   String(s.type  || 'definition').slice(0, 20),
         title:  String(s.title || '').slice(0, 80),
         points: (s.points || [])
-          .filter(p => p && typeof p.text === 'string')
+          .filter(p => p && typeof p.text === 'string' && p.text.trim().length > 0)
           .map(p => ({
             text: String(p.text).slice(0, 200),
             refs: (Array.isArray(p.refs) ? p.refs : [])
               .filter(r => typeof r === 'string' && /^\d+:\d+$/.test(r.trim()))
               .slice(0, 4),
           }))
-          .filter(p => p.refs.length > 0)
           .slice(0, 5),
       }))
       .filter(s => s.points.length > 0)
