@@ -1157,31 +1157,56 @@ class QuranApp {
     return /\b(list|all|every|each|types? of|categories|enumerate|how many|what are the)\b/i.test(q);
   }
 
+  // All known Quranic categories of people — used both as search terms
+  // and passed to synthesis so the model knows exactly what to cover.
+  // prettier-ignore
+  static QURAN_PEOPLE_GROUPS = [
+    { name: 'Mu\'minoon — True Believers',           query: 'mu\'minoon believers faith iman prayer charity' },
+    { name: 'Kafireen — Disbelievers',               query: 'kafireen disbelievers kufr reject truth' },
+    { name: 'Munafiqoon — Hypocrites',               query: 'munafiqoon hypocrites nifaq deceive' },
+    { name: 'Mushrikoon — Polytheists',              query: 'mushrikoon polytheists shirk partners Allah' },
+    { name: 'Muttaqoon — The God-Fearing',           query: 'muttaqoon taqwa god-fearing pious' },
+    { name: 'Muhsinoon — Those Who Excel in Good',   query: 'muhsinoon ihsan excellence virtue' },
+    { name: 'Zalimoon — Oppressors',                 query: 'zalimoon wrongdoers oppressors zulm' },
+    { name: 'Fasiqoon — Transgressors',              query: 'fasiqoon transgressors wicked fasiq' },
+    { name: 'Siddiqoon — The Truthful',              query: 'siddiqoon truthful sidq' },
+    { name: 'Shuhadaa — Martyrs',                    query: 'shuhadaa martyrs shaheed path of Allah' },
+    { name: 'Salihoon / Abrar — The Righteous',      query: 'salihoon abrar righteous pious birr' },
+    { name: 'Mufsidoon — Corruptors',                query: 'mufsidoon fasad corruptors mischief earth' },
+    { name: 'Mustad\'afeen — The Oppressed',         query: 'mustad\'afeen oppressed weak vulnerable' },
+    { name: 'Ulul Albab — People of Understanding',  query: 'ulul albab understanding wisdom reflect' },
+    { name: 'Sabiqoon — The Foremost',               query: 'sabiqoon foremost first faith deeds' },
+    { name: 'Muqarraboon — Those Nearest to Allah',  query: 'muqarraboon nearest close Allah illiyin' },
+    { name: 'Ashab al-Yameen — Companions of Right', query: 'ashab yameen right hand record blessed' },
+    { name: 'Ashab al-Shimaal — Companions of Left', query: 'ashab shimaal left hand record punishment' },
+    { name: 'Fujjar — The Wicked',                   query: 'fujjar wicked evil sijjin punishment' },
+    { name: 'Ibaad ur-Rahman — Servants of Rahman',  query: 'ibaad rahman servants walk humbly night prayer' },
+    { name: 'Mutrafeen — The Affluent Corrupters',   query: 'mutrafeen affluent luxury arrogant corrupt' },
+    { name: 'Ahlul Kitab — People of the Book',      query: 'ahlul kitab people book jews christians' },
+    { name: 'Banu Israel — Children of Israel',      query: 'banu israel children israel covenant' },
+    { name: 'Muhajiroon — The Emigrants',            query: 'muhajiroon emigrants hijra left homes Allah' },
+    { name: 'Ansar — The Helpers',                   query: 'ansar helpers supported believers medina' },
+    { name: 'Awliyaa Allah — Friends of Allah',      query: 'awliyaa friends allah no fear grief' },
+    { name: 'Mukhlisoona — The Sincerely Devoted',   query: 'mukhlisoona sincere devoted ikhlas purified' },
+    { name: 'Sabireen — The Patient',                query: 'sabireen patient steadfast sabr trials' },
+    { name: 'Tawwaboon — The Repentant',             query: 'tawwaboon repentant tawbah return Allah' },
+    { name: 'Rabbanioon — Lordly Scholars',          query: 'rabbanioon scholars lordly teach practice' },
+    { name: 'Mujrimoon — The Criminals',             query: 'mujrimoon criminals sinners guilty' },
+    { name: 'Muqsitoon — The Just',                  query: 'muqsitoon just equity fairness qist' },
+    { name: 'Mutakabbireen — The Arrogant',          query: 'mutakabbireen arrogant kibr pride' },
+    { name: 'A\'raab — The Bedouins',                query: 'a\'raab bedouin desert arab stronger disbelief' },
+    { name: 'Awliyaa Shaytan — Allies of Satan',     query: 'awliyaa shaytan allies satan fight disbelievers' },
+  ];
+
   // For category queries: search the database for each known Quranic group
-  // and return their top verses. 100% grounded — no model knowledge used.
+  // and return their top verses + the group names list for the model.
+  // 100% grounded — no model knowledge used. Content comes from quran.json.
   async _gatherCategoryVerses() {
-    const GROUPS = [
-      'mu\'minoon believers faith iman',
-      'kafireen disbelievers kufr',
-      'munafiqoon hypocrites nifaq',
-      'muttaqoon god-fearing taqwa',
-      'muhsinoon virtuous ihsan',
-      'fasiqoon transgressors wicked',
-      'zalimoon oppressors wrongdoers',
-      'mushrikoon polytheists shirk',
-      'ahlul kitab people of the book',
-      'siddiqoon truthful',
-      'shuhadaa martyrs',
-      'abrar righteous pious',
-      'mufsidoon corruptors fasad',
-      'mustadhafeen oppressed weak',
-      'ulul albab people of understanding',
-    ];
     const seen = new Set();
     const pool = [];
-    for (const term of GROUPS) {
+    for (const group of QuranApp.QURAN_PEOPLE_GROUPS) {
       try {
-        const { results } = await this.engine.search(term, {}, 8);
+        const { results } = await this.engine.search(group.query, {}, 6);
         for (const r of results) {
           if (!seen.has(r.ayah.id)) {
             seen.add(r.ayah.id);
@@ -1198,26 +1223,27 @@ class QuranApp {
       // For "list all / every / categories" queries: gather targeted verses
       // per Quranic group from the actual database instead of using generic results
       let versePool = results;
+      let groupNames = [];
       if (this._isCategoryQuery(query)) {
         const categoryVerses = await this._gatherCategoryVerses();
         if (this._searchGen !== gen) return; // aborted
-        // Merge: category-targeted verses first, then remaining main results
         const seen = new Set(categoryVerses.map(r => r.ayah.id));
         const extra = results.filter(r => !seen.has(r.ayah.id));
         versePool = [...categoryVerses, ...extra];
-        console.log('[QC synthesize] category mode — verse pool:', versePool.length);
+        groupNames = QuranApp.QURAN_PEOPLE_GROUPS.map(g => g.name);
+        console.log('[QC synthesize] category mode — verse pool:', versePool.length, 'groups:', groupNames.length);
       }
 
-      const verses = versePool.slice(0, 120).map(r => ({
+      const verses = versePool.slice(0, 210).map(r => ({
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
-        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 180),
+        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 160),
       }));
-      console.log('[QC synthesize] firing', { query, verses: verses.length, subtopics: subtopics.length });
+      console.log('[QC synthesize] firing', { query, verses: verses.length, groups: groupNames.length });
       const resp = await Promise.race([
         fetch('/api/synthesize', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ query, verses, subtopics: subtopics.map(s => s.name) }),
+          body:    JSON.stringify({ query, verses, subtopics: subtopics.map(s => s.name), groupNames }),
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 18000)),
       ]);

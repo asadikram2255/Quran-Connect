@@ -7,8 +7,8 @@
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MODEL        = 'llama-3.3-70b-versatile';
-const MAX_TOKENS   = 3000;
-const TIMEOUT_MS   = 25000;
+const MAX_TOKENS   = 6000;
+const TIMEOUT_MS   = 30000;
 
 const SYSTEM_PROMPT = `You are a Quranic scholar answering questions based solely on the Quranic verses provided to you. You write clear, flowing, scholarly prose — not bullet points, not lists.
 
@@ -40,23 +40,29 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
-  const query    = String(body?.query ?? '').trim().slice(0, 300);
-  const verses   = Array.isArray(body?.verses) ? body.verses.slice(0, 150) : [];
-  const subtopics = Array.isArray(body?.subtopics) ? body.subtopics.slice(0, 10) : [];
+  const query      = String(body?.query ?? '').trim().slice(0, 300);
+  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 210)     : [];
+  const subtopics  = Array.isArray(body?.subtopics)  ? body.subtopics.slice(0, 10)   : [];
+  const groupNames = Array.isArray(body?.groupNames) ? body.groupNames.slice(0, 50)  : [];
 
   if (!query || !verses.length) {
     return res.status(400).json({ error: 'Missing query or verses' });
   }
 
   const verseList = verses
-    .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 200)}`)
+    .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 180)}`)
     .join('\n');
 
   const subtopicHint = subtopics.length
     ? `\nAspects to cover: ${subtopics.join(', ')}`
     : '';
 
-  const userMessage = `Question: "${query}"${subtopicHint}\n\nVerses from the Quran database (search across all 6236 ayaat):\n${verseList}`;
+  // For category queries: explicit group list ensures complete coverage
+  const groupHint = groupNames.length
+    ? `\n\nCOMPLETE LIST OF GROUPS TO COVER — you MUST write a paragraph about EVERY group in this list. Do not skip any:\n${groupNames.map((g, i) => `${i + 1}. ${g}`).join('\n')}\n\nFor each group: find the relevant verses in the list above and describe their defining characteristics and outcomes from those verses. If no verse covers a specific group, still name the group and note it briefly.`
+    : '';
+
+  const userMessage = `Question: "${query}"${subtopicHint}${groupHint}\n\nVerses retrieved from the Quran database (targeted search across all 6,236 ayaat):\n${verseList}`;
 
   try {
     const t0   = Date.now();
