@@ -1158,6 +1158,7 @@ class QuranApp {
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
         text: (r.ayah.en || r.ayah.t1 || '').slice(0, 220),
       }));
+      console.log('[QC synthesize] firing', { query, verses: verses.length, subtopics: subtopics.length });
       const resp = await Promise.race([
         fetch('/api/synthesize', {
           method:  'POST',
@@ -1166,12 +1167,14 @@ class QuranApp {
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 18000)),
       ]);
-      if (this._searchGen !== gen) return;
+      if (this._searchGen !== gen) { console.log('[QC synthesize] aborted (gen mismatch)'); return; }
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
+      console.log('[QC synthesize] response', { theme: data.theme, sections: data.sections?.length, error: data.error });
       if (this._searchGen !== gen) return;
       this._renderSynthesisPanel(data, results);
-    } catch (_) {
+    } catch (e) {
+      console.error('[QC synthesize] error:', e.message);
       if (this._searchGen === gen) this._hideSynthesisPanel();
     }
   }
