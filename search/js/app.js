@@ -1263,15 +1263,11 @@ class QuranApp {
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
         // Inline citations: [SN:AN] e.g. [2:177] or [9:112]
+        // Use data-ref attribute — click handled by delegated listener on the panel
         html = html.replace(/\[(\d+:\d+)\]/g, (_, ref) => {
           const ayahId = refMap[ref];
           if (ayahId) {
-            return `<a class="syn-ref" href="#card-${ayahId}"
-              onclick="var el=document.getElementById('card-${ayahId}');
-                if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
-                el.classList.add('syn-highlight');
-                setTimeout(function(){el.classList.remove('syn-highlight');},1800);}
-                return false;">${ref}</a>`;
+            return `<a class="syn-ref" href="#card-${ayahId}" data-ayah-id="${ayahId}">${ref}</a>`;
           }
           return `<span class="syn-ref syn-ref-dead">${ref}</span>`;
         });
@@ -1293,6 +1289,19 @@ class QuranApp {
       </div>
       <div class="syn-prose">${renderProse(prose)}</div>`;
     p.hidden = false;
+
+    // Delegated click handler for inline citation links
+    p.onclick = (e) => {
+      const a = e.target.closest('a.syn-ref[data-ayah-id]');
+      if (!a) return;
+      e.preventDefault();
+      const el = document.getElementById('card-' + a.dataset.ayahId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('syn-highlight');
+        setTimeout(() => el.classList.remove('syn-highlight'), 1800);
+      }
+    };
   }
 
   // ── Text helpers ─────────────────────────────────────────────────────────
