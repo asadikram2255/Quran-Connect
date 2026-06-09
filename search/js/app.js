@@ -1152,11 +1152,65 @@ class QuranApp {
     p.hidden = false;
   }
 
+  // Returns true if the query is asking for an exhaustive list/enumeration
+  _isCategoryQuery(q) {
+    return /\b(list|all|every|each|types? of|categories|enumerate|how many|what are the)\b/i.test(q);
+  }
+
+  // For category queries: search the database for each known Quranic group
+  // and return their top verses. 100% grounded — no model knowledge used.
+  async _gatherCategoryVerses() {
+    const GROUPS = [
+      'mu\'minoon believers faith iman',
+      'kafireen disbelievers kufr',
+      'munafiqoon hypocrites nifaq',
+      'muttaqoon god-fearing taqwa',
+      'muhsinoon virtuous ihsan',
+      'fasiqoon transgressors wicked',
+      'zalimoon oppressors wrongdoers',
+      'mushrikoon polytheists shirk',
+      'ahlul kitab people of the book',
+      'siddiqoon truthful',
+      'shuhadaa martyrs',
+      'abrar righteous pious',
+      'mufsidoon corruptors fasad',
+      'mustadhafeen oppressed weak',
+      'ulul albab people of understanding',
+    ];
+    const seen = new Set();
+    const pool = [];
+    for (const term of GROUPS) {
+      try {
+        const { results } = await this.engine.search(term, {}, 8);
+        for (const r of results) {
+          if (!seen.has(r.ayah.id)) {
+            seen.add(r.ayah.id);
+            pool.push(r);
+          }
+        }
+      } catch (_) { /* skip failed group */ }
+    }
+    return pool;
+  }
+
   async _startSynthesis(query, results, subtopics, gen) {
     try {
-      const verses = results.slice(0, 60).map(r => ({
+      // For "list all / every / categories" queries: gather targeted verses
+      // per Quranic group from the actual database instead of using generic results
+      let versePool = results;
+      if (this._isCategoryQuery(query)) {
+        const categoryVerses = await this._gatherCategoryVerses();
+        if (this._searchGen !== gen) return; // aborted
+        // Merge: category-targeted verses first, then remaining main results
+        const seen = new Set(categoryVerses.map(r => r.ayah.id));
+        const extra = results.filter(r => !seen.has(r.ayah.id));
+        versePool = [...categoryVerses, ...extra];
+        console.log('[QC synthesize] category mode — verse pool:', versePool.length);
+      }
+
+      const verses = versePool.slice(0, 120).map(r => ({
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
-        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 220),
+        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 180),
       }));
       console.log('[QC synthesize] firing', { query, verses: verses.length, subtopics: subtopics.length });
       const resp = await Promise.race([
