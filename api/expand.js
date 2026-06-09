@@ -11,7 +11,7 @@
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL             = 'claude-3-5-haiku-20241022';
-const MAX_TOKENS        = 300;
+const MAX_TOKENS        = 800;
 
 // Comprehensive root reference — covers 200+ Islamic/Arabic/Urdu terms so
 // Claude Haiku doesn't need to "guess" for standard vocabulary.
@@ -171,7 +171,11 @@ Respond with JSON only, no other text:
 {
   "understood_as": "English phrase describing the concept (max 8 words)",
   "roots": ["غ ض ب"],
-  "keywords": ["anger", "wrath", "displeased"]
+  "keywords": ["anger", "wrath", "displeased"],
+  "subtopics": [
+    { "name": "Ghadab", "arabic": "الغضب", "roots": ["غ ض ب"], "keywords": ["anger", "wrath"] },
+    { "name": "Hilm",   "arabic": "الحلم", "roots": ["ح ل م"], "keywords": ["forbearance", "restraint"] }
+  ]
 }
 
 RULES:
@@ -179,7 +183,15 @@ RULES:
 - Max 8 roots, 8 keywords
 - Keywords: plain English words from Quran translations
 - NEVER return empty roots[] for a real Islamic/Arabic/Urdu query — always map to the correct root
-- For compound queries include roots for ALL concepts mentioned`;
+- For compound queries include roots for ALL concepts mentioned
+
+SUBTOPICS RULES:
+- Return 3-6 Quranic sub-concepts that are DIRECTLY related to the main query
+- Each subtopic must appear in the Quran — no invented concepts
+- Each subtopic: name (Roman English), arabic (1-2 word Arabic form), roots (1-3 roots), keywords (2-4 English terms)
+- Subtopics should cover the full breadth of the topic (e.g. for "patience": Sabr, Tawakkul, Shukr, Ridha, Istishad)
+- For a narrow query (e.g. "Al-Fatiha"), return 2-3 subtopics only
+- The main concept's root must appear in subtopics[0]`;
 
 // Suggest mode: given a partial query, return 5 natural completions.
 // Called on debounce while typing — like Google autocomplete.
@@ -207,7 +219,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!ANTHROPIC_API_KEY)      return res.status(200).json({ roots: [], keywords: [], understood_as: '', error: 'Missing ANTHROPIC_API_KEY' });
+  if (!ANTHROPIC_API_KEY)      return res.status(200).json({ roots: [], keywords: [], subtopics: [], understood_as: '', error: 'Missing ANTHROPIC_API_KEY' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -290,9 +302,27 @@ export default async function handler(req, res) {
       .map(k => k.toLowerCase().trim())
       .slice(0, 8);
 
+    // Validate subtopics
+    const subtopics = (Array.isArray(parsed.subtopics) ? parsed.subtopics : [])
+      .filter(s => s && typeof s.name === 'string' && Array.isArray(s.roots))
+      .map(s => ({
+        name:     String(s.name).slice(0, 40),
+        arabic:   String(s.arabic || '').slice(0, 40),
+        roots:    (s.roots || [])
+          .filter(r => typeof r === 'string' && /^[؀-ۿ]{1,2} [؀-ۿ]{1,2} [؀-ۿ]{1,2}$/.test(r.trim()))
+          .slice(0, 3),
+        keywords: (s.keywords || [])
+          .filter(k => typeof k === 'string' && k.length >= 2)
+          .map(k => k.toLowerCase().trim())
+          .slice(0, 4),
+      }))
+      .filter(s => s.roots.length > 0)
+      .slice(0, 6);
+
     return res.status(200).json({
       roots,
       keywords,
+      subtopics,
       understood_as: String(parsed.understood_as || '').slice(0, 100),
       timing_ms:     Date.now() - t0,
     });
@@ -300,6 +330,6 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[expand] error:', e.message);
     // Return 200 with empty result so client falls back gracefully
-    return res.status(200).json({ roots: [], keywords: [], understood_as: '', error: e.message });
+    return res.status(200).json({ roots: [], keywords: [], subtopics: [], understood_as: '', error: e.message });
   }
 }

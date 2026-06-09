@@ -35,8 +35,6 @@ class QuranApp {
     this._rootToLabel    = null;   // lazy cache: root → { ar, en }
     this._rerankActive   = false;  // true when AI reranker improved this result set (#7)
     this._topScore       = 1;      // highest raw score in current result set (#2)
-    this.hadithEngine    = new HadithSearch();
-    this._hadithBook     = '';     // active hadith collection filter
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────
@@ -123,16 +121,6 @@ class QuranApp {
       juzSel.appendChild(opt);
     }
 
-    // Populate hadith book filter once the index is loaded
-    this.hadithEngine.ensureLoaded().then(() => {
-      const bookSel = document.getElementById('filter-hadith-book');
-      for (const book of this.hadithEngine.books) {
-        const opt = document.createElement('option');
-        opt.value = book;
-        opt.textContent = book;
-        bookSel.appendChild(opt);
-      }
-    }).catch(() => {});
   }
 
   // ── Event binding ────────────────────────────────────────────────────────
@@ -186,13 +174,6 @@ class QuranApp {
       if (input.value.trim()) { this.page = 0; this._run(input.value.trim()); }
     });
 
-    const fHadithBook = document.getElementById('filter-hadith-book');
-    if (fHadithBook) {
-      fHadithBook.addEventListener('change', () => {
-        this._hadithBook = fHadithBook.value;
-        if (this._lastKeywords.length) this._runHadithSearch(this._lastKeywords);
-      });
-    }
 
     more.addEventListener('click', () => {
       this.page++;
@@ -277,6 +258,7 @@ class QuranApp {
     const rootCardsEl = document.getElementById('root-cards-list');
     if (rootCardsEl) rootCardsEl.innerHTML = '';
     document.getElementById('sidebar-roots').hidden = true;
+    this._hideSynthesisPanel();
 
     document.getElementById('search-section').classList.add('compact');
     document.getElementById('filter-bar').hidden     = true;
@@ -296,7 +278,7 @@ class QuranApp {
                           : wordCount <= 3 ? 120
                           : 200;
 
-      const { results, arabicQuery, extractedRoots, exactCount, totalMatched } = await this.engine.search(
+      const { results, arabicQuery, extractedRoots, exactCount, totalMatched, subtopics } = await this.engine.search(
         query, this.filters, searchLimit,
         step => { if (this._searchGen === myGen) this._showProgress(step); },
       );
@@ -323,9 +305,14 @@ class QuranApp {
       this._lastParsed   = parsed;
 
       // Exhaustive mode: only surface the exact-match hits (all of them, Quran-ordered)
-      const displayResults = (useExhaustive && exactCount > 0)
+      const rawDisplay = (useExhaustive && exactCount > 0)
         ? finalResults.filter(r => r.isExact)
         : finalResults;
+
+      // Tag each verse with which subtopics it belongs to (no-op when subtopics is empty)
+      const displayResults = subtopics && subtopics.length
+        ? this.engine.tagWithSubtopics(rawDisplay, subtopics)
+        : rawDisplay;
 
       // Store top score for relative confidence display (#2)
       this._topScore = displayResults[0]?.score || 1;
@@ -342,8 +329,6 @@ class QuranApp {
 
       if (answerType === 'addressee_listing') {
         this._answerMode = 'addressee_listing';
-        // Use concept-expansion roots for vocab (translation roots carry query-context noise)
-        // Fall back to translation roots only when concept expansion found nothing
         const vocabRoots = parsed.roots.length > 0 ? parsed.roots : extractedRoots;
         this._renderAnswerPanel(query, parsed, vocabRoots);
       }
@@ -376,14 +361,17 @@ class QuranApp {
       const countEl = document.getElementById('results-count');
       countEl.textContent = countText;
 
-      // Update Quran column count badge
-      const quranColCount = document.getElementById('quran-col-count');
-      if (quranColCount) quranColCount.textContent = displayResults.length ? `${displayResults.length}` : '';
-
-      // Trigger hadith search in parallel
-      this._runHadithSearch(parsed.keywords);
-
       document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // ── Knowledge synthesis (async, non-blocking) ──────────────────────────
+      // Only runs on Vercel (where /api/synthesize exists). Shows a loading state
+      // immediately; replaces it with structured knowledge when Claude responds.
+      // ID-type queries (e.g. "2:255") skip synthesis — they have a single verse.
+      const isIdQuery = /^\d+\s*:\s*\d+/.test(query.trim());
+      if (!isIdQuery && subtopics && subtopics.length > 0 && displayResults.length > 0) {
+        this._renderSynthesisLoading(query, subtopics);
+        this._startSynthesis(query, displayResults, subtopics, myGen);
+      }
 
     } catch (err) {
       console.error(err);
@@ -1052,6 +1040,7 @@ class QuranApp {
   _buildCard({ ayah, score, matchedRoots, matchedKeywords, matchedPatterns }) {
     const card = document.createElement('article');
     card.className = 'result-card';
+    card.id = `card-${ayah.id}`;
 
     // #2 — Confidence indicator: normalize score against the top result's score
     const rel = Math.min(1, (score || 0) / (this._topScore || 1));
@@ -1136,66 +1125,117 @@ class QuranApp {
     return card;
   }
 
-  // ── Hadith search ────────────────────────────────────────────────────────
+  // ── Knowledge Synthesis Panel ─────────────────────────────────────────────
 
-  async _runHadithSearch(keywords) {
-    const grid = document.getElementById('hadith-grid');
-    if (!grid) return;
+  _hideSynthesisPanel() {
+    const p = document.getElementById('synthesis-panel');
+    if (p) { p.hidden = true; p.innerHTML = ''; }
+  }
 
-    if (!keywords || !keywords.length) {
-      grid.innerHTML = `<div class="hadith-placeholder">
-        <span class="hadith-placeholder-icon">📜</span>
-        <p>Search to find related Hadith from the six major collections.</p>
+  _renderSynthesisLoading(query, subtopics) {
+    const p = document.getElementById('synthesis-panel');
+    if (!p) return;
+    const subtopicChips = (subtopics || []).map(s =>
+      `<span class="syn-chip">${this._esc(s.name)}</span>`
+    ).join('');
+    p.innerHTML = `
+      <div class="syn-loading">
+        <div class="syn-spinner"></div>
+        <div class="syn-loading-text">
+          <span>Synthesising Quranic knowledge on <strong>${this._esc(query)}</strong></span>
+          ${subtopicChips ? `<div class="syn-chip-row">${subtopicChips}</div>` : ''}
+        </div>
       </div>`;
-      const cc = document.getElementById('hadith-col-count');
-      if (cc) cc.textContent = '';
-      return;
-    }
+    p.hidden = false;
+  }
 
-    grid.innerHTML = `<div class="hadith-loading">
-      <div class="hadith-loading-spinner"></div>
-      Searching hadith…
-    </div>`;
-
+  async _startSynthesis(query, results, subtopics, gen) {
     try {
-      await this.hadithEngine.ensureLoaded();
-      const results = this.hadithEngine.search(keywords, this._hadithBook, 20);
-      this._renderHadithResults(results);
-    } catch (e) {
-      grid.innerHTML = `<div class="hadith-placeholder"><p>Hadith search unavailable.</p></div>`;
-      const cc = document.getElementById('hadith-col-count');
-      if (cc) cc.textContent = '';
+      const verses = results.slice(0, 35).map(r => ({
+        ref:  `${r.ayah.sn}:${r.ayah.an}`,
+        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 220),
+      }));
+      const resp = await Promise.race([
+        fetch('/api/synthesize', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ query, verses, subtopics: subtopics.map(s => s.name) }),
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 18000)),
+      ]);
+      if (this._searchGen !== gen) return;
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (this._searchGen !== gen) return;
+      this._renderSynthesisPanel(data, results);
+    } catch (_) {
+      if (this._searchGen === gen) this._hideSynthesisPanel();
     }
   }
 
-  _renderHadithResults(results) {
-    const grid = document.getElementById('hadith-grid');
-    const cc   = document.getElementById('hadith-col-count');
-    if (!grid) return;
+  _renderSynthesisPanel(data, results) {
+    const p = document.getElementById('synthesis-panel');
+    if (!p) return;
 
-    if (cc) cc.textContent = results.length ? `${results.length}` : '';
+    const sections = data?.sections;
+    if (!sections || !sections.length) { this._hideSynthesisPanel(); return; }
 
-    if (!results.length) {
-      grid.innerHTML = `<div class="hadith-placeholder">
-        <span class="hadith-placeholder-icon">📜</span>
-        <p>No related hadith found for this query.</p>
-      </div>`;
-      return;
-    }
+    // Build a ref → ayah.id map for scroll-to links
+    const refMap = {};
+    for (const r of results) refMap[`${r.ayah.sn}:${r.ayah.an}`] = r.ayah.id;
 
-    grid.innerHTML = '';
-    for (const h of results) {
-      const card = document.createElement('article');
-      card.className = 'hadith-card';
-      card.innerHTML = `
-        <div class="hadith-card-meta">
-          <span class="hadith-collection-badge">${this._esc(h.book)}</span>
-          ${h.ref ? `<span class="hadith-ref">${this._esc(h.ref)}</span>` : ''}
+    const TYPE_META = {
+      definition:   { icon: '📖', label: 'Definition'   },
+      command:      { icon: '⚡', label: 'Command'       },
+      quality:      { icon: '✨', label: 'Qualities'     },
+      reward:       { icon: '🌿', label: 'Rewards'       },
+      warning:      { icon: '⚠️', label: 'Warning'       },
+      example:      { icon: '📿', label: 'Examples'      },
+      condition:    { icon: '🔍', label: 'Conditions'    },
+      relationship: { icon: '🔗', label: 'Connections'   },
+    };
+
+    const sectionsHtml = sections.map(sec => {
+      const meta = TYPE_META[sec.type] || { icon: '📖', label: sec.type };
+      const pointsHtml = (sec.points || []).map(pt => {
+        const refsHtml = (pt.refs || []).map(ref => {
+          const ayahId = refMap[ref];
+          if (ayahId) {
+            return `<a class="syn-ref" href="#card-${ayahId}"
+              onclick="var el=document.getElementById('card-${ayahId}');
+                       if(el){el.scrollIntoView({behavior:'smooth',block:'center'});
+                       el.classList.add('syn-highlight');
+                       setTimeout(()=>el.classList.remove('syn-highlight'),1800);}
+                       return false;">${this._esc(ref)}</a>`;
+          }
+          return `<span class="syn-ref syn-ref-dead">${this._esc(ref)}</span>`;
+        }).join('');
+        return `<li class="syn-point">
+          <span class="syn-point-text">${this._esc(pt.text)}</span>
+          ${refsHtml ? `<span class="syn-refs">${refsHtml}</span>` : ''}
+        </li>`;
+      }).join('');
+
+      return `<details class="syn-section" open>
+        <summary class="syn-section-header">
+          <span class="syn-icon">${meta.icon}</span>
+          <span class="syn-title">${this._esc(sec.title)}</span>
+          <span class="syn-type-badge">${this._esc(meta.label)}</span>
+        </summary>
+        <ul class="syn-points">${pointsHtml}</ul>
+      </details>`;
+    }).join('');
+
+    p.innerHTML = `
+      <div class="syn-header">
+        <span class="syn-header-icon">🌟</span>
+        <div class="syn-header-text">
+          <span class="syn-header-title">Quranic Knowledge: ${this._esc(data.theme || '')}</span>
+          <span class="syn-header-note">AI-synthesised · every claim grounded in retrieved verses</span>
         </div>
-        <p class="hadith-text">${this._esc(h.text)}</p>
-      `;
-      grid.appendChild(card);
-    }
+      </div>
+      <div class="syn-sections">${sectionsHtml}</div>`;
+    p.hidden = false;
   }
 
   // ── Text helpers ─────────────────────────────────────────────────────────

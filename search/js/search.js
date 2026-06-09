@@ -117,7 +117,7 @@ class QuranSearch {
   // ── Main search (async) ───────────────────────────────────────────────────
 
   async search(rawQuery, filters = {}, limit = 150, onProgress) {
-    if (!rawQuery.trim()) return { results: [], arabicQuery: '', extractedRoots: [], exactCount: 0, exactWords: [] };
+    if (!rawQuery.trim()) return { results: [], arabicQuery: '', extractedRoots: [], exactCount: 0, exactWords: [], subtopics: [] };
 
     const parsed = parseQuery(rawQuery);
     const scores  = {};
@@ -145,14 +145,22 @@ class QuranSearch {
     onProgress?.('translate');
     let arabicQuery      = '';
     let translationRoots = [];
+    let llmSubtopics     = [];
 
     // ── Layer A: LLM expansion via /api/expand ────────────────────────────────
     const llm = await this._expandQuery(rawQuery);
 
     if (llm) {
       // LLM succeeded — use its roots and keywords directly
-      arabicQuery = llm.understood_as || '';
-      const newLlmRoots = (llm.roots || []).filter(r => !parsed.roots.includes(r));
+      arabicQuery    = llm.understood_as || '';
+      llmSubtopics   = llm.subtopics || [];
+
+      // Merge roots from top-level array + all subtopic roots for maximum coverage
+      const subtopicRoots = llmSubtopics.flatMap(s => s.roots || []);
+      const newLlmRoots   = [...new Set([
+        ...(llm.roots || []),
+        ...subtopicRoots,
+      ])].filter(r => !parsed.roots.includes(r));
 
       onProgress?.('roots');
       for (const root of newLlmRoots) {
@@ -163,8 +171,12 @@ class QuranSearch {
         }
       }
 
-      // Also score LLM keywords through BM25 (weighted lower than roots)
-      for (const kw of (llm.keywords || [])) {
+      // Score LLM + subtopic keywords through BM25 (weighted lower than roots)
+      const allLlmKws = [...new Set([
+        ...(llm.keywords || []),
+        ...llmSubtopics.flatMap(s => s.keywords || []),
+      ])];
+      for (const kw of allLlmKws) {
         const term = kw.toLowerCase();
         const postings = this.invIndex[term] || {};
         for (const idStr of Object.keys(postings)) {
@@ -415,7 +427,8 @@ class QuranSearch {
       arabicQuery,
       extractedRoots: translationRoots,
       exactCount:     exactSet.size,
-      totalMatched:   results.length,   // pre-limit count; used by UI to show "Top N of M"
+      totalMatched:   results.length,
+      subtopics:      llmSubtopics,     // [] on static hosting; populated on Vercel
     };
   }
 
@@ -443,7 +456,10 @@ class QuranSearch {
       if (!res.ok) return null;
       const data = await res.json();
       // Return null if no usable roots (endpoint present but returned empty)
-      return (Array.isArray(data?.roots) && data.roots.length > 0) ? data : null;
+      // Return data if it has usable roots OR subtopics (subtopics contain their own roots)
+      const hasRoots     = Array.isArray(data?.roots)     && data.roots.length > 0;
+      const hasSubtopics = Array.isArray(data?.subtopics) && data.subtopics.length > 0;
+      return (hasRoots || hasSubtopics) ? data : null;
     } catch {
       return null; // Endpoint missing (GitHub Pages) or network error — fall through
     }
@@ -657,6 +673,29 @@ class QuranSearch {
         if (normPats.some(np => this.arNorm[id].includes(np))) count++;
       }
       return { ...addr, count };
+    });
+  }
+
+  // ── Subtopic tagging ─────────────────────────────────────────────────────
+  /**
+   * Tags each result with which subtopics it matches, based on root and keyword overlap.
+   * Called after search() to enrich results before grouping and synthesis.
+   * Returns a new array (does not mutate results).
+   */
+  tagWithSubtopics(results, subtopics) {
+    if (!subtopics || !subtopics.length) return results;
+
+    return results.map(r => {
+      const matched = [];
+      for (const sub of subtopics) {
+        const rootHit = (sub.roots || []).some(rt => r.matchedRoots.includes(rt));
+        const kwHit   = (sub.keywords || []).some(kw =>
+          r.matchedKeywords.some(mk => mk.startsWith(kw.slice(0, 4).toLowerCase()))
+        );
+        if (rootHit || kwHit) matched.push(sub.name);
+      }
+      // Immutable spread — preserve all existing fields
+      return matched.length ? { ...r, matchedSubtopics: matched } : r;
     });
   }
 

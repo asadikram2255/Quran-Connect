@@ -99,7 +99,7 @@
       </div>
 
       <div class="sidebar-filters">
-        <div class="sidebar-label">Quran Filters</div>
+        <div class="sidebar-label">Filters</div>
         <div class="filter-controls">
           <select id="filter-place" class="filter-select" title="Filter by place of revelation">
             <option value="">All Revelations</option>
@@ -113,15 +113,6 @@
             <option value="">All Juz</option>
           </select>
           <button id="clear-filters" class="clear-btn">Clear</button>
-        </div>
-      </div>
-
-      <div class="sidebar-filters sidebar-hadith-filters">
-        <div class="sidebar-label">Hadith Filters</div>
-        <div class="filter-controls">
-          <select id="filter-hadith-book" class="filter-select" title="Filter by hadith collection">
-            <option value="">All Collections</option>
-          </select>
         </div>
       </div>
 
@@ -153,52 +144,21 @@
         <div class="search-summary" id="search-summary" hidden></div>
         <div class="answer-panel" id="answer-panel" hidden></div>
 
-        <!-- Side-by-side: Quran (left) + Hadith (right) -->
-        <div class="dual-results">
+        <!-- Knowledge Synthesis Panel — rendered after verse results load -->
+        <div id="synthesis-panel" class="synthesis-panel" hidden></div>
 
-          <!-- ── Quran column ────────────────────────────────────── -->
-          <div class="results-col quran-col">
-            <div class="col-header">
-              <div class="col-header-left">
-                <span class="col-icon">📖</span>
-                <span class="col-title">Quran Ayaat</span>
-              </div>
-              <span id="quran-col-count" class="col-count"></span>
-            </div>
+        <div class="results-grid" id="results-grid"></div>
 
-            <div class="results-grid" id="results-grid"></div>
+        <div class="load-more-wrapper" id="load-more-wrapper" hidden>
+          <button class="load-more-btn" id="load-more-btn">Load more ayaat</button>
+        </div>
 
-            <div class="load-more-wrapper" id="load-more-wrapper" hidden>
-              <button class="load-more-btn" id="load-more-btn">Load more ayaat</button>
-            </div>
-
-            <div class="no-results" id="no-results" hidden>
-              <p class="no-results-title">No ayaat matched your query.</p>
-              <p class="no-results-hint">
-                Try different phrasing — the search translates your query to Arabic and matches root words.
-              </p>
-            </div>
-          </div>
-
-          <!-- ── Hadith column ───────────────────────────────────── -->
-          <div class="results-col hadith-col">
-            <div class="col-header">
-              <div class="col-header-left">
-                <span class="col-icon">📜</span>
-                <span class="col-title">Related Hadith</span>
-              </div>
-              <span id="hadith-col-count" class="col-count"></span>
-            </div>
-
-            <div id="hadith-grid" class="hadith-grid">
-              <div class="hadith-placeholder">
-                <span class="hadith-placeholder-icon">📜</span>
-                <p>Search to find related Hadith from the six major collections.</p>
-              </div>
-            </div>
-          </div>
-
-        </div><!-- /.dual-results -->
+        <div class="no-results" id="no-results" hidden>
+          <p class="no-results-title">No ayaat matched your query.</p>
+          <p class="no-results-hint">
+            Try different phrasing — the search translates your query to Arabic and matches root words.
+          </p>
+        </div>
 
       </main>
 
@@ -231,7 +191,6 @@
 
   <script src="js/concepts.js?v=44"></script>
   <script src="js/search.js?v=44"></script>
-  <script src="js/hadith_search.js?v=1"></script>
-  <script src="js/app.js?v=48"></script>
+  <script src="js/app.js?v=50"></script>
 </body>
 </html>
