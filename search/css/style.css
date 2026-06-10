@@ -1250,6 +1250,62 @@ mark {
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 
+/* ── Category Grouped Results ──────────────────────────────────────────── */
+
+.category-groups-view {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.category-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.category-group-name {
+  font-family: var(--font-serif, 'Fraunces', serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.category-search-btn {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 20px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.category-search-btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.category-group-verses {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .category-group-verses { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 1480px) {
+  .category-group-verses { grid-template-columns: 1fr 1fr 1fr 1fr; }
+}
+
 /* ── Knowledge Synthesis Panel ─────────────────────────────────────────── */
 
 .synthesis-panel {

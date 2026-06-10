@@ -1401,25 +1401,21 @@ class QuranApp {
     return pool;
   }
 
-  // Returns [{name, verses:[{ref,text}]}] — top 2 unique verses per catalog group
+  // Returns [{name, results:[], verses:[{ref,text}]}]
+  // results = raw ayah result objects (for card rendering)
+  // verses  = compact {ref,text} for synthesis API (first 2 per group)
   async _gatherGroupedVerses(catalog) {
     const groups = [];
-    const globalSeen = new Set();
     for (const item of catalog) {
       try {
-        const { results } = await this.engine.search(item.query, {}, 4);
-        const verses = [];
-        for (const r of results) {
-          if (verses.length >= 2) break;
-          const key = `${r.ayah.sn}:${r.ayah.an}`;
-          if (!globalSeen.has(key)) {
-            globalSeen.add(key);
-            verses.push({ ref: key, text: (r.ayah.en || r.ayah.t1 || '').slice(0, 90) });
-          }
-        }
-        groups.push({ name: item.name, verses });
+        const { results } = await this.engine.search(item.query, {}, 8);
+        const verses = results.slice(0, 2).map(r => ({
+          ref:  `${r.ayah.sn}:${r.ayah.an}`,
+          text: (r.ayah.en || r.ayah.t1 || '').slice(0, 90),
+        }));
+        groups.push({ name: item.name, results, verses });
       } catch (_) {
-        groups.push({ name: item.name, verses: [] });
+        groups.push({ name: item.name, results: [], verses: [] });
       }
     }
     return groups;
@@ -1444,6 +1440,8 @@ class QuranApp {
         groupNames = catalog.map(g => g.name);
         const totalVerses = groupVerses.reduce((n, g) => n + g.verses.length, 0);
         console.log('[QC synthesize] category mode —', catalogType, '| groups:', groupVerses.length, '| total verses:', totalVerses);
+        // Render grouped verse sections in the results area
+        this._renderGroupedCategoryResults(groupVerses, gen);
       }
 
       // For non-category queries: flat verse list (top 15)
@@ -1479,6 +1477,55 @@ class QuranApp {
       console.error('[QC synthesize] error:', e.message);
       if (this._searchGen === gen) this._hideSynthesisPanel();
     }
+  }
+
+  _renderGroupedCategoryResults(groupVerses, gen) {
+    if (this._searchGen !== gen) return;
+    const grid = document.getElementById('results-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'category-groups-view';
+
+    for (const group of groupVerses) {
+      if (!group.results || !group.results.length) continue;
+
+      const section = document.createElement('div');
+      section.className = 'category-group';
+
+      // Header row
+      const header = document.createElement('div');
+      header.className = 'category-group-header';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'category-group-name';
+      nameSpan.textContent = group.name;
+
+      const searchBtn = document.createElement('button');
+      searchBtn.className = 'category-search-btn';
+      searchBtn.textContent = 'Search all ›';
+      const shortName = group.name.split('—')[0].trim();
+      searchBtn.addEventListener('click', () => {
+        document.getElementById('search-input').value = shortName;
+        this.search(shortName);
+      });
+
+      header.appendChild(nameSpan);
+      header.appendChild(searchBtn);
+      section.appendChild(header);
+
+      // Verse cards
+      const versesRow = document.createElement('div');
+      versesRow.className = 'category-group-verses';
+      for (const r of group.results.slice(0, 4)) {
+        versesRow.appendChild(this._buildCard(r));
+      }
+      section.appendChild(versesRow);
+      container.appendChild(section);
+    }
+
+    grid.appendChild(container);
   }
 
   _renderSynthesisPanel(data, allResults) {
