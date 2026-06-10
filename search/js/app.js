@@ -370,8 +370,9 @@ class QuranApp {
       // Diagnostic — visible in browser DevTools console
       console.log('[QC expand]', { subtopics, displayResults: displayResults.length, totalMatched });
 
-      const isIdQuery = /^\d+\s*:\s*\d+/.test(query.trim());
-      if (!isIdQuery && displayResults.length > 0) {
+      const isIdQuery      = /^\d+\s*:\s*\d+/.test(query.trim());
+      const isCategoryQ    = this._isCategoryQuery(query); // grouped view handles these
+      if (!isIdQuery && !isCategoryQ && displayResults.length > 0) {
         this._renderSynthesisLoading(query, subtopics);
         this._startSynthesis(query, displayResults, subtopics, myGen);
       }
