@@ -238,115 +238,98 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   APP BODY  —  sidebar + content two-column layout
+   RESULTS LAYOUT  —  answer column (left) + verses column (right)
 ═══════════════════════════════════════════════════════════════════════════ */
-.app-body {
+.results-layout {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
+  gap: 0;
   flex: 1;
   min-height: 0;
+  padding: 0 20px 60px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ── LEFT SIDEBAR (filter-bar) ──────────────────────────────────────────── */
-.filter-bar {
-  width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
+/* ── LEFT: Scholar answer column ─────────────────────────────────────────── */
+.answer-col {
+  width: 38%;
+  min-width: 300px;
   flex-shrink: 0;
   position: sticky;
-  top: var(--header-h);
-  height: calc(100vh - var(--header-h));
+  top: calc(var(--header-h) + 16px);
+  max-height: calc(100vh - var(--header-h) - 32px);
   overflow-y: auto;
-  overflow-x: hidden;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  z-index: 80;
-  /* smooth custom scrollbar */
+  padding: 20px 20px 20px 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-.filter-bar::-webkit-scrollbar { width: 4px; }
-.filter-bar::-webkit-scrollbar-track { background: transparent; }
-.filter-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.answer-col::-webkit-scrollbar { width: 4px; }
+.answer-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-.sidebar-header {
-  padding: 18px 18px 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+/* ── RIGHT: Verses column ────────────────────────────────────────────────── */
+.verses-col {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 0 20px 24px;
+  border-left: 1px solid var(--border);
+}
+
+/* ── Compact inline filter bar ───────────────────────────────────────────── */
+.filter-bar-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
   background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
-
-.sidebar-filters {
-  padding: 16px 18px 18px;
-  flex-shrink: 0;
+.filter-controls-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
-
-.sidebar-label {
-  font-size: .67rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .7px;
-  color: var(--text-ter); margin-bottom: 11px;
-}
-
-/* Filters in sidebar: stacked vertically */
-.filter-bar .filter-controls {
-  display: flex; flex-direction: column; gap: 8px;
-}
-.filter-bar .filter-select {
-  width: 100%;
+.filter-controls-inline .filter-select {
+  flex: 1;
+  min-width: 110px;
   background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 8px 10px; font-size: .83rem; font-family: inherit;
-  cursor: pointer;
-  transition: border-color var(--trans);
-  appearance: auto;
+  padding: 6px 8px; font-size: .80rem; font-family: inherit;
+  cursor: pointer; appearance: auto;
 }
-.filter-bar .filter-select:focus { outline: none; border-color: var(--accent); }
-.filter-bar .clear-btn {
-  width: 100%; background: none;
+.filter-controls-inline .clear-btn {
+  background: none;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 8px 12px; font-size: .82rem; color: var(--text-sec); text-align: center;
-  transition: border-color var(--trans), color var(--trans), background var(--trans);
+  padding: 6px 10px; font-size: .82rem; color: var(--text-sec);
+  cursor: pointer;
+  transition: border-color var(--trans), color var(--trans);
 }
-.filter-bar .clear-btn:hover {
-  border-color: var(--accent); color: var(--accent); background: var(--accent-dim);
-}
+.filter-controls-inline .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Results count in sidebar header */
+/* Results count */
 .results-count {
   display: block;
-  font-size: .85rem; line-height: 1.55;
+  font-size: .82rem; line-height: 1.4;
   color: var(--text-sec);
 }
 .results-count:not(:empty) { font-weight: 500; color: var(--text); }
 
-/* Pipeline info inside sidebar */
-.pipeline-info {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 14px 18px;
-  background: var(--accent-dim);
-  border-top: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
-  flex-shrink: 0; font-size: .8rem; margin-top: auto;
-}
-.pi-label { color: var(--text-sec); font-weight: 600; flex-shrink: 0; }
-.pi-arabic {
-  font-family: var(--font-ar); font-size: 1.1rem;
-  color: var(--text); line-height: 1.7;
-  direction: rtl; word-spacing: 3px;
-}
-.pi-roots { display: flex; flex-wrap: wrap; gap: 4px; }
-.root-chip {
-  font-family: var(--font-ar); font-size: .8rem;
-  background: var(--bg); color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 4px; padding: 1px 7px;
-}
+/* Hidden legacy panels — keep in DOM for JS compatibility */
+.pipeline-info, .sidebar-roots, .sidebar-label, .root-cards-list { display: none !important; }
 
-/* ── CONTENT PANE ─────────────────────────────────────────────────────────── */
-.content-pane {
-  flex: 1;
-  min-width: 0; /* prevent overflow */
-  padding: 24px 28px 60px;
+/* Responsive: stack on small screens */
+@media (max-width: 860px) {
+  .results-layout { flex-direction: column; padding: 0 12px 40px; }
+  .answer-col {
+    width: 100%; position: static; max-height: none;
+    padding: 16px 0 0;
+  }
+  .verses-col { padding: 16px 0 0; border-left: none; border-top: 1px solid var(--border); }
 }
 
 /* ── LOADING ──────────────────────────────────────────────────────────────── */

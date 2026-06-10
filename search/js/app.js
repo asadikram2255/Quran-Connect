@@ -95,6 +95,7 @@ class QuranApp {
     el.hidden = false;
     el.querySelector('#loading-text').textContent = msg;
     el.querySelector('.loading-spinner').style.display = isError ? 'none' : '';
+    document.getElementById('results-layout')?.setAttribute('hidden','');
     document.getElementById('results-section').hidden = true;
     document.getElementById('filter-bar').hidden = true;
   }
@@ -278,13 +279,26 @@ class QuranApp {
                           : wordCount <= 3 ? 120
                           : 200;
 
-      const { results, arabicQuery, extractedRoots, exactCount, totalMatched, subtopics } = await this.engine.search(
+      // Fire semantic search in parallel with BM25
+      const semanticPromise = this._semanticSearch(query);
+
+      const { results: bm25Results, arabicQuery, extractedRoots, exactCount, totalMatched, subtopics } = await this.engine.search(
         query, this.filters, searchLimit,
         step => { if (this._searchGen === myGen) this._showProgress(step); },
       );
 
       // A newer search has started — discard these results entirely
       if (this._searchGen !== myGen) return;
+
+      // Merge semantic results (by meaning) at the top, BM25 fills in the rest
+      const semanticResults = await semanticPromise;
+      let results = bm25Results;
+      if (semanticResults && semanticResults.length > 0) {
+        const semanticIds = new Set(semanticResults.map(r => r.ayah.id));
+        const bm25Only = bm25Results.filter(r => !semanticIds.has(r.ayah.id));
+        results = [...semanticResults, ...bm25Only];
+        console.log('[QC semantic]', semanticResults.length, 'semantic +', bm25Only.length, 'BM25-only =', results.length, 'total');
+      }
 
       // ── #7: Optional AI reranking ──────────────────────────────────────────
       // Re-rank the top-50 results using the cross-encoder if the endpoint is
@@ -341,6 +355,7 @@ class QuranApp {
       // #6 — Record successful search in history
       if (displayResults.length > 0) this._trackQuery(query);
 
+      document.getElementById('results-layout')?.removeAttribute('hidden');
       document.getElementById('filter-bar').hidden = false;
       document.getElementById('results-section').hidden = false;
 
@@ -1722,6 +1737,45 @@ class QuranApp {
       .slice(0, 5);
 
     if (scored.length) this._renderSuggestions(scored.map(s => s.text), q, false);
+  }
+
+  // ── Semantic search via /api/search (HuggingFace multilingual embeddings) ──
+  // Returns top-N results mapped to the same format as BM25 results, or null on failure.
+  async _semanticSearch(query) {
+    try {
+      const res = await Promise.race([
+        fetch('/api/search', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ query }),
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 7000)),
+      ]);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!Array.isArray(data?.results) || data.results.length === 0) return null;
+
+      const mapped = [];
+      for (const r of data.results) {
+        const id   = `${r.surah}:${r.ayah}`;
+        const ayah = this.engine.ayaatMap[id];
+        if (!ayah) continue;
+        mapped.push({
+          ayah,
+          score:           r.rerank_score ?? r.embed_score ?? 0.5,
+          matchedRoots:    ayah.roots || [],
+          matchedKeywords: [],
+          isExact:         false,
+          isSemantic:      true,
+        });
+      }
+      console.log('[QC semantic] api returned', data.results.length, '→ mapped', mapped.length,
+        '| timing:', data.timings_ms);
+      return mapped.length > 0 ? mapped : null;
+    } catch (e) {
+      console.warn('[QC semantic] unavailable:', e.message);
+      return null;
+    }
   }
 
   async _fetchLlmSuggestions(q) {

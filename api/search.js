@@ -22,8 +22,8 @@ const EMBED_MODEL  = "sentence-transformers/paraphrase-multilingual-mpnet-base-v
 const RERANK_MODEL = "BAAI/bge-reranker-v2-m3";
 const HF_BASE      = "https://router.huggingface.co/hf-inference/models";
 
-const TOPK_RETRIEVE = 50;
-const TOPK_RETURN   = 10;
+const TOPK_RETRIEVE = 100;
+const TOPK_RETURN   = 50;
 
 // ── Embedding files (committed to repo, bundled with Vercel function) ─────
 // Vercel path resolution is tricky: process.cwd() varies between builds.

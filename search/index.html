@@ -88,83 +88,68 @@
     </div>
   </section>
 
-  <!-- ── App body: sidebar + content pane ─────────────────────────────────── -->
-  <div class="app-body">
+  <!-- ── Loading state (pre-results) ──────────────────────────────────────── -->
+  <div class="loading-state" id="loading-state">
+    <div class="loading-spinner"></div>
+    <p id="loading-text">Loading Quran data…</p>
+  </div>
 
-    <!-- ── Left sidebar: filters + root cards + pipeline ─────────────────── -->
-    <aside class="filter-bar" id="filter-bar" hidden>
+  <!-- ── Results area: two-column side-by-side ─────────────────────────────── -->
+  <div class="results-layout" id="results-layout" hidden>
 
-      <div class="sidebar-header">
+    <!-- ── Left column: Scholar answer + filters ─────────────────────────── -->
+    <div class="answer-col">
+
+      <!-- Compact filter bar -->
+      <div class="filter-bar-inline" id="filter-bar" hidden>
         <span id="results-count" class="results-count"></span>
-      </div>
-
-      <div class="sidebar-filters">
-        <div class="sidebar-label">Filters</div>
-        <div class="filter-controls">
-          <select id="filter-place" class="filter-select" title="Filter by place of revelation">
+        <div class="filter-controls-inline">
+          <select id="filter-place" class="filter-select" title="Revelation">
             <option value="">All Revelations</option>
             <option value="Meccan">Meccan</option>
             <option value="Medinan">Medinan</option>
           </select>
-          <select id="filter-surah" class="filter-select" title="Filter by surah">
+          <select id="filter-surah" class="filter-select" title="Surah">
             <option value="">All Surahs</option>
           </select>
-          <select id="filter-juz" class="filter-select" title="Filter by juz">
+          <select id="filter-juz" class="filter-select" title="Juz">
             <option value="">All Juz</option>
           </select>
-          <button id="clear-filters" class="clear-btn">Clear</button>
+          <button id="clear-filters" class="clear-btn">✕</button>
         </div>
       </div>
 
-      <!-- Root word cards — shown after every search -->
-      <div class="sidebar-roots" id="sidebar-roots" hidden>
-        <div class="sidebar-label">Root Words</div>
+      <!-- Search metadata (hidden but kept for JS compatibility) -->
+      <div class="concept-bridge" id="concept-bridge" hidden></div>
+      <div class="search-summary"  id="search-summary"  hidden></div>
+      <div class="answer-panel"    id="answer-panel"    hidden></div>
+      <div class="pipeline-info"   id="pipeline-info"   hidden></div>
+      <div class="sidebar-roots"   id="sidebar-roots"   hidden>
         <div class="root-cards-list" id="root-cards-list"></div>
       </div>
 
-      <!-- Pipeline info: Arabic translation + extracted roots -->
-      <div class="pipeline-info" id="pipeline-info" hidden></div>
+      <!-- Knowledge Synthesis / Scholar Answer -->
+      <div id="synthesis-panel" class="synthesis-panel" hidden></div>
 
-    </aside>
+    </div><!-- end .answer-col -->
 
-    <!-- ── Content pane: loading + results ───────────────────────────────── -->
-    <div class="content-pane">
+    <!-- ── Right column: verse cards ─────────────────────────────────────── -->
+    <main class="verses-col" id="results-section" hidden>
 
-      <!-- Loading state -->
-      <div class="loading-state" id="loading-state">
-        <div class="loading-spinner"></div>
-        <p id="loading-text">Loading Quran data…</p>
+      <div class="results-grid" id="results-grid"></div>
+
+      <div class="load-more-wrapper" id="load-more-wrapper" hidden>
+        <button class="load-more-btn" id="load-more-btn">Load more ayaat</button>
       </div>
 
-      <!-- Results -->
-      <main class="results-section" id="results-section" hidden>
+      <div class="no-results" id="no-results" hidden>
+        <p class="no-results-title">No ayaat matched your query.</p>
+        <p class="no-results-hint">Try rephrasing — the engine searches Arabic roots across all 6,236 ayaat.</p>
+      </div>
 
-        <!-- Full-width context panels -->
-        <div class="concept-bridge" id="concept-bridge" hidden></div>
-        <div class="search-summary" id="search-summary" hidden></div>
-        <div class="answer-panel" id="answer-panel" hidden></div>
+    </main><!-- end .verses-col -->
 
-        <!-- Knowledge Synthesis Panel — rendered after verse results load -->
-        <div id="synthesis-panel" class="synthesis-panel" hidden></div>
-
-        <div class="results-grid" id="results-grid"></div>
-
-        <div class="load-more-wrapper" id="load-more-wrapper" hidden>
-          <button class="load-more-btn" id="load-more-btn">Load more ayaat</button>
-        </div>
-
-        <div class="no-results" id="no-results" hidden>
-          <p class="no-results-title">No ayaat matched your query.</p>
-          <p class="no-results-hint">
-            Try different phrasing — the search translates your query to Arabic and matches root words.
-          </p>
-        </div>
-
-      </main>
-
-    </div><!-- end .content-pane -->
-
-  </div><!-- end .app-body -->
+  </div><!-- end .results-layout -->
 
   <!-- ── Root-word modal ──────────────────────────────────────────────────── -->
   <div class="root-modal-overlay" id="root-modal-overlay" hidden>
@@ -191,6 +176,6 @@
 
   <script src="js/concepts.js?v=44"></script>
   <script src="js/search.js?v=45"></script>
-  <script src="js/app.js?v=67"></script>
+  <script src="js/app.js?v=68"></script>
 </body>
 </html>
