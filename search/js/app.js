@@ -1430,7 +1430,7 @@ class QuranApp {
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ query, verses, subtopics: subtopics.map(s => s.name), groupNames }),
         }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 18000)),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 28000)),
       ]);
       if (this._searchGen !== gen) { console.log('[QC synthesize] aborted (gen mismatch)'); return; }
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
