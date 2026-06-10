@@ -1419,7 +1419,7 @@ class QuranApp {
         console.log('[QC synthesize] category mode —', catalogType, '| verse pool:', versePool.length, '| items:', groupNames.length);
       }
 
-      const verses = versePool.slice(0, 40).map(r => ({
+      const verses = versePool.slice(0, 25).map(r => ({
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
         text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
       }));

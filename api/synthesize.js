@@ -6,8 +6,8 @@
 // Response: { theme, response: string (prose with [SN:AN] inline citations), timing_ms }
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const MODEL        = 'llama-3.1-8b-instant';   // fast model — fits Vercel timeout
-const MAX_TOKENS   = 1800;
+const MODEL        = 'gemma2-9b-it';   // 15k TPM on free tier — avoids rate limit
+const MAX_TOKENS   = 1500;
 const TIMEOUT_MS   = 25000;
 
 const SYSTEM_PROMPT = `You are a Quranic scholar answering questions based solely on the Quranic verses provided to you. You write clear, flowing, scholarly prose — not bullet points, not lists.
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
   const query      = String(body?.query ?? '').trim().slice(0, 300);
-  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 40)      : [];
+  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 25)      : [];
   const subtopics  = Array.isArray(body?.subtopics)  ? body.subtopics.slice(0, 8)    : [];
   const groupNames = Array.isArray(body?.groupNames) ? body.groupNames.slice(0, 35)  : [];
 
