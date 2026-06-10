@@ -1564,65 +1564,71 @@ class QuranApp {
     const p = document.getElementById('synthesis-panel');
     if (!p) return;
 
-    const prose = data?.response;
-    if (!prose || !prose.trim()) { this._hideSynthesisPanel(); return; }
+    // ── Zero-hallucination renderer ───────────────────────────────────────────
+    // The API returns { theme, groups:[{label, refs}] } — NO prose from the LLM.
+    // All verse text is pulled from this.engine.ayaatMap (authenticated local DB).
+    // The LLM cannot hallucinate text it never writes.
 
-    // Build a ref → ayah.id map for all results (for scroll-to on citation click)
-    const refMap = {};
-    for (const r of allResults) refMap[`${r.ayah.sn}:${r.ayah.an}`] = r.ayah.id;
+    const groups = Array.isArray(data?.groups) ? data.groups : [];
 
-    // Convert prose to safe HTML:
-    // 1. Escape HTML entities first
-    // 2. Convert **bold** to <strong>
-    // 3. Replace [SN:AN] citations with clickable chips
-    // 4. Split into paragraphs on double newlines
-    const renderProse = (text) => {
-      // Split into paragraphs
-      const paras = text.split(/\n\n+/).filter(s => s.trim());
-      return paras.map(para => {
-        // Escape HTML
-        let html = para
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
+    // Graceful fallback: if API returned nothing meaningful, hide the panel
+    if (!groups.length && !data?.theme) { this._hideSynthesisPanel(); return; }
 
-        // Bold: **text**
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Build a ref → card element id map for scroll-to-card behaviour
+    const refToCardId = {};
+    for (const r of (allResults || [])) {
+      const key = `${r.ayah.sn}:${r.ayah.an}`;
+      refToCardId[key] = r.ayah.id;
+    }
 
-        // Inline citations: [SN:AN] e.g. [2:177] or [9:112]
-        // Use data-ref attribute — click handled by delegated listener on the panel
-        html = html.replace(/\[(\d+:\d+)\]/g, (_, ref) => {
-          const ayahId = refMap[ref];
-          if (ayahId) {
-            return `<a class="syn-ref" href="#card-${ayahId}" data-ayah-id="${ayahId}">${ref}</a>`;
-          }
-          return `<span class="syn-ref syn-ref-dead">${ref}</span>`;
-        });
+    // Render each group: label + verse rows (arabic + translation from local DB)
+    const groupsHtml = groups.map(g => {
+      const refs = Array.isArray(g.refs) ? g.refs : [];
+      const rowsHtml = refs.map(ref => {
+        // Look up in local DB — guaranteed authentic Quranic text
+        const ayah = this.engine.ayaatMap[ref];
+        if (!ayah) return ''; // ref was validated server-side, but belt-and-suspenders
 
-        // Single newlines → <br>
-        html = html.replace(/\n/g, '<br>');
+        const cardId  = refToCardId[ref] || ayah.id || '';
+        const arabic  = ayah.ar  || '';
+        const english = ayah.en1 || ayah.en2 || ayah.en3 || '';
 
-        return `<p class="syn-para">${html}</p>`;
-      }).join('');
-    };
+        return `
+          <div class="syn-verse-row" data-ref="${this._esc(ref)}" data-card-id="${this._esc(cardId)}">
+            <span class="syn-verse-ref">${this._esc(ref)}</span>
+            ${arabic ? `<span class="syn-verse-arabic" dir="rtl" lang="ar">${this._esc(arabic)}</span>` : ''}
+            ${english ? `<span class="syn-verse-english">${this._esc(english)}</span>` : ''}
+          </div>`;
+      }).filter(Boolean).join('');
+
+      if (!rowsHtml) return ''; // skip empty groups after lookup
+
+      return `
+        <div class="syn-group">
+          <div class="syn-group-label">${this._esc(g.label || '')}</div>
+          <div class="syn-group-verses">${rowsHtml}</div>
+        </div>`;
+    }).filter(Boolean).join('');
 
     p.innerHTML = `
       <div class="syn-header">
         <span class="syn-header-icon">🌟</span>
         <div class="syn-header-text">
           <span class="syn-header-title">${this._esc(data.theme || 'Quranic Knowledge')}</span>
-          <span class="syn-header-note">Grounded in retrieved verses · every citation links to the ayah below</span>
+          <span class="syn-header-note">All text is directly from the Quran · zero AI-generated content</span>
         </div>
       </div>
-      <div class="syn-prose">${renderProse(prose)}</div>`;
+      ${groupsHtml || '<p class="syn-empty">No grouped results — see verses on the right.</p>'}`;
+
     p.hidden = false;
 
-    // Delegated click handler for inline citation links
+    // Click a verse row → scroll to its card on the right
     p.onclick = (e) => {
-      const a = e.target.closest('a.syn-ref[data-ayah-id]');
-      if (!a) return;
-      e.preventDefault();
-      const el = document.getElementById('card-' + a.dataset.ayahId);
+      const row = e.target.closest('.syn-verse-row[data-card-id]');
+      if (!row) return;
+      const cardId = row.dataset.cardId;
+      if (!cardId) return;
+      const el = document.getElementById('card-' + cardId);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.classList.add('syn-highlight');

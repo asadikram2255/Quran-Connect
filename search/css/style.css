@@ -1502,6 +1502,74 @@ mark {
   font-weight: 650;
 }
 
+/* ── Zero-hallucination grouped synthesis ────────────────────────────── */
+.syn-group {
+  margin: 0 0 18px;
+}
+.syn-group:last-child { margin-bottom: 0; }
+
+.syn-group-label {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.syn-group-verses {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.syn-verse-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--card-bg, var(--surface));
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.syn-verse-row:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.syn-verse-ref {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.syn-verse-arabic {
+  font-family: 'Noto Naskh Arabic', 'Amiri Quran', serif;
+  font-size: 1rem;
+  line-height: 1.9;
+  color: var(--text);
+  text-align: right;
+}
+
+.syn-verse-english {
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--text-muted, var(--text));
+  opacity: .85;
+}
+
+.syn-empty {
+  font-size: .88rem;
+  color: var(--text-muted, var(--text));
+  opacity: .7;
+  padding: 4px 0;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .synthesis-panel { padding: 14px 14px; border-radius: 10px; }
