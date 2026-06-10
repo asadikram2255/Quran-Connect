@@ -1402,6 +1402,9 @@ class QuranApp {
   }
 
   async _startSynthesis(query, results, subtopics, gen) {
+    // Prevent double-firing: if synthesis already in flight for this gen, skip
+    if (this._synthesisGen === gen) return;
+    this._synthesisGen = gen;
     try {
       // For "list all / every / categories" queries: gather targeted verses
       // per catalog item from the actual database instead of using generic results
@@ -1419,7 +1422,7 @@ class QuranApp {
         console.log('[QC synthesize] category mode —', catalogType, '| verse pool:', versePool.length, '| items:', groupNames.length);
       }
 
-      const verses = versePool.slice(0, 25).map(r => ({
+      const verses = versePool.slice(0, 15).map(r => ({
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
         text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
       }));
