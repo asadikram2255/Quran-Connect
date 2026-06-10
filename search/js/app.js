@@ -370,11 +370,13 @@ class QuranApp {
       // Diagnostic — visible in browser DevTools console
       console.log('[QC expand]', { subtopics, displayResults: displayResults.length, totalMatched });
 
-      const isIdQuery      = /^\d+\s*:\s*\d+/.test(query.trim());
-      const isCategoryQ    = this._isCategoryQuery(query); // grouped view handles these
+      const isIdQuery   = /^\d+\s*:\s*\d+/.test(query.trim());
+      const isCategoryQ = this._isCategoryQuery(query);
       console.log('[QC synthesis gate]', { isIdQuery, isCategoryQ, results: displayResults.length });
-      if (!isIdQuery && !isCategoryQ && displayResults.length > 0) {
-        this._renderSynthesisLoading(query, subtopics);
+      if (!isIdQuery && displayResults.length > 0) {
+        // Category queries: show grouped view (no prose synthesis)
+        // Concept queries: show prose synthesis panel
+        if (!isCategoryQ) this._renderSynthesisLoading(query, subtopics);
         this._startSynthesis(query, displayResults, subtopics, myGen);
       }
 
@@ -1446,13 +1448,14 @@ class QuranApp {
         this._renderGroupedCategoryResults(groupVerses, gen);
       }
 
-      // For non-category queries: flat verse list (top 15)
-      const verses = groupVerses
-        ? groupVerses.flatMap(g => g.verses) // already 2/group, for refMap in render
-        : versePool.slice(0, 15).map(r => ({
-            ref:  `${r.ayah.sn}:${r.ayah.an}`,
-            text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
-          }));
+      // Category queries: grouped view already rendered — no prose synthesis needed
+      if (groupVerses) return;
+
+      // Non-category queries: flat verse list → prose synthesis
+      const verses = versePool.slice(0, 15).map(r => ({
+        ref:  `${r.ayah.sn}:${r.ayah.an}`,
+        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
+      }));
 
       console.log('[QC synthesize] firing', { query, verses: verses.length, groups: groupNames.length });
       const resp = await Promise.race([
