@@ -1419,9 +1419,9 @@ class QuranApp {
         console.log('[QC synthesize] category mode —', catalogType, '| verse pool:', versePool.length, '| items:', groupNames.length);
       }
 
-      const verses = versePool.slice(0, 210).map(r => ({
+      const verses = versePool.slice(0, 40).map(r => ({
         ref:  `${r.ayah.sn}:${r.ayah.an}`,
-        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 160),
+        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
       }));
       console.log('[QC synthesize] firing', { query, verses: verses.length, groups: groupNames.length });
       const resp = await Promise.race([
