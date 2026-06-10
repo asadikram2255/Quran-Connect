@@ -1317,6 +1317,14 @@ mark {
   box-shadow: 0 2px 16px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
+/* Error state */
+.syn-error {
+  padding: 12px 16px;
+  color: var(--text-muted, #888);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
 /* Loading state */
 .syn-loading {
   display: flex;

@@ -372,6 +372,7 @@ class QuranApp {
 
       const isIdQuery      = /^\d+\s*:\s*\d+/.test(query.trim());
       const isCategoryQ    = this._isCategoryQuery(query); // grouped view handles these
+      console.log('[QC synthesis gate]', { isIdQuery, isCategoryQ, results: displayResults.length });
       if (!isIdQuery && !isCategoryQ && displayResults.length > 0) {
         this._renderSynthesisLoading(query, subtopics);
         this._startSynthesis(query, displayResults, subtopics, myGen);
@@ -1476,7 +1477,19 @@ class QuranApp {
       this._renderSynthesisPanel(data, results);
     } catch (e) {
       console.error('[QC synthesize] error:', e.message);
-      if (this._searchGen === gen) this._hideSynthesisPanel();
+      if (this._searchGen === gen) {
+        // Show visible error instead of silently vanishing
+        const p = document.getElementById('synthesis-panel');
+        if (p) {
+          const isRateLimit = e.message.includes('429') || e.message.includes('rate') || e.message.includes('Rate');
+          p.innerHTML = `<div class="syn-error">${isRateLimit
+            ? '⏳ Knowledge synthesis is rate-limited — please wait a moment and search again.'
+            : '⚠️ Knowledge synthesis unavailable right now.'
+          }</div>`;
+          p.hidden = false;
+          setTimeout(() => { if (p) p.hidden = true; }, 6000);
+        }
+      }
     }
   }
 
