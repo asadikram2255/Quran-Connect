@@ -7,7 +7,7 @@
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MODEL        = 'llama-3.1-8b-instant';   // fast model — fits Vercel timeout
-const MAX_TOKENS   = 2500;
+const MAX_TOKENS   = 1800;
 const TIMEOUT_MS   = 25000;
 
 const SYSTEM_PROMPT = `You are a Quranic scholar answering questions based solely on the Quranic verses provided to you. You write clear, flowing, scholarly prose — not bullet points, not lists.
@@ -41,16 +41,16 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
   const query      = String(body?.query ?? '').trim().slice(0, 300);
-  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 80)      : [];
-  const subtopics  = Array.isArray(body?.subtopics)  ? body.subtopics.slice(0, 10)   : [];
-  const groupNames = Array.isArray(body?.groupNames) ? body.groupNames.slice(0, 50)  : [];
+  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 40)      : [];
+  const subtopics  = Array.isArray(body?.subtopics)  ? body.subtopics.slice(0, 8)    : [];
+  const groupNames = Array.isArray(body?.groupNames) ? body.groupNames.slice(0, 35)  : [];
 
   if (!query || !verses.length) {
     return res.status(400).json({ error: 'Missing query or verses' });
   }
 
   const verseList = verses
-    .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 180)}`)
+    .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 100)}`)
     .join('\n');
 
   const subtopicHint = subtopics.length
