@@ -1401,6 +1401,30 @@ class QuranApp {
     return pool;
   }
 
+  // Returns [{name, verses:[{ref,text}]}] — top 2 unique verses per catalog group
+  async _gatherGroupedVerses(catalog) {
+    const groups = [];
+    const globalSeen = new Set();
+    for (const item of catalog) {
+      try {
+        const { results } = await this.engine.search(item.query, {}, 4);
+        const verses = [];
+        for (const r of results) {
+          if (verses.length >= 2) break;
+          const key = `${r.ayah.sn}:${r.ayah.an}`;
+          if (!globalSeen.has(key)) {
+            globalSeen.add(key);
+            verses.push({ ref: key, text: (r.ayah.en || r.ayah.t1 || '').slice(0, 90) });
+          }
+        }
+        groups.push({ name: item.name, verses });
+      } catch (_) {
+        groups.push({ name: item.name, verses: [] });
+      }
+    }
+    return groups;
+  }
+
   async _startSynthesis(query, results, subtopics, gen) {
     // Prevent double-firing: if synthesis already in flight for this gen, skip
     if (this._synthesisGen === gen) return;
@@ -1410,28 +1434,38 @@ class QuranApp {
       // per catalog item from the actual database instead of using generic results
       let versePool = results;
       let groupNames = [];
+      let groupVerses = null; // structured: [{name, verses:[{ref,text}]}]
+
       if (this._isCategoryQuery(query)) {
-        const catalogType  = this._detectCatalogType(query);
-        const catalog      = this._getCatalog(catalogType);
-        const categoryVerses = await this._gatherCategoryVerses(catalog);
+        const catalogType = this._detectCatalogType(query);
+        const catalog     = this._getCatalog(catalogType);
+        groupVerses = await this._gatherGroupedVerses(catalog);
         if (this._searchGen !== gen) return; // aborted
-        const seen = new Set(categoryVerses.map(r => r.ayah.id));
-        const extra = results.filter(r => !seen.has(r.ayah.id));
-        versePool = [...categoryVerses, ...extra];
         groupNames = catalog.map(g => g.name);
-        console.log('[QC synthesize] category mode —', catalogType, '| verse pool:', versePool.length, '| items:', groupNames.length);
+        const totalVerses = groupVerses.reduce((n, g) => n + g.verses.length, 0);
+        console.log('[QC synthesize] category mode —', catalogType, '| groups:', groupVerses.length, '| total verses:', totalVerses);
       }
 
-      const verses = versePool.slice(0, 15).map(r => ({
-        ref:  `${r.ayah.sn}:${r.ayah.an}`,
-        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
-      }));
+      // For non-category queries: flat verse list (top 15)
+      const verses = groupVerses
+        ? groupVerses.flatMap(g => g.verses) // already 2/group, for refMap in render
+        : versePool.slice(0, 15).map(r => ({
+            ref:  `${r.ayah.sn}:${r.ayah.an}`,
+            text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
+          }));
+
       console.log('[QC synthesize] firing', { query, verses: verses.length, groups: groupNames.length });
       const resp = await Promise.race([
         fetch('/api/synthesize', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ query, verses, subtopics: subtopics.map(s => s.name), groupNames }),
+          body:    JSON.stringify({
+            query,
+            verses,
+            subtopics: subtopics.map(s => s.name),
+            groupNames,
+            groupVerses, // null for non-category; structured for category
+          }),
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 28000)),
       ]);

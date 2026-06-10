@@ -7,7 +7,7 @@
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MODEL        = 'llama-3.1-8b-instant';
-const MAX_TOKENS   = 1000;
+const MAX_TOKENS   = 1200;
 const TIMEOUT_MS   = 25000;
 
 const SYSTEM_PROMPT = `You are a Quranic scholar answering questions based solely on the Quranic verses provided to you. You write clear, flowing, scholarly prose — not bullet points, not lists.
@@ -41,28 +41,41 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
   const query      = String(body?.query ?? '').trim().slice(0, 300);
-  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 15)      : [];
+  const verses     = Array.isArray(body?.verses)     ? body.verses.slice(0, 80)      : [];
   const subtopics  = Array.isArray(body?.subtopics)  ? body.subtopics.slice(0, 8)    : [];
-  const groupNames = Array.isArray(body?.groupNames) ? body.groupNames.slice(0, 35)  : [];
+  const groupNames = Array.isArray(body?.groupNames) ? body.groupNames.slice(0, 40)  : [];
+  const groupVerses = Array.isArray(body?.groupVerses) ? body.groupVerses            : null;
 
-  if (!query || !verses.length) {
+  if (!query || (!verses.length && !groupVerses)) {
     return res.status(400).json({ error: 'Missing query or verses' });
   }
 
-  const verseList = verses
-    .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 100)}`)
-    .join('\n');
+  let userMessage;
 
-  const subtopicHint = subtopics.length
-    ? `\nAspects to cover: ${subtopics.join(', ')}`
-    : '';
+  if (groupVerses && groupVerses.length) {
+    // Category query: structured format — each group with its own verses
+    const groupBlocks = groupVerses
+      .map(g => {
+        const vLines = (g.verses || [])
+          .map(v => `  [${v.ref}] ${String(v.text || '').slice(0, 90)}`)
+          .join('\n');
+        return `## ${g.name}\n${vLines || '  (no verse found)'}`;
+      })
+      .join('\n\n');
 
-  // For category queries: explicit group list ensures complete coverage
-  const groupHint = groupNames.length
-    ? `\n\nCOMPLETE LIST OF GROUPS TO COVER — you MUST write a paragraph about EVERY group in this list. Do not skip any:\n${groupNames.map((g, i) => `${i + 1}. ${g}`).join('\n')}\n\nFor each group: find the relevant verses in the list above and describe their defining characteristics and outcomes from those verses. If no verse covers a specific group, still name the group and note it briefly.`
-    : '';
+    userMessage = `Question: "${query}"\n\nVerses grouped by category (write one scholarly paragraph per category, citing only its verses; if a category has no verse, still mention it briefly):\n\n${groupBlocks}`;
+  } else {
+    // Non-category query: flat verse list
+    const verseList = verses
+      .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 100)}`)
+      .join('\n');
 
-  const userMessage = `Question: "${query}"${subtopicHint}${groupHint}\n\nVerses retrieved from the Quran database (targeted search across all 6,236 ayaat):\n${verseList}`;
+    const subtopicHint = subtopics.length
+      ? `\nAspects to cover: ${subtopics.join(', ')}`
+      : '';
+
+    userMessage = `Question: "${query}"${subtopicHint}\n\nVerses retrieved from the Quran database:\n${verseList}`;
+  }
 
   try {
     const t0   = Date.now();
