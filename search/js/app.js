@@ -279,7 +279,7 @@ class QuranApp {
                           : wordCount <= 3 ? 120
                           : 200;
 
-      // Fire semantic search in parallel with BM25
+      // Fire semantic search in parallel with BM25 — results arrive later
       const semanticPromise = this._semanticSearch(query);
 
       const { results: bm25Results, arabicQuery, extractedRoots, exactCount, totalMatched, subtopics } = await this.engine.search(
@@ -290,110 +290,88 @@ class QuranApp {
       // A newer search has started — discard these results entirely
       if (this._searchGen !== myGen) return;
 
-      // Merge semantic results (by meaning) at the top, BM25 fills in the rest
-      const semanticResults = await semanticPromise;
-      let results = bm25Results;
-      if (semanticResults && semanticResults.length > 0) {
-        const semanticIds = new Set(semanticResults.map(r => r.ayah.id));
-        const bm25Only = bm25Results.filter(r => !semanticIds.has(r.ayah.id));
-        results = [...semanticResults, ...bm25Only];
-        console.log('[QC semantic]', semanticResults.length, 'semantic +', bm25Only.length, 'BM25-only =', results.length, 'total');
-      }
+      // ── Render BM25 results immediately — don't wait for semantic ─────────
+      // Helper: build display results from a raw results array
+      const buildDisplay = (raw) => {
+        const rawDisplay = (useExhaustive && exactCount > 0) ? raw.filter(r => r.isExact) : raw;
+        return subtopics && subtopics.length ? this.engine.tagWithSubtopics(rawDisplay, subtopics) : rawDisplay;
+      };
 
-      // ── #7: Optional AI reranking ──────────────────────────────────────────
-      // Re-rank the top-50 results using the cross-encoder if the endpoint is
-      // configured. Falls back silently to BM25+root order on any error/timeout.
-      this._rerankActive = false;
-      let finalResults = results;
-      if (RERANK_ENDPOINT && results.length >= 5 && !useExhaustive) {
-        try {
-          finalResults = await this._rerank(query, results);
-          if (this._searchGen !== myGen) return;
-          this._rerankActive = true;
-        } catch (_) { /* silent fallback — use original order */ }
-      }
+      const renderResults = (displayResults, isSemantic) => {
+        this._topScore      = displayResults[0]?.score || 1;
+        this._allResults    = displayResults;
+        this.results        = displayResults;
+        this._flatResults   = this._buildFlatResults(displayResults, parsed);
 
-      const answerType = this._detectAnswerType(query, parsed);
+        if (!isSemantic) {
+          this._hideProgress();
+          this._renderPipelineInfo(arabicQuery, extractedRoots);
+          this._renderConceptBridge(query, parsed, arabicQuery, totalMatched, searchLimit, displayResults.length);
+          this._renderSidebarRoots(parsed, extractedRoots);
+          this._renderSummary(displayResults, parsed, exactCount, totalMatched, searchLimit);
+
+          const answerType = this._detectAnswerType(query, parsed);
+          if (answerType === 'addressee_listing') {
+            this._answerMode = 'addressee_listing';
+            const vocabRoots = parsed.roots.length > 0 ? parsed.roots : extractedRoots;
+            this._renderAnswerPanel(query, parsed, vocabRoots);
+          }
+        }
+
+        this._renderPage(false);
+        this._renderWeakMatchHint(query, parsed, displayResults, exactCount);
+        if (displayResults.length > 0) this._trackQuery(query);
+
+        document.getElementById('results-layout')?.removeAttribute('hidden');
+        document.getElementById('filter-bar').hidden = false;
+        document.getElementById('results-section').hidden = false;
+
+        const surahCount = new Set(displayResults.map(r => r.ayah.sn)).size;
+        let countText = '';
+        if (displayResults.length) {
+          if (useExhaustive && exactCount > 0) {
+            countText = `${exactCount} exact occurrences across ${surahCount} surahs`;
+          } else {
+            const capped    = totalMatched > displayResults.length;
+            const ayahLabel = capped
+              ? `Top ${displayResults.length} of ${totalMatched} ayaat`
+              : `${displayResults.length} ayaat`;
+            const exactLabel = exactCount > 0 ? ` · ${exactCount} exact` : '';
+            countText = `${ayahLabel} across ${surahCount} surahs${exactLabel}${isSemantic ? ' · reranked' : ''}`;
+          }
+        }
+        document.getElementById('results-count').textContent = countText;
+
+        if (!isSemantic) {
+          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
 
       this._lastKeywords = parsed.keywords;
       this._lastParsed   = parsed;
 
-      // Exhaustive mode: only surface the exact-match hits (all of them, Quran-ordered)
-      const rawDisplay = (useExhaustive && exactCount > 0)
-        ? finalResults.filter(r => r.isExact)
-        : finalResults;
+      // Show BM25 results right away
+      renderResults(buildDisplay(bm25Results), false);
 
-      // Tag each verse with which subtopics it belongs to (no-op when subtopics is empty)
-      const displayResults = subtopics && subtopics.length
-        ? this.engine.tagWithSubtopics(rawDisplay, subtopics)
-        : rawDisplay;
-
-      // Store top score for relative confidence display (#2)
-      this._topScore = displayResults[0]?.score || 1;
-
-      this._allResults  = displayResults;
-      this.results      = displayResults;
-      this._flatResults = this._buildFlatResults(displayResults, parsed);
-
-      this._hideProgress();
-      this._renderPipelineInfo(arabicQuery, extractedRoots);
-      this._renderConceptBridge(query, parsed, arabicQuery, totalMatched, searchLimit, displayResults.length);
-      this._renderSidebarRoots(parsed, extractedRoots);
-      this._renderSummary(displayResults, parsed, exactCount, totalMatched, searchLimit);
-
-      if (answerType === 'addressee_listing') {
-        this._answerMode = 'addressee_listing';
-        const vocabRoots = parsed.roots.length > 0 ? parsed.roots : extractedRoots;
-        this._renderAnswerPanel(query, parsed, vocabRoots);
-      }
-
-      this._renderPage(false);
-
-      // #3 — Weak match banner (shown when results are few and confidence is low)
-      this._renderWeakMatchHint(query, parsed, displayResults, exactCount);
-
-      // #6 — Record successful search in history
-      if (displayResults.length > 0) this._trackQuery(query);
-
-      document.getElementById('results-layout')?.removeAttribute('hidden');
-      document.getElementById('filter-bar').hidden = false;
-      document.getElementById('results-section').hidden = false;
-
-      const surahCount = new Set(displayResults.map(r => r.ayah.sn)).size;
-      let countText = '';
-      if (displayResults.length) {
-        if (useExhaustive && exactCount > 0) {
-          countText = `${exactCount} exact occurrences across ${surahCount} surahs`;
-        } else {
-          const capped     = totalMatched > displayResults.length;
-          const ayahLabel  = capped
-            ? `Top ${displayResults.length} of ${totalMatched} ayaat`
-            : `${displayResults.length} ayaat`;
-          const exactLabel = exactCount > 0 ? ` · ${exactCount} exact` : '';
-          countText = `${ayahLabel} across ${surahCount} surahs${exactLabel}`;
-        }
-      }
-      const countEl = document.getElementById('results-count');
-      countEl.textContent = countText;
-
-      document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-      // ── Knowledge synthesis (async, non-blocking) ──────────────────────────
-      // Only runs on Vercel (where /api/synthesize exists). Shows a loading state
-      // immediately; replaces it with structured knowledge when Claude responds.
-      // ID-type queries (e.g. "2:255") skip synthesis — they have a single verse.
-      // Diagnostic — visible in browser DevTools console
-      console.log('[QC expand]', { subtopics, displayResults: displayResults.length, totalMatched });
-
+      // Start synthesis immediately with BM25 results
       const isIdQuery   = /^\d+\s*:\s*\d+/.test(query.trim());
       const isCategoryQ = this._isCategoryQuery(query);
-      console.log('[QC synthesis gate]', { isIdQuery, isCategoryQ, results: displayResults.length });
-      if (!isIdQuery && displayResults.length > 0) {
-        // Category queries: show grouped view (no prose synthesis)
-        // Concept queries: show prose synthesis panel
+      console.log('[QC synthesis gate]', { isIdQuery, isCategoryQ, results: this._allResults.length });
+      if (!isIdQuery && this._allResults.length > 0) {
         if (!isCategoryQ) this._renderSynthesisLoading(query, subtopics);
-        this._startSynthesis(query, displayResults, subtopics, myGen);
+        this._startSynthesis(query, this._allResults, subtopics, myGen);
       }
+
+      // When semantic results arrive, silently update the results grid
+      semanticPromise.then(semanticResults => {
+        if (this._searchGen !== myGen) return; // stale — a new search started
+        if (!semanticResults || semanticResults.length === 0) return;
+        const semanticIds = new Set(semanticResults.map(r => r.ayah.id));
+        const bm25Only = bm25Results.filter(r => !semanticIds.has(r.ayah.id));
+        const merged   = [...semanticResults, ...bm25Only];
+        console.log('[QC semantic]', semanticResults.length, 'semantic +', bm25Only.length, 'BM25-only =', merged.length);
+        renderResults(buildDisplay(merged), true);
+      }).catch(() => { /* semantic failed — BM25 results already shown */ });
 
     } catch (err) {
       console.error(err);
@@ -1755,7 +1733,7 @@ class QuranApp {
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ query }),
         }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 7000)),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000)),
       ]);
       if (!res.ok) return null;
       const data = await res.json();
