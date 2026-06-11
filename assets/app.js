@@ -2055,8 +2055,8 @@ function updateBackButton() {
 async function openDetail(ayahId, { preserveHistory = false } = {}) {
   const myToken = ++state.detailToken;
   if (!preserveHistory) state.detailHistory = [];
-  updateBackButton();
   state.selectedAyahId = ayahId;
+  updateBackButton();
   renderResults(state.lastResults, { preserveOrder: true });
 
   // Show the detail panel immediately with the ayah ID + skeleton pairs
