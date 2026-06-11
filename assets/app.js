@@ -2048,9 +2048,14 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   els.dEnglish.textContent = anchorTrans || rec.english || "";
   els.dEnglish.className   = "anchorEnglish" + (isUrduActive() ? " urdu-text" : "");
 
-  // Words & Roots panel — always visible (Phase 3 redesign)
+  // Words & Roots panel — show whenever there are root/token chips
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
+  if (els.anchorWordsPanel) {
+    const hasChips = (rec.roots_ordered  && rec.roots_ordered.length  > 0)
+                  || (rec.tokens_ordered && rec.tokens_ordered.length > 0);
+    els.anchorWordsPanel.classList.toggle('open', hasChips);
+  }
 
   // Tafsir scaffold — async, doesn't block the rest of openDetail
   renderAnchorTafsir(ayahId);
