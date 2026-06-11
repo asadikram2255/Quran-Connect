@@ -1,7 +1,10 @@
 // Service Worker — cache-first for all static data files
-// Bump SW_VERSION whenever data files change to invalidate the cache.
-const SW_VERSION = "2";
-const CACHE_NAME = `quran-data-${SW_VERSION}`;
+//
+// Cache version is derived from data/meta/manifest.json's `version` field so it
+// invalidates automatically whenever the pipeline rebuilds the data. The SW reads
+// manifest.json with cache: "no-cache" on every install to get the latest version.
+
+let CACHE_NAME = "quran-data-2"; // fallback; overwritten during install
 
 // Critical files to precache on install so first page load after SW registration is instant
 const PRECACHE_URLS = [
@@ -9,18 +12,24 @@ const PRECACHE_URLS = [
   "data/meta/shard_maps_bundle.json",
 ];
 
-// Install: precache the essential meta files
+// Install: fetch manifest to get data version, then precache essential files
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      Promise.all(
-        PRECACHE_URLS.map(url =>
-          fetch(url, { cache: "no-cache" })
-            .then(r => { if (r.ok) return cache.put(new Request(url), r); })
-            .catch(() => {}) // non-fatal — network unavailable is fine
+    fetch("data/meta/manifest.json", { cache: "no-cache" })
+      .then(r => r.ok ? r.json() : Promise.reject("manifest unavailable"))
+      .then(meta => { CACHE_NAME = `quran-data-v${meta.version || 2}`; })
+      .catch(() => {})
+      .then(() => caches.open(CACHE_NAME))
+      .then(cache =>
+        Promise.all(
+          PRECACHE_URLS.map(url =>
+            fetch(url, { cache: "no-cache" })
+              .then(r => { if (r.ok) return cache.put(new Request(url), r); })
+              .catch(() => {})
+          )
         )
       )
-    ).then(() => self.skipWaiting())
+      .then(() => self.skipWaiting())
   );
 });
 

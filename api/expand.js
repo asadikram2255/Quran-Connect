@@ -336,8 +336,6 @@ export default async function handler(req, res) {
       subtopics,
       understood_as:   String(parsed.understood_as || '').slice(0, 100),
       timing_ms:       Date.now() - t0,
-      // DEBUG: raw subtopics before validation — remove after confirming
-      _raw_subtopics:  parsed.subtopics || [],
     });
 
   } catch (e) {

@@ -157,7 +157,7 @@ const state = {
 // ── Translation options ────────────────────────────────────
 
 const TRANSLATION_OPTIONS = [
-  { id: "en_default",   name: "English (Default)",       lang: "en" },
+  { id: "en_default",   name: "English (Built-in)",       lang: "en" },
   { id: "en_sahih",     name: "Sahih International",     lang: "en", path: "data/translations/en_sahih.json" },
   { id: "en_yusuf_ali", name: "Yusuf Ali",               lang: "en", path: "data/translations/en_yusuf_ali.json" },
   { id: "ur_maududi",   name: "مودودی (تفہیم)",          lang: "ur", path: "data/translations/ur_maududi.json" },
@@ -1769,7 +1769,7 @@ function renderResults(list, { preserveOrder = false } = {}) {
         ${scoreBadge}
       </div>
       <div>
-        <div class="txt" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
+        <div class="txt" dir="rtl" lang="ar">${escapeHtml(rec.arabic || "")}</div>
         <div class="subtxt${urdu ? " urdu-text" : ""}">${escapeHtml(displayEn)}</div>
       </div>
     `;
@@ -1790,12 +1790,12 @@ document.querySelectorAll(".tab").forEach(btn => {
 
 function makeWordChips(values) {
   if (!values || !values.length) return `<span class="small">—</span>`;
-  return values.map(v => `<span class="rootChip" dir="rtl">${escapeHtml(v)}</span>`).join("");
+  return values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(v)}</span>`).join("");
 }
 
 function makeSharedChips(label, values) {
   if (!values || !values.length) return "";
-  const chips = values.map(v => `<span class="rootChip" dir="rtl">${escapeHtml(v)}</span>`).join("");
+  const chips = values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(v)}</span>`).join("");
   return `<div class="sharedRow"><span class="sharedLabel">${escapeHtml(label)}</span><div class="chipGroup">${chips}</div></div>`;
 }
 
@@ -1840,7 +1840,7 @@ function renderPairList(container, items, options = {}) {
       if (rec) {
         const transText = getQuranTranslation(it.id);
         const displayEn = transText || rec.english || "";
-        body = `<div class="pairBody"><div dir="rtl">${escapeHtml(rec.arabic || "")}</div></div>
+        body = `<div class="pairBody"><div dir="rtl" lang="ar">${escapeHtml(rec.arabic || "")}</div></div>
            <div class="pairBodySmall${urdu ? " urdu-text" : ""}">${escapeHtml(displayEn)}</div>`;
       } else {
         body = `<div class="pairBodySmall">Loading…</div>`;
@@ -1850,7 +1850,7 @@ function renderPairList(container, items, options = {}) {
       if (h) {
         const urText = getHadithUrduText(it.id);
         const displayText = urText || h.english || "";
-        body = `<div class="pairBody"><div dir="rtl">${escapeHtml(h.arabic || "")}</div></div>`;
+        body = `<div class="pairBody"><div dir="rtl" lang="ar">${escapeHtml(h.arabic || "")}</div></div>`;
         if (displayText) {
           body += `<div class="pairBodySmall${urdu && urText ? " urdu-text" : ""}">${escapeHtml(displayText)}</div>`;
         } else {
@@ -1963,7 +1963,7 @@ async function openWordModal(word, kind) {
       item.innerHTML = `
         <div class="wordModalItemId">${escapeHtml(fmtAyahId(id))}</div>
         ${rec
-          ? `<div class="wordModalItemAr" dir="rtl">${escapeHtml(rec.arabic || "")}</div>
+          ? `<div class="wordModalItemAr" dir="rtl" lang="ar">${escapeHtml(rec.arabic || "")}</div>
              <div class="wordModalItemEn${modalUrdu ? " urdu-text" : ""}">${escapeHtml(modalDisplayEn)}</div>`
           : `<div class="wordModalLoading">Unavailable</div>`}
       `;

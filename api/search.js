@@ -5,7 +5,7 @@
 //   2. Cosine similarity against pre-computed embeddings in data/embeddings/
 //      (ar_emb.bin for Arabic queries, en_emb.bin for English queries)
 //   3. Rerank top-50 with BAAI/bge-reranker-v2-m3
-//   4. Return top 10
+//   4. Return top 30
 //
 // The embedding files are committed to the repo and bundled with the Vercel
 // function — no external vector database needed, no monthly expiry.
@@ -173,7 +173,7 @@ export default async function handler(req, res) {
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
-  const rawQuery = (body?.query ?? "").toString();
+  const rawQuery = (body?.query ?? "").toString().slice(0, 500);
   if (!rawQuery.trim()) return res.status(400).json({ error: "Missing 'query'" });
 
   const lang  = body?.lang === "ar" || body?.lang === "en" ? body.lang : detectLang(rawQuery);
@@ -199,7 +199,11 @@ export default async function handler(req, res) {
     }
 
     // 3. Rerank top-50 on English text
-    const documents = candidates.map(c => c.payload?.english_text || c.payload?.arabic_text || "");
+    const documents = candidates.map(c =>
+      useAr
+        ? (c.payload?.arabic_text  || c.payload?.english_text || "")
+        : (c.payload?.english_text || c.payload?.arabic_text  || "")
+    );
     let rerankScores = [];
     try {
       rerankScores = await rerankPairs(query, documents);

@@ -11,7 +11,7 @@
       "maxDuration": 20
     },
     "api/synthesize.js": {
-      "maxDuration": 60
+      "maxDuration": 10
     }
   },
   "headers": [

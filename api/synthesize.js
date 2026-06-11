@@ -43,14 +43,19 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
 
   const query  = String(body?.query ?? '').trim().slice(0, 300);
-  const verses = Array.isArray(body?.verses) ? body.verses.slice(0, 30) : [];
+  const REF_RE = /^\d{1,3}:\d{1,3}$/;
+  const verses = Array.isArray(body?.verses)
+    ? body.verses
+        .slice(0, 30)
+        .filter(v => v && typeof v.ref === 'string' && REF_RE.test(v.ref.trim()))
+    : [];
 
   if (!query || !verses.length) {
     return res.status(400).json({ error: 'Missing query or verses' });
   }
 
   const refList = verses
-    .map(v => `[${v.ref}] ${String(v.text || '').slice(0, 80)}`)
+    .map(v => `[${v.ref.trim()}] ${String(v.text || '').slice(0, 80)}`)
     .join('\n');
 
   const userMessage = `Question: "${query}"\n\nVerses to organize:\n${refList}`;

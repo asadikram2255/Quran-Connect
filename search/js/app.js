@@ -406,12 +406,12 @@ class QuranApp {
     let html = '';
     if (arabicQuery) {
       html += `<span class="pi-label">Arabic:</span>
-               <span class="pi-arabic" dir="rtl">${this._esc(arabicQuery)}</span>`;
+               <span class="pi-arabic" dir="rtl" lang="ar">${this._esc(arabicQuery)}</span>`;
     }
     if (extractedRoots.length) {
       html += `<span class="pi-label">Roots found:</span>
                <span class="pi-roots">${extractedRoots.map(r =>
-                 `<span class="root-chip" dir="rtl">${this._esc(r)}</span>`
+                 `<span class="root-chip" dir="rtl" lang="ar">${this._esc(r)}</span>`
                ).join('')}</span>`;
     }
     strip.innerHTML = html;
@@ -779,7 +779,7 @@ class QuranApp {
       const ar = arMatch ? arMatch[1] : '';
       const en = t.label.replace(/\s*\([^)]*\)/, '').trim();
       return ar
-        ? `<span class="pi-arabic" dir="rtl">${this._esc(ar)}</span> (${this._esc(en)})`
+        ? `<span class="pi-arabic" dir="rtl" lang="ar">${this._esc(ar)}</span> (${this._esc(en)})`
         : this._esc(en);
     }).filter(Boolean).slice(0, 4);
 
@@ -793,7 +793,7 @@ class QuranApp {
       if (!a) return null;
       const arMatch = a.label.match(/\(([^)]+)\)/);
       return arMatch
-        ? `<span class="pi-arabic" dir="rtl">${this._esc(arMatch[1])}</span>`
+        ? `<span class="pi-arabic" dir="rtl" lang="ar">${this._esc(arMatch[1])}</span>`
         : this._esc(a.label.replace(/\s*\([^)]*\)/, '').trim());
     }).filter(Boolean);
 
@@ -1056,7 +1056,7 @@ class QuranApp {
     const highlightedPrimary = this._highlight(primary, matchedKeywords);
 
     const rootChips    = matchedRoots.slice(0, 5).map(r =>
-      `<span class="match-chip match-root" dir="rtl" title="Arabic root">${this._esc(r)}</span>`
+      `<span class="match-chip match-root" dir="rtl" lang="ar" title="Arabic root">${this._esc(r)}</span>`
     ).join('');
     const kwChips      = matchedKeywords.slice(0, 4).map(k =>
       `<span class="match-chip match-kw">${this._esc(k)}</span>`
