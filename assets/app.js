@@ -49,9 +49,10 @@ const els = {
   statusBadge: document.getElementById("statusBadge"),
   searchHint: document.getElementById("searchHint"),
 
-  dAyahId:  document.getElementById("dAyahId"),
-  dArabic:  document.getElementById("dArabic"),
-  dEnglish: document.getElementById("dEnglish"),
+  dAyahId:     document.getElementById("dAyahId"),
+  dArabic:     document.getElementById("dArabic"),
+  dEnglish:    document.getElementById("dEnglish"),
+  drillCrumbs: document.getElementById("drillCrumbs"),
   dRoots:   document.getElementById("dRoots"),
   dTokens:  document.getElementById("dTokens"),
   wordsToggleBtn:   document.getElementById("wordsToggleBtn"),
@@ -1872,10 +1873,13 @@ function renderPairList(container, items, options = {}) {
 
     const sc  = Number(it.score) || 0;
     const tier = sc >= 70 ? "high" : sc >= 40 ? "mid" : "low";
+    const scoreHtml = sc >= 100
+      ? `<div class="pairScore high pairScore--identical" title="Near-identical wording">Near-identical</div>`
+      : `<div class="pairScore ${tier}" title="Relevance score: ${sc}%">${sc}%</div>`;
     div.innerHTML = `
       <div class="pairTop">
         ${idHtml}
-        <div class="pairScore ${tier}" title="Relevance score: ${sc}%">${sc}%</div>
+        ${scoreHtml}
       </div>
       ${body}
       ${sharedBlock}
@@ -2012,12 +2016,40 @@ function updateBackButton() {
   const depth = state.detailHistory.length;
   if (depth === 0) {
     btn.classList.add("hidden");
+  } else {
+    btn.classList.remove("hidden");
+    const prev = state.detailHistory[depth - 1];
+    const lbl = btn.querySelector(".backLabel");
+    if (lbl) lbl.textContent = typeof fmtAyahId === "function" ? fmtAyahId(prev) : prev;
+  }
+
+  // Breadcrumb trail: history[0] → history[1] → … → current
+  const crumbs = els.drillCrumbs;
+  if (!crumbs) return;
+  if (depth === 0) {
+    crumbs.classList.add("hidden");
+    crumbs.innerHTML = "";
     return;
   }
-  btn.classList.remove("hidden");
-  const prev = state.detailHistory[depth - 1];
-  const lbl = btn.querySelector(".backLabel");
-  if (lbl) lbl.textContent = typeof fmtAyahId === "function" ? fmtAyahId(prev) : prev;
+  const fmt = id => (typeof fmtAyahId === "function" ? fmtAyahId(id) : id);
+  const all = [...state.detailHistory, state.selectedAyahId].filter(Boolean);
+  crumbs.innerHTML = all.map((id, i) => {
+    const isLast = i === all.length - 1;
+    if (isLast) return `<span class="crumb crumb--current">${escapeHtml(fmt(id))}</span>`;
+    return `<button class="crumb crumb--link" data-ayah-id="${escapeHtml(id)}">${escapeHtml(fmt(id))}</button><span class="crumb-sep" aria-hidden="true">›</span>`;
+  }).join("");
+  crumbs.classList.remove("hidden");
+
+  crumbs.onclick = e => {
+    const btn = e.target.closest(".crumb--link[data-ayah-id]");
+    if (!btn) return;
+    const targetId = btn.dataset.ayahId;
+    const idx = state.detailHistory.indexOf(targetId);
+    if (idx !== -1) {
+      state.detailHistory = state.detailHistory.slice(0, idx);
+      openDetail(targetId, { preserveHistory: true });
+    }
+  };
 }
 
 async function openDetail(ayahId, { preserveHistory = false } = {}) {
@@ -2060,10 +2092,11 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   // Tafsir scaffold — async, doesn't block the rest of openDetail
   renderAnchorTafsir(ayahId);
 
-  const MIN_SEM_SCORE = 15;   // semantic pairs: embedding-based, 0-100 calibrated
-  const MIN_LEX_SCORE = 10;   // lexical pairs: Jaccard/overlap-based, lower bar appropriate
+  const MIN_SEM_SCORE        = 15;  // Quran–Quran semantic threshold
+  const MIN_SEM_HADITH_SCORE = 8;   // Quran–Hadith: different vocabulary/genre → lower bar
+  const MIN_LEX_SCORE        = 10;  // lexical pairs: Jaccard/overlap-based
   const semQ = (pairs.semantic?.quran_top20   || []).filter(p => Number(p.score) >= MIN_SEM_SCORE);
-  const semH = (pairs.semantic?.hadith_top50  || []).filter(p => Number(p.score) >= MIN_SEM_SCORE);
+  const semH = (pairs.semantic?.hadith_top50  || []).filter(p => Number(p.score) >= MIN_SEM_HADITH_SCORE);
   // LexQ: sort by score desc (matches generation order), cap at top 20
   const lexQ = (pairs.lexical?.quran_all_2plus || pairs.lexical?.quran_top20 || [])
     .slice()
