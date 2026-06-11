@@ -2060,7 +2060,7 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   // Tafsir scaffold — async, doesn't block the rest of openDetail
   renderAnchorTafsir(ayahId);
 
-  const MIN_SEM_SCORE = 25;   // semantic pairs: embedding-based, 0-100 calibrated
+  const MIN_SEM_SCORE = 15;   // semantic pairs: embedding-based, 0-100 calibrated
   const MIN_LEX_SCORE = 10;   // lexical pairs: Jaccard/overlap-based, lower bar appropriate
   const semQ = (pairs.semantic?.quran_top20   || []).filter(p => Number(p.score) >= MIN_SEM_SCORE);
   const semH = (pairs.semantic?.hadith_top50  || []).filter(p => Number(p.score) >= MIN_SEM_SCORE);
