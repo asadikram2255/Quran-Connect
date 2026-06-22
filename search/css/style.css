@@ -277,22 +277,31 @@ button { cursor: pointer; font-family: inherit; }
   border-left: 1px solid var(--border);
 }
 
-/* ── FAR RIGHT: Hadith column (sibling to verses-col in results-layout) ─── */
+/* ── Hadith section (inside verses-col, below verse cards) ──────────────── */
 #hadith-col {
-  width: 320px;
-  flex-shrink: 0;
-  min-width: 0;
-  padding: 20px 0 20px 20px;
-  border-left: 1px solid var(--border);
-  position: sticky;
-  top: calc(var(--header-h) + 16px);
-  max-height: calc(100vh - var(--header-h) - 32px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
 }
-#hadith-col::-webkit-scrollbar { width: 4px; }
-#hadith-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.hadith-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.hadith-section-header .col-title { flex: 1; }
+.hadith-section-header .col-count {
+  font-size: .75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+}
 
 /* ── Root modal load-more button ─────────────────────────────────────────── */
 .rm-load-more {
@@ -645,7 +654,7 @@ mark {
 }
 
 .quran-col  { flex: 3; }
-.hadith-col { flex: 2; }
+
 
 /* Column header */
 .col-header {
@@ -679,8 +688,8 @@ mark {
 
 /* ── Hadith grid & cards ─────────────────────────────────────────────────── */
 .hadith-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 12px;
 }
 
@@ -839,7 +848,6 @@ mark {
   .results-grid { grid-template-columns: 1fr; }
   .dual-results { flex-direction: column; }
   .quran-col, .hadith-col { flex: none; width: 100%; }
-  #hadith-col { display: none !important; }
 }
 
 @media (max-width: 600px) {
