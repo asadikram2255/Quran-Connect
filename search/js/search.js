@@ -155,14 +155,14 @@ class QuranSearch {
       arabicQuery    = llm.understood_as || '';
       llmSubtopics   = llm.subtopics || [];
 
-      // Merge roots: top-level first, then subtopic roots — cap at 6 total to prevent
-      // recall explosion (too many roots unioned → thousands of irrelevant matches)
-      const subtopicRoots = llmSubtopics.flatMap(s => s.roots || []);
+      // Merge roots: top-level first, then up to 3 roots per subtopic.
+      // Per-subtopic cap (not global) keeps broad queries like "rights in Islam"
+      // from losing later subtopics to a flat slice(0,6).
+      const subtopicRoots = llmSubtopics.flatMap(s => (s.roots || []).slice(0, 3));
       const newLlmRoots   = [...new Set([
         ...(llm.roots || []),
         ...subtopicRoots,
-      ])].filter(r => !parsed.roots.includes(r)).slice(0, 6);
-      console.log('[QC search roots]', { parsed: parsed.roots, llm: newLlmRoots, subtopics: llmSubtopics.map(s => s.name) });
+      ])].filter(r => !parsed.roots.includes(r));
 
       onProgress?.('roots');
       for (const root of newLlmRoots) {
@@ -388,14 +388,30 @@ class QuranSearch {
     }
 
     // ── Build & rank ──────────────────────────────────────────────────────
+    // Count how many unique queried roots each ayah matched — used for coverage bonus.
+    const allQueriedRoots = new Set([...parsed.roots, ...translationRoots]);
+
     let results = Object.entries(scores).map(([idStr, score]) => {
       const id = +idStr;
       const r  = reasons[id] || { roots: new Set(), keywords: new Set(), patterns: new Set() };
+      const matchedRoots = [...r.roots];
+
+      // Root coverage bonus: ayah matching k of N queried roots gets a multiplier.
+      // k/N = 1.0 → ×1.5 boost  |  k/N = 0.5 → ×1.25  |  k/N → 0 → ×1.0 (no change)
+      // Only applies when ≥2 distinct roots were queried, so single-root queries
+      // are unaffected and multi-root queries strongly prefer full-coverage ayaat.
+      let finalScore = score;
+      if (allQueriedRoots.size >= 2) {
+        const covered = matchedRoots.filter(rt => allQueriedRoots.has(rt)).length;
+        const fraction = covered / allQueriedRoots.size;
+        finalScore = score * (1 + 0.5 * fraction);
+      }
+
       return {
         ayah:            this.ayaatMap[id],
-        score,
+        score:           finalScore,
         isExact:         exactSet.has(id),
-        matchedRoots:    [...r.roots],
+        matchedRoots,
         matchedKeywords: [...r.keywords].filter(k => k && k.length > 2),
         matchedPatterns: [...r.patterns],
       };
@@ -467,14 +483,40 @@ class QuranSearch {
     }
   }
 
+  // Persistent translation cache: localStorage with 7-day TTL.
+  // Falls back to sessionStorage then in-memory if localStorage is unavailable.
+  _cacheGet(key) {
+    if (this._cache[key] !== undefined) return this._cache[key];
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const { v, t } = JSON.parse(raw);
+        if (Date.now() - t < 7 * 24 * 60 * 60 * 1000) { this._cache[key] = v; return v; }
+        localStorage.removeItem(key);
+      }
+    } catch (_) {
+      try {
+        const s = sessionStorage.getItem(key);
+        if (s !== null) { this._cache[key] = s; return s; }
+      } catch (_) {}
+    }
+    return undefined;
+  }
+
+  _cacheSet(key, value) {
+    this._cache[key] = value;
+    try {
+      localStorage.setItem(key, JSON.stringify({ v: value, t: Date.now() }));
+    } catch (_) {
+      try { sessionStorage.setItem(key, value); } catch (_) {}
+    }
+  }
+
   // langpair: 'en|ar' (default) or 'ur|ar' for Urdu input
   async _translateToArabic(query, langpair = 'en|ar') {
     const key = `qt_${langpair}_${query.trim().toLowerCase()}`;
-    if (this._cache[key] !== undefined) return this._cache[key];
-    try {
-      const stored = sessionStorage.getItem(key);
-      if (stored !== null) { this._cache[key] = stored; return stored; }
-    } catch (_) {}
+    const cached = this._cacheGet(key);
+    if (cached !== undefined) return cached;
 
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(query)}&langpair=${langpair}`;
     const res = await Promise.race([
@@ -484,8 +526,7 @@ class QuranSearch {
 
     const text = res?.responseData?.translatedText || '';
     const result = /[؀-ۿ]/.test(text) ? text : '';
-    this._cache[key] = result;
-    try { if (result) sessionStorage.setItem(key, result); } catch (_) {}
+    this._cacheSet(key, result);
     return result;
   }
 
@@ -493,19 +534,16 @@ class QuranSearch {
   // Used for ur|en (Urdu → English) so the result can feed the English concept layer.
   async _translate(query, langpair) {
     const key = `qt_${langpair}_${query.trim().toLowerCase()}`;
-    if (this._cache[key] !== undefined) return this._cache[key];
-    try {
-      const stored = sessionStorage.getItem(key);
-      if (stored !== null) { this._cache[key] = stored; return stored; }
-    } catch (_) {}
+    const cached = this._cacheGet(key);
+    if (cached !== undefined) return cached;
+
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(query)}&langpair=${langpair}`;
     const res = await Promise.race([
       fetch(url).then(r => r.json()),
       new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
     ]);
     const text = (res?.responseData?.translatedText || '').trim();
-    this._cache[key] = text;
-    try { if (text) sessionStorage.setItem(key, text); } catch (_) {}
+    this._cacheSet(key, text);
     return text;
   }
 
