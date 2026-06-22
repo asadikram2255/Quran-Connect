@@ -282,22 +282,17 @@ class QuranApp {
                           : wordCount <= 3 ? 120
                           : 200;
 
-      // Fire semantic search in parallel with BM25 — results arrive later
+      // Fire semantic search in parallel — results arrive later and silently update
       const semanticPromise = this._semanticSearch(query);
 
-      const { results: bm25Results, arabicQuery, extractedRoots, exactCount, totalMatched, subtopics } = await this.engine.search(
-        query, this.filters, searchLimit,
-        step => { if (this._searchGen === myGen) this._showProgress(step); },
-      );
+      // Mutable metadata — updated in two phases (fast sync, then LLM-enhanced)
+      let arabicQuery = '', extractedRoots = [], exactCount = 0, totalMatched = 0, subtopics = [];
+      // Track the latest base results for semantic merge (updated when LLM resolves)
+      let baseResults = [];
 
-      // A newer search has started — discard these results entirely
-      if (this._searchGen !== myGen) return;
-
-      // ── Render BM25 results immediately — don't wait for semantic ─────────
-      // Helper: build display results from a raw results array
       const buildDisplay = (raw) => {
         const rawDisplay = (useExhaustive && exactCount > 0) ? raw.filter(r => r.isExact) : raw;
-        return subtopics && subtopics.length ? this.engine.tagWithSubtopics(rawDisplay, subtopics) : rawDisplay;
+        return subtopics.length ? this.engine.tagWithSubtopics(rawDisplay, subtopics) : rawDisplay;
       };
 
       const renderResults = (displayResults, isSemantic) => {
@@ -355,10 +350,39 @@ class QuranApp {
       this._lastKeywords = parsed.keywords;
       this._lastParsed   = parsed;
 
-      // Show BM25 results right away
-      renderResults(buildDisplay(bm25Results), false);
+      // ── Phase 1 callback: instant results from sync scoring (<50ms) ──────
+      // Fired from inside engine.search() before any network call is made.
+      // Shows results immediately while LLM expansion runs in the background.
+      const onFastResults = (fast) => {
+        if (this._searchGen !== myGen) return;
+        exactCount   = fast.exactCount;
+        totalMatched = fast.totalMatched;
+        baseResults  = fast.results;
+        renderResults(buildDisplay(fast.results), false);
+        // Keep progress bar visible with 'translate' step to signal LLM is still working
+        this._showProgress('translate');
+      };
 
-      // Start synthesis immediately with BM25 results
+      // ── Await LLM-enhanced results (Phase 2) ─────────────────────────────
+      const llmResult = await this.engine.search(
+        query, this.filters, searchLimit,
+        step => { if (this._searchGen === myGen) this._showProgress(step); },
+        onFastResults,
+      );
+
+      if (this._searchGen !== myGen) return;
+
+      // Update metadata with LLM output and re-render with improved ranking + pipeline info
+      arabicQuery    = llmResult.arabicQuery;
+      extractedRoots = llmResult.extractedRoots;
+      exactCount     = llmResult.exactCount;
+      totalMatched   = llmResult.totalMatched;
+      subtopics      = llmResult.subtopics;
+      baseResults    = llmResult.results;
+
+      renderResults(buildDisplay(llmResult.results), false);
+
+      // Start synthesis with LLM-enhanced results
       const isIdQuery   = /^\d+\s*:\s*\d+/.test(query.trim());
       const isCategoryQ = this._isCategoryQuery(query);
       if (!isIdQuery && this._allResults.length > 0) {
@@ -366,15 +390,15 @@ class QuranApp {
         this._startSynthesis(query, this._allResults, subtopics, myGen);
       }
 
-      // When semantic results arrive, silently update the results grid
+      // When semantic results arrive, merge with LLM-enhanced base and re-render
       semanticPromise.then(semanticResults => {
-        if (this._searchGen !== myGen) return; // stale — a new search started
+        if (this._searchGen !== myGen) return;
         if (!semanticResults || semanticResults.length === 0) return;
         const semanticIds = new Set(semanticResults.map(r => r.ayah.id));
-        const bm25Only = bm25Results.filter(r => !semanticIds.has(r.ayah.id));
-        const merged   = [...semanticResults, ...bm25Only];
+        const baseOnly = baseResults.filter(r => !semanticIds.has(r.ayah.id));
+        const merged   = [...semanticResults, ...baseOnly];
         renderResults(buildDisplay(merged), true);
-      }).catch(() => { /* semantic failed — BM25 results already shown */ });
+      }).catch(() => {});
 
     } catch (err) {
       console.error(err);

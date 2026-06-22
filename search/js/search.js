@@ -115,8 +115,19 @@ class QuranSearch {
   }
 
   // ── Main search (async) ───────────────────────────────────────────────────
-
-  async search(rawQuery, filters = {}, limit = 150, onProgress) {
+  //
+  // Two-phase design for instant first results:
+  //
+  //   Phase 1 (sync, <50ms): Concept roots + BM25 + patterns + exact matching.
+  //     Results are snapshotted and delivered via onFastResults callback so the
+  //     UI can render immediately without waiting for any network calls.
+  //
+  //   Phase 2 (async, ~4s): LLM expansion via /api/expand (or MyMemory fallback).
+  //     LLM roots are added on top of the Phase 1 scores; final re-ranked results
+  //     are returned from the Promise so the caller can update the UI with richer
+  //     ranking and pipeline info (arabicQuery, extractedRoots, subtopics).
+  //
+  async search(rawQuery, filters = {}, limit = 150, onProgress, onFastResults) {
     if (!rawQuery.trim()) return { results: [], arabicQuery: '', extractedRoots: [], exactCount: 0, exactWords: [], subtopics: [] };
 
     const parsed = parseQuery(rawQuery);
@@ -129,7 +140,122 @@ class QuranSearch {
       if (label) reasons[id][type].add(label);
     };
 
-    // ── Step 1: Query expansion — LLM-first, translation pipeline fallback ──────
+    // ── Phase 1: Sync scoring (no network calls) ──────────────────────────
+
+    // Step 1: Arabic pattern matching (addressees)
+    for (const pattern of parsed.arabicPatterns) {
+      const normPat = normalizeArabic(pattern);
+      for (const ayah of this.ayaat) {
+        if (this.arNorm[ayah.id].includes(normPat)) {
+          const concept = ADDRESSEES.find(a => a.ar_patterns.includes(pattern));
+          addScore(ayah.id, 25, 'patterns', concept ? concept.label : 'Arabic pattern');
+        }
+      }
+    }
+
+    // Step 2: Concept root matching — IDF-weighted
+    // Rarer roots (e.g. و س ل → 2 ayaat) score much higher than common ones
+    // (e.g. ق و ل → 1000+ ayaat). Floor/ceil keep scores meaningful.
+    for (const root of parsed.roots) {
+      const ids = this.rootIdx[root];
+      if (ids) {
+        const w = this.rootIdf[root] || 2;
+        for (const id of ids) addScore(id, w, 'roots', root);
+      }
+    }
+
+    // Step 3: English BM25 (stemmed + direct, with spell correction)
+    // For any keyword not found in the index, find the closest known word
+    // (edit distance ≤ 2) so that "mersy" → "mercy", "patiance" → "patience".
+    // Reuses _editDistance() from concepts.js (loaded before this file).
+    const _corrected = parsed.keywords.map(k => {
+      if (k.length < 5 || this.invIndex[k]) return k;  // short or already known
+      const maxDist = k.length >= 8 ? 2 : 1;
+      let best = k, bestDist = maxDist + 1;
+      for (const key of Object.keys(this.invIndex)) {
+        if (Math.abs(key.length - k.length) > maxDist) continue;
+        const d = _editDistance(k, key, maxDist);
+        if (d < bestDist) { bestDist = d; best = key; }
+        if (bestDist === 1 && maxDist === 1) break; // can't do better
+      }
+      return best;
+    });
+    const allKeywords = [...new Set([
+      ...parsed.keywords, ..._corrected,
+      ...parsed.keywords.map(k => this._stem(k)),
+    ])];
+    for (const term of allKeywords) {
+      const postings = this.invIndex[term] || {};
+      for (const idStr of Object.keys(postings)) {
+        const id = +idStr;
+        const sc = this._bm25(term, id);
+        if (sc > 0) addScore(id, sc, 'keywords', term.length > 4 ? term : null);
+      }
+    }
+
+    // Step 4: Phrase boost
+    const phrases = this._extractPhrases(rawQuery);
+    for (const phrase of phrases) {
+      const lo = phrase.toLowerCase();
+      for (const ayah of this.ayaat) {
+        const txt = [ayah.en, ayah.t1, ayah.t2, ayah.t3].filter(Boolean).join(' ').toLowerCase();
+        if (txt.includes(lo)) addScore(ayah.id, 6, 'keywords', phrase);
+      }
+    }
+
+    // Step 5: Exact Arabic word/phrase matching
+    // Single-word entries: generate prefix variants (للمتقين, والمتقين, etc.)
+    // Multi-word entries (e.g. لا يحب, ربنا phrase): substring match in full text.
+    const exactSet = new Set();
+    for (const normWord of (parsed.exactWords || [])) {
+      if (normWord.includes(' ')) {
+        for (const ayah of this.ayaat) {
+          if (this.arNorm[ayah.id].includes(normWord)) {
+            addScore(ayah.id, 30, 'patterns', normWord);
+            exactSet.add(ayah.id);
+          }
+        }
+      } else {
+        const variants = this._arabicVariants(normWord);
+        for (const ayah of this.ayaat) {
+          const words = this.arNorm[ayah.id].split(/\s+/);
+          if (words.some(w => variants.has(w))) {
+            addScore(ayah.id, 30, 'patterns', normWord);
+            exactSet.add(ayah.id);
+          }
+        }
+      }
+    }
+
+    // Step 5b: Root fallback for encoding mismatches
+    // Some Quranic words (e.g. الألباب) use superscript alef (ٰ U+0670) which
+    // normalisation removes, causing a mismatch between EXACT_WORDS forms and arNorm.
+    if (parsed.exactWords.length > 0 && exactSet.size === 0 &&
+        (parsed.exactRoots || []).length > 0) {
+      for (const root of parsed.exactRoots) {
+        const ids = this.rootIdx[root];
+        if (ids) {
+          for (const id of ids) {
+            addScore(id, 28, 'patterns', root);
+            exactSet.add(id);
+          }
+        }
+      }
+    }
+
+    // ── Fast results snapshot — deliver to UI before LLM call ────────────
+    onProgress?.('search');
+    if (onFastResults) {
+      const fastRanked = this._rankAndFilter(scores, reasons, exactSet, new Set(parsed.roots), filters, limit);
+      onFastResults({
+        results:      fastRanked.results,
+        parsed,
+        exactCount:   exactSet.size,
+        totalMatched: fastRanked.totalMatched,
+      });
+    }
+
+    // ── Phase 2: Async LLM expansion / translation pipeline ──────────────
     //
     // Layer A (Vercel):  /api/expand  — Claude understands any language/script
     //   and returns Quranic roots + English keywords directly. One network call,
@@ -139,25 +265,18 @@ class QuranSearch {
     //   3-pass: en|ar → ur|ar → ur|en→concept layer. Used when /api/expand
     //   is unavailable (GitHub Pages) or returns no useful roots.
     //
-    // Same index.html is deployed to both hosts. The page detects capability
-    // at runtime via a fetch to /api/expand — 404 on GitHub Pages → falls through.
-    //
     onProgress?.('translate');
     let arabicQuery      = '';
     let translationRoots = [];
     let llmSubtopics     = [];
 
-    // ── Layer A: LLM expansion via /api/expand ────────────────────────────────
     const llm = await this._expandQuery(rawQuery);
 
     if (llm) {
-      // LLM succeeded — use its roots and keywords directly
       arabicQuery    = llm.understood_as || '';
       llmSubtopics   = llm.subtopics || [];
 
       // Merge roots: top-level first, then up to 3 roots per subtopic.
-      // Per-subtopic cap (not global) keeps broad queries like "rights in Islam"
-      // from losing later subtopics to a flat slice(0,6).
       const subtopicRoots = llmSubtopics.flatMap(s => (s.roots || []).slice(0, 3));
       const newLlmRoots   = [...new Set([
         ...(llm.roots || []),
@@ -198,39 +317,23 @@ class QuranSearch {
       }
 
       translationRoots = newLlmRoots;
-      onProgress?.('search');
 
     } else {
-      // ── Layer B: MyMemory translation pipeline (fallback) ───────────────────
-      //
-      // The concept layer (TRANSLITERATIONS + CONCEPT_EXPANSIONS) handles known
-      // Islamic/Urdu terms. For everything it DOESN'T recognise, the translation
-      // API fills the gap — turning any unknown English or Roman-Urdu word into
-      // Arabic roots on the fly.
-      //
-      // Examples:
-      //   "tazkiya e nafs"  → "nafs" covered (ن ف س), "tazkiya" uncovered
-      //                     → translate "tazkiya" → ز ك و → both roots scored ✓
-      //   "ikhlaas"         → concept layer handles it precisely → skip translation ✓
-      //   "feeling hopeless"→ nothing covered → translate full query → ر ج و, ق ن ط ✓
-      //   "musibat zindagi" → both uncovered → translate both → ب ل و, ح ي ي ✓
+      // ── Layer B: MyMemory translation pipeline (fallback) ───────────────
       try {
-        // Build translation input from UNCOVERED tokens only.
         const uncoveredKws = parsed.keywords.filter(k => k.length > 2).slice(0, 6);
         const hasConceptCoverage = parsed.roots.length > 0 || (parsed.exactWords || []).length > 0;
         const translationInput = uncoveredKws.length > 0
-          ? uncoveredKws.join(' ')      // translate only the unknown parts
-          : hasConceptCoverage ? ''     // fully covered — skip
-          : rawQuery.trim();            // nothing covered — translate all
+          ? uncoveredKws.join(' ')
+          : hasConceptCoverage ? ''
+          : rawQuery.trim();
 
         if (translationInput) {
-          // Pass 1 — English → Arabic
           arabicQuery = await this._translateToArabic(translationInput, 'en|ar');
           if (arabicQuery) {
             translationRoots = this._extractRootsFromArabic(arabicQuery);
           }
 
-          // Pass 2 — Urdu → Arabic fallback
           if (!translationRoots.length) {
             onProgress?.('roots');
             const urduInput  = uncoveredKws.length > 0 ? uncoveredKws.join(' ') : rawQuery.trim();
@@ -244,7 +347,6 @@ class QuranSearch {
             }
           }
 
-          // Pass 3 — Urdu/Roman → English → concept layer (deepest fallback)
           if (!translationRoots.length && uncoveredKws.length > 0) {
             const engText = await this._translate(uncoveredKws.join(' '), 'ur|en');
             if (engText && /[a-z]/i.test(engText)) {
@@ -261,7 +363,6 @@ class QuranSearch {
           }
         }
 
-        // Add translation roots that are genuinely NEW
         const newRoots = translationRoots.filter(r => !parsed.roots.includes(r));
         if (newRoots.length > 0) {
           onProgress?.('roots');
@@ -277,134 +378,37 @@ class QuranSearch {
           arabicQuery      = '';
           translationRoots = [];
         }
-      } catch (_) { /* translation failed — concept roots already scored, continue */ }
+      } catch (_) { /* translation failed — concept roots already scored */ }
     }
 
-    // ── Step 2: Arabic pattern matching (addressees) ───────────────────────
-    onProgress?.('search');
-    for (const pattern of parsed.arabicPatterns) {
-      const normPat = normalizeArabic(pattern);
-      for (const ayah of this.ayaat) {
-        if (this.arNorm[ayah.id].includes(normPat)) {
-          const concept = ADDRESSEES.find(a => a.ar_patterns.includes(pattern));
-          addScore(ayah.id, 25, 'patterns', concept ? concept.label : 'Arabic pattern');
-        }
-      }
-    }
-
-    // ── Step 3: Concept root matching — IDF-weighted ─────────────────────
-    // Rarer roots (e.g. و س ل → 2 ayaat) score much higher than common ones
-    // (e.g. ق و ل → 1000+ ayaat). Floor/ceil keep scores meaningful.
-    for (const root of parsed.roots) {
-      if (translationRoots.includes(root)) continue;
-      const ids = this.rootIdx[root];
-      if (ids) {
-        const w = this.rootIdf[root] || 2;
-        for (const id of ids) addScore(id, w, 'roots', root);
-      }
-    }
-
-    // ── Step 4: English BM25 (stemmed + direct, with spell correction) ──────
-    // For any keyword not found in the index, find the closest known word
-    // (edit distance ≤ 2) so that "mersy" → "mercy", "patiance" → "patience".
-    // Reuses _editDistance() from concepts.js (loaded before this file).
-    const _corrected = parsed.keywords.map(k => {
-      if (k.length < 5 || this.invIndex[k]) return k;  // short or already known
-      const maxDist = k.length >= 8 ? 2 : 1;
-      let best = k, bestDist = maxDist + 1;
-      for (const key of Object.keys(this.invIndex)) {
-        if (Math.abs(key.length - k.length) > maxDist) continue;
-        const d = _editDistance(k, key, maxDist);
-        if (d < bestDist) { bestDist = d; best = key; }
-        if (bestDist === 1 && maxDist === 1) break; // can't do better
-      }
-      return best;
-    });
-    const allKeywords = [...new Set([
-      ...parsed.keywords, ..._corrected,
-      ...parsed.keywords.map(k => this._stem(k)),
-    ])];
-    for (const term of allKeywords) {
-      const postings = this.invIndex[term] || {};
-      for (const idStr of Object.keys(postings)) {
-        const id = +idStr;
-        const sc = this._bm25(term, id);
-        if (sc > 0) addScore(id, sc, 'keywords', term.length > 4 ? term : null);
-      }
-    }
-
-    // ── Step 5: Phrase boost ──────────────────────────────────────────────
-    const phrases = this._extractPhrases(rawQuery);
-    for (const phrase of phrases) {
-      const lo = phrase.toLowerCase();
-      for (const ayah of this.ayaat) {
-        const txt = [ayah.en, ayah.t1, ayah.t2, ayah.t3].filter(Boolean).join(' ').toLowerCase();
-        if (txt.includes(lo)) addScore(ayah.id, 6, 'keywords', phrase);
-      }
-    }
-
-    // ── Step 6: Exact Arabic word/phrase matching ────────────────────────
-    // Single-word entries: generate prefix variants (للمتقين, والمتقين, etc.)
-    // Multi-word entries (e.g. لا يحب, ربنا phrase): substring match in full text.
-    const exactSet = new Set();
-    for (const normWord of (parsed.exactWords || [])) {
-      if (normWord.includes(' ')) {
-        // Phrase match — substring inclusion in normalised Arabic
-        for (const ayah of this.ayaat) {
-          if (this.arNorm[ayah.id].includes(normWord)) {
-            addScore(ayah.id, 30, 'patterns', normWord);
-            exactSet.add(ayah.id);
-          }
-        }
-      } else {
-        // Single word — prefix-variant matching
-        const variants = this._arabicVariants(normWord);
-        for (const ayah of this.ayaat) {
-          const words = this.arNorm[ayah.id].split(/\s+/);
-          if (words.some(w => variants.has(w))) {
-            addScore(ayah.id, 30, 'patterns', normWord);
-            exactSet.add(ayah.id);
-          }
-        }
-      }
-    }
-
-    // ── Step 6b: Root fallback for encoding mismatches ─────────────────────
-    // Some Quranic words (e.g. الألباب) use superscript alef (ٰ U+0670) which
-    // normalisation removes, causing a mismatch between EXACT_WORDS forms and arNorm.
-    // When exact words matched nothing but the same terms have known roots via
-    // TRANSLITERATIONS, use those specific roots at near-exact priority.
-    if (parsed.exactWords.length > 0 && exactSet.size === 0 &&
-        (parsed.exactRoots || []).length > 0) {
-      for (const root of parsed.exactRoots) {
-        const ids = this.rootIdx[root];
-        if (ids) {
-          for (const id of ids) {
-            addScore(id, 28, 'patterns', root);
-            exactSet.add(id);
-          }
-        }
-      }
-    }
-
-    // ── Build & rank ──────────────────────────────────────────────────────
-    // Count how many unique queried roots each ayah matched — used for coverage bonus.
+    // ── Final ranking with all signal sources ─────────────────────────────
     const allQueriedRoots = new Set([...parsed.roots, ...translationRoots]);
+    const final = this._rankAndFilter(scores, reasons, exactSet, allQueriedRoots, filters, limit);
 
+    return {
+      results:        final.results,
+      arabicQuery,
+      extractedRoots: translationRoots,
+      exactCount:     exactSet.size,
+      totalMatched:   final.totalMatched,
+      subtopics:      llmSubtopics,
+    };
+  }
+
+  // ── Build, apply coverage bonus, filter and sort results ─────────────────
+
+  _rankAndFilter(scores, reasons, exactSet, allQueriedRoots, filters, limit) {
     let results = Object.entries(scores).map(([idStr, score]) => {
       const id = +idStr;
       const r  = reasons[id] || { roots: new Set(), keywords: new Set(), patterns: new Set() };
       const matchedRoots = [...r.roots];
 
       // Root coverage bonus: ayah matching k of N queried roots gets a multiplier.
-      // k/N = 1.0 → ×1.5 boost  |  k/N = 0.5 → ×1.25  |  k/N → 0 → ×1.0 (no change)
-      // Only applies when ≥2 distinct roots were queried, so single-root queries
-      // are unaffected and multi-root queries strongly prefer full-coverage ayaat.
+      // k/N = 1.0 → ×1.5  |  k/N = 0.5 → ×1.25  |  single-root queries: ×1.0 (no change)
       let finalScore = score;
       if (allQueriedRoots.size >= 2) {
-        const covered = matchedRoots.filter(rt => allQueriedRoots.has(rt)).length;
-        const fraction = covered / allQueriedRoots.size;
-        finalScore = score * (1 + 0.5 * fraction);
+        const covered  = matchedRoots.filter(rt => allQueriedRoots.has(rt)).length;
+        finalScore = score * (1 + 0.5 * covered / allQueriedRoots.size);
       }
 
       return {
@@ -421,33 +425,18 @@ class QuranSearch {
       const p = filters.place.toLowerCase();
       results = results.filter(r => r.ayah.place.toLowerCase() === p);
     }
-    if (filters.surah) {
-      results = results.filter(r => r.ayah.sn === +filters.surah);
-    }
-    if (filters.juz) {
-      results = results.filter(r => r.ayah.juz === +filters.juz);
-    }
+    if (filters.surah) results = results.filter(r => r.ayah.sn === +filters.surah);
+    if (filters.juz)   results = results.filter(r => r.ayah.juz === +filters.juz);
 
-    // When exact words were searched: exact matches first in Quran order,
-    // then other BM25/root matches by score. This makes "list all X" queries comprehensive.
     if (exactSet.size > 0) {
-      const exactResults = results.filter(r => exactSet.has(r.ayah.id))
-        .sort((a, b) => a.ayah.id - b.ayah.id);
-      const otherResults = results.filter(r => !exactSet.has(r.ayah.id))
-        .sort((a, b) => b.score - a.score);
+      const exactResults = results.filter(r => exactSet.has(r.ayah.id)).sort((a, b) => a.ayah.id - b.ayah.id);
+      const otherResults = results.filter(r => !exactSet.has(r.ayah.id)).sort((a, b) => b.score - a.score);
       results = [...exactResults, ...otherResults];
     } else {
       results.sort((a, b) => b.score - a.score || a.ayah.id - b.ayah.id);
     }
 
-    return {
-      results:        results.slice(0, limit),
-      arabicQuery,
-      extractedRoots: translationRoots,
-      exactCount:     exactSet.size,
-      totalMatched:   results.length,
-      subtopics:      llmSubtopics,     // [] on static hosting; populated on Vercel
-    };
+    return { results: results.slice(0, limit), totalMatched: results.length };
   }
 
   // ── Translation API ───────────────────────────────────────────────────────
