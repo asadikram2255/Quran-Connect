@@ -277,6 +277,40 @@ button { cursor: pointer; font-family: inherit; }
   border-left: 1px solid var(--border);
 }
 
+/* ── FAR RIGHT: Hadith column (sibling to verses-col in results-layout) ─── */
+#hadith-col {
+  width: 320px;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 20px 0 20px 20px;
+  border-left: 1px solid var(--border);
+  position: sticky;
+  top: calc(var(--header-h) + 16px);
+  max-height: calc(100vh - var(--header-h) - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#hadith-col::-webkit-scrollbar { width: 4px; }
+#hadith-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Root modal load-more button ─────────────────────────────────────────── */
+.rm-load-more {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--trans), border-color var(--trans);
+}
+.rm-load-more:hover { background: var(--surface2); border-color: var(--accent); }
+
 /* ── Compact inline filter bar ───────────────────────────────────────────── */
 .filter-bar-inline {
   display: flex;
@@ -805,6 +839,7 @@ mark {
   .results-grid { grid-template-columns: 1fr; }
   .dual-results { flex-direction: column; }
   .quran-col, .hadith-col { flex: none; width: 100%; }
+  #hadith-col { display: none !important; }
 }
 
 @media (max-width: 600px) {

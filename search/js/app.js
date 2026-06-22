@@ -65,6 +65,7 @@ class QuranApp {
       await new Promise(r => setTimeout(r, 30));
 
       this.engine = new QuranSearch(this.ayaat, this.wordRoots, this.rootVocab);
+      this.hadithSearch = new HadithSearch();
 
       this._hideLoading();
       this._populateFilters();
@@ -262,9 +263,11 @@ class QuranApp {
     this._hideSynthesisPanel();
 
     document.getElementById('search-section').classList.add('compact');
-    document.getElementById('filter-bar').hidden     = true;
+    document.getElementById('filter-bar').hidden      = true;
     document.getElementById('results-section').hidden = true;
     document.getElementById('results-grid').innerHTML = '';
+    const hadithColEl = document.getElementById('hadith-col');
+    if (hadithColEl) hadithColEl.hidden = true;
     this._showProgress('translate');
 
     try {
@@ -316,6 +319,8 @@ class QuranApp {
             const vocabRoots = parsed.roots.length > 0 ? parsed.roots : extractedRoots;
             this._renderAnswerPanel(query, parsed, vocabRoots);
           }
+
+          this._runHadithSearch(parsed.keywords);
         }
 
         this._renderPage(false);
@@ -707,20 +712,37 @@ class QuranApp {
     overlay.hidden = false;
     document.body.style.overflow = 'hidden';
 
-    // Render after a tick so the modal animates in first
-    requestAnimationFrame(() => {
-      // Sort by Quran order
-      const sorted = ids.sort((a, b) => a - b);
-      body.innerHTML = '';
-      for (const id of sorted) {
+    // Batch render to avoid freezing on high-frequency roots (500+ ayaat)
+    const BATCH = 50;
+    const sorted = ids.slice().sort((a, b) => a - b);
+
+    const renderBatch = (offset) => {
+      const batch = sorted.slice(offset, offset + BATCH);
+      for (const id of batch) {
         const ayah = this.engine.ayaatMap[id];
         if (!ayah) continue;
         const card = this._buildCard({ ayah, score: 0, matchedRoots: [root], matchedKeywords: [], matchedPatterns: [] });
         body.appendChild(card);
       }
-      if (!body.children.length) {
-        body.innerHTML = '<div class="root-modal-loading">No ayaat found.</div>';
+      const remaining = sorted.length - (offset + BATCH);
+      const btn = body.querySelector('.rm-load-more');
+      if (btn) btn.remove();
+      if (remaining > 0) {
+        const more = document.createElement('button');
+        more.className = 'rm-load-more';
+        more.textContent = `Load ${Math.min(remaining, BATCH)} more of ${remaining} remaining`;
+        more.addEventListener('click', () => renderBatch(offset + BATCH));
+        body.appendChild(more);
       }
+    };
+
+    requestAnimationFrame(() => {
+      body.innerHTML = '';
+      if (!sorted.length) {
+        body.innerHTML = '<div class="root-modal-loading">No ayaat found.</div>';
+        return;
+      }
+      renderBatch(0);
     });
 
     // Close handlers
@@ -1910,6 +1932,42 @@ class QuranApp {
       if (!raw) return [];
       return JSON.parse(raw).map(h => h.q);
     } catch (_) { return []; }
+  }
+
+  // ── Hadith search ─────────────────────────────────────────────────────────
+
+  async _runHadithSearch(keywords) {
+    const col  = document.getElementById('hadith-col');
+    const grid = document.getElementById('hadith-grid');
+    const countEl = document.getElementById('hadith-count');
+    if (!col || !grid) return;
+
+    if (!keywords || keywords.length === 0) { col.hidden = true; return; }
+
+    grid.innerHTML = '<div class="hadith-loading"><div class="hadith-loading-spinner"></div> Searching hadith…</div>';
+    col.hidden = false;
+
+    try {
+      await this.hadithSearch.ensureLoaded();
+    } catch (_) {
+      col.hidden = true;
+      return;
+    }
+
+    const results = this.hadithSearch.search(keywords, '', 15);
+    if (!results.length) { col.hidden = true; return; }
+
+    if (countEl) countEl.textContent = `${results.length} found`;
+
+    grid.innerHTML = results.map(h => `
+      <div class="hadith-card">
+        <div class="hadith-card-meta">
+          <span class="hadith-collection-badge">${this._esc(h.book)}</span>
+          <span class="hadith-ref">${this._esc(h.ref)}</span>
+        </div>
+        <p class="hadith-text">${this._esc(h.text.slice(0, 320))}${h.text.length > 320 ? '…' : ''}</p>
+      </div>`
+    ).join('');
   }
 
   // ── #7 AI reranking (optional — only when RERANK_ENDPOINT is set) ────────
