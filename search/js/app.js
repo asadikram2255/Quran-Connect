@@ -356,7 +356,6 @@ class QuranApp {
       // Start synthesis immediately with BM25 results
       const isIdQuery   = /^\d+\s*:\s*\d+/.test(query.trim());
       const isCategoryQ = this._isCategoryQuery(query);
-      console.log('[QC synthesis gate]', { isIdQuery, isCategoryQ, results: this._allResults.length });
       if (!isIdQuery && this._allResults.length > 0) {
         if (!isCategoryQ) this._renderSynthesisLoading(query, subtopics);
         this._startSynthesis(query, this._allResults, subtopics, myGen);
@@ -369,7 +368,6 @@ class QuranApp {
         const semanticIds = new Set(semanticResults.map(r => r.ayah.id));
         const bm25Only = bm25Results.filter(r => !semanticIds.has(r.ayah.id));
         const merged   = [...semanticResults, ...bm25Only];
-        console.log('[QC semantic]', semanticResults.length, 'semantic +', bm25Only.length, 'BM25-only =', merged.length);
         renderResults(buildDisplay(merged), true);
       }).catch(() => { /* semantic failed — BM25 results already shown */ });
 
@@ -1436,7 +1434,6 @@ class QuranApp {
         if (this._searchGen !== gen) return; // aborted
         groupNames = catalog.map(g => g.name);
         const totalVerses = groupVerses.reduce((n, g) => n + g.verses.length, 0);
-        console.log('[QC synthesize] category mode —', catalogType, '| groups:', groupVerses.length, '| total verses:', totalVerses);
         // Render grouped verse sections in the results area
         this._renderGroupedCategoryResults(groupVerses, gen);
       }
@@ -1450,7 +1447,6 @@ class QuranApp {
         text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
       }));
 
-      console.log('[QC synthesize] firing', { query, verses: verses.length, groups: groupNames.length });
       const resp = await Promise.race([
         fetch('/api/synthesize', {
           method:  'POST',
@@ -1465,10 +1461,9 @@ class QuranApp {
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 28000)),
       ]);
-      if (this._searchGen !== gen) { console.log('[QC synthesize] aborted (gen mismatch)'); return; }
+      if (this._searchGen !== gen) return;
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      console.log('[QC synthesize] response', { theme: data.theme, responseLen: data.response?.length, error: data.error });
       if (this._searchGen !== gen) return;
       this._renderSynthesisPanel(data, results);
     } catch (e) {
@@ -1569,7 +1564,7 @@ class QuranApp {
 
         const cardId  = refToCardId[ref] || ayah.id || '';
         const arabic  = ayah.ar  || '';
-        const english = ayah.en1 || ayah.en2 || ayah.en3 || '';
+        const english = ayah.en || ayah.t1 || ayah.t2 || ayah.t3 || '';
 
         return `
           <div class="syn-verse-row" data-ref="${this._esc(ref)}" data-card-id="${this._esc(cardId)}">
@@ -1753,8 +1748,6 @@ class QuranApp {
           isSemantic:      true,
         });
       }
-      console.log('[QC semantic] api returned', data.results.length, '→ mapped', mapped.length,
-        '| timing:', data.timings_ms);
       return mapped.length > 0 ? mapped : null;
     } catch (e) {
       console.warn('[QC semantic] unavailable:', e.message);
