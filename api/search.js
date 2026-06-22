@@ -57,7 +57,6 @@ function loadEmbeddings() {
     const enBuf = fs.readFileSync(path.join(EMB_DIR, "en_emb.bin"));
     _arEmb = new Float32Array(arBuf.buffer.slice(arBuf.byteOffset, arBuf.byteOffset + n * dims * 4));
     _enEmb = new Float32Array(enBuf.buffer.slice(enBuf.byteOffset, enBuf.byteOffset + n * dims * 4));
-    console.log(`Loaded embeddings: ${n} vectors × ${dims} dims from ${EMB_DIR}`);
   } catch (e) {
     _loadError = e;
     throw e;

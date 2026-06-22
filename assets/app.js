@@ -55,7 +55,6 @@ const els = {
   drillCrumbs: document.getElementById("drillCrumbs"),
   dRoots:   document.getElementById("dRoots"),
   dTokens:  document.getElementById("dTokens"),
-  wordsToggleBtn:   document.getElementById("wordsToggleBtn"),
   anchorWordsPanel: document.getElementById("anchorWordsPanel"),
 
   wordModal:      document.getElementById("wordModal"),

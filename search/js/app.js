@@ -51,9 +51,9 @@ class QuranApp {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.json();
         }),
-        fetch('data/surah.json').then(r => r.json()),
-        fetch('data/word_roots.json').then(r => r.json()),
-        fetch('data/root_vocab.json').then(r => r.json()),
+        fetch('data/surah.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+        fetch('data/word_roots.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+        fetch('data/root_vocab.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
       ]);
 
       this.ayaat     = ayaatData;
