@@ -94,13 +94,11 @@
     <p id="loading-text">Loading Quran data…</p>
   </div>
 
-  <!-- ── Results area: two-column side-by-side ─────────────────────────────── -->
+  <!-- ── Results area ──────────────────────────────────────────────────────── -->
   <div class="results-layout" id="results-layout" hidden>
 
-    <!-- ── Left column: Scholar answer + filters ─────────────────────────── -->
-    <div class="answer-col">
-
-      <!-- Compact filter bar -->
+    <!-- Sticky toolbar: count + filters -->
+    <div class="results-toolbar">
       <div class="filter-bar-inline" id="filter-bar" hidden>
         <span id="results-count" class="results-count"></span>
         <div class="filter-controls-inline">
@@ -118,46 +116,53 @@
           <button id="clear-filters" class="clear-btn">✕</button>
         </div>
       </div>
+    </div>
 
-      <!-- Search metadata (hidden but kept for JS compatibility) -->
+    <!-- Full-width meta panels (concept bridge, summary, topic cards) -->
+    <div class="meta-strip">
       <div class="concept-bridge" id="concept-bridge" hidden></div>
       <div class="search-summary"  id="search-summary"  hidden></div>
       <div class="answer-panel"    id="answer-panel"    hidden></div>
-      <div class="pipeline-info"   id="pipeline-info"   hidden></div>
-      <div class="sidebar-roots"   id="sidebar-roots"   hidden>
-        <div class="root-cards-list" id="root-cards-list"></div>
-      </div>
+    </div>
 
-      <!-- Knowledge Synthesis / Scholar Answer -->
+    <!-- Hidden JS-compatibility panels -->
+    <div class="pipeline-info" id="pipeline-info" hidden></div>
+    <div class="sidebar-roots" id="sidebar-roots" hidden>
+      <div class="root-cards-list" id="root-cards-list"></div>
+    </div>
+
+    <!-- Main: synthesis sidebar (when active) + verse cards -->
+    <div class="main-content-area">
+
+      <!-- Knowledge Synthesis — sticky left panel when visible -->
       <div id="synthesis-panel" class="synthesis-panel" hidden></div>
 
-    </div><!-- end .answer-col -->
+      <!-- Verse cards + load more + hadith -->
+      <main id="results-section" hidden>
+        <div class="results-grid" id="results-grid"></div>
 
-    <!-- ── Right column: verse cards ─────────────────────────────────────── -->
-    <main class="verses-col" id="results-section" hidden>
-
-      <div class="results-grid" id="results-grid"></div>
-
-      <div class="load-more-wrapper" id="load-more-wrapper" hidden>
-        <button class="load-more-btn" id="load-more-btn">Load more ayaat</button>
-      </div>
-
-      <div class="no-results" id="no-results" hidden>
-        <p class="no-results-title">No ayaat matched your query.</p>
-        <p class="no-results-hint">Try rephrasing — the engine searches Arabic roots across all 6,236 ayaat.</p>
-      </div>
-
-      <!-- ── Hadith results (below verse cards, same column) ──────────────── -->
-      <div id="hadith-col" hidden>
-        <div class="hadith-section-header">
-          <span class="col-icon">📜</span>
-          <span class="col-title">Related Hadith</span>
-          <span class="col-count" id="hadith-count"></span>
+        <div class="load-more-wrapper" id="load-more-wrapper" hidden>
+          <button class="load-more-btn" id="load-more-btn">Load more ayaat</button>
         </div>
-        <div class="hadith-grid" id="hadith-grid"></div>
-      </div>
 
-    </main><!-- end .verses-col -->
+        <div class="no-results" id="no-results" hidden>
+          <p class="no-results-title">No ayaat matched your query.</p>
+          <p class="no-results-hint">Try rephrasing — the engine searches Arabic roots across all 6,236 ayaat.</p>
+        </div>
+
+        <!-- Hadith results (below verse cards) -->
+        <div id="hadith-col" hidden>
+          <div class="hadith-section-header">
+            <span class="col-icon">📜</span>
+            <span class="col-title">Related Hadith</span>
+            <span class="col-count" id="hadith-count"></span>
+          </div>
+          <div class="hadith-grid" id="hadith-grid"></div>
+        </div>
+
+      </main><!-- end #results-section -->
+
+    </div><!-- end .main-content-area -->
 
   </div><!-- end .results-layout -->
 
