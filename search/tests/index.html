@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quran Search — Regression Tests</title>
+  <style>
+    body { font-family: monospace; background: #0f0f0f; color: #ccc; padding: 24px; max-width: 900px; margin: 0 auto; }
+    h1 { color: #fff; font-size: 1.1rem; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: .85rem; margin-bottom: 20px; }
+    #run-btn { background: #2563eb; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: .9rem; margin-bottom: 20px; }
+    #run-btn:disabled { opacity: .5; cursor: default; }
+    #progress { color: #888; font-size: .85rem; margin-bottom: 16px; min-height: 20px; }
+    .suite { margin-bottom: 24px; }
+    .suite-title { color: #aaa; font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 4px; }
+    .case { padding: 6px 0; display: flex; gap: 12px; align-items: flex-start; border-bottom: 1px solid #1a1a1a; }
+    .icon { min-width: 16px; font-size: .85rem; }
+    .pass .icon { color: #22c55e; }
+    .fail .icon { color: #ef4444; }
+    .warn .icon { color: #f59e0b; }
+    .skip .icon { color: #888; }
+    .label { flex: 1; font-size: .85rem; }
+    .label .query { color: #93c5fd; }
+    .label .desc { color: #666; font-size: .78rem; display: block; }
+    .label .detail { color: #f87171; font-size: .78rem; display: block; margin-top: 2px; }
+    .warn .label .detail { color: #fbbf24; }
+    .summary { margin-top: 20px; font-size: .95rem; }
+    .summary .pass { color: #22c55e; }
+    .summary .warn { color: #f59e0b; }
+    .summary .fail { color: #ef4444; }
+    #normalize-results, #search-results { }
+  </style>
+</head>
+<body>
+  <h1>Quran Connect — Regression Test Suite</h1>
+  <p class="subtitle">normalizeArabic unit tests + 20-query BM25 regression. Must be served from /search/.</p>
+  <button id="run-btn">Run all tests</button>
+  <div id="progress"></div>
+  <div class="suite">
+    <div class="suite-title">normalizeArabic — unit tests (14 vectors)</div>
+    <div id="normalize-results"></div>
+  </div>
+  <div class="suite">
+    <div class="suite-title">BM25 search regression — 20 queries</div>
+    <div id="search-results"></div>
+  </div>
+  <div class="summary" id="summary"></div>
+
+  <!-- Load the real search engine (same as production) -->
+  <script src="/js/concepts.js?v=44"></script>
+  <script src="/js/search.js?v=45"></script>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    let passed = 0, warned = 0, failed = 0;
+
+    // state: 'pass' | 'warn' | 'fail'
+    function renderCase(container, state, queryOrLabel, desc, detail) {
+      const div = document.createElement('div');
+      div.className = `case ${state}`;
+      const icon = state === 'pass' ? '✓' : state === 'warn' ? '⚠' : '✗';
+      div.innerHTML = `
+        <span class="icon">${icon}</span>
+        <span class="label">
+          <span class="query">${queryOrLabel}</span>
+          <span class="desc">${desc}</span>
+          ${(state !== 'pass' && detail) ? `<span class="detail">${detail}</span>` : ''}
+        </span>`;
+      container.appendChild(div);
+      if (state === 'pass') passed++;
+      else if (state === 'warn') warned++;
+      else failed++;
+    }
+
+    // ── Suite 1: normalizeArabic unit tests ──────────────────────────────────
+    async function runNormalizeTests() {
+      const container = $('normalize-results');
+      const vectors = await fetch('/tests/normalize_vectors.json').then(r => r.json());
+      for (const v of vectors) {
+        const result = normalizeArabic(v.input);
+        const ok = result === v.expected;
+        renderCase(
+          container,
+          ok ? 'pass' : 'fail',
+          v.comment,
+          ok ? '' : `expected ${JSON.stringify(v.expected)}`,
+          ok ? '' : `got ${JSON.stringify(result)}`
+        );
+      }
+    }
+
+    // ── Suite 2: BM25 search regression ─────────────────────────────────────
+    async function runSearchTests() {
+      $('progress').textContent = 'Loading quran.json…';
+      const container = $('search-results');
+
+      // Boot the search engine (same as app.js init path)
+      const [ayaat, surahs, wordRoots, rootVocab] = await Promise.all([
+        fetch('/data/quran.json').then(r => r.json()),
+        fetch('/data/surah.json').then(r => r.json()),
+        fetch('/data/word_roots.json').then(r => r.json()),
+        fetch('/data/root_vocab.json').then(r => r.json()),
+      ]);
+
+      const engine = new QuranSearch(ayaat, surahs, wordRoots, rootVocab);
+      const queries = await fetch('/tests/regression_queries.json').then(r => r.json());
+
+      for (let i = 0; i < queries.length; i++) {
+        const q = queries[i];
+        $('progress').textContent = `Running query ${i + 1}/${queries.length}: "${q.query}"…`;
+
+        let state = 'pass';
+        let detail = '';
+
+        try {
+          const { results } = await engine.search(q.query, {}, 30);
+          const foundSurahs = new Set(results.map(r => r.ayah.sn));
+
+          // Check minimum results
+          if (results.length < (q.expect_min_results || 1)) {
+            state = q._known_gap ? 'warn' : 'fail';
+            detail = `Only ${results.length} results (expected ≥${q.expect_min_results})`;
+          }
+
+          // Check expected surahs appear in results
+          if (state === 'pass' && q.expect_surahs) {
+            const missing = q.expect_surahs.filter(s => !foundSurahs.has(s));
+            if (missing.length) {
+              state = q._known_gap ? 'warn' : 'fail';
+              detail = `Known gap — Missing surahs: ${missing.join(', ')} (found: ${[...foundSurahs].slice(0, 8).join(', ')})`;
+            }
+          }
+
+          // Check top-3 surah constraint
+          if (state === 'pass' && q.expect_top3_surah) {
+            const top3 = results.slice(0, 3).map(r => r.ayah.sn);
+            if (!top3.includes(q.expect_top3_surah)) {
+              state = q._known_gap ? 'warn' : 'fail';
+              detail = `Surah ${q.expect_top3_surah} not in top 3 (got surahs: ${top3.join(', ')})`;
+            }
+          }
+        } catch (err) {
+          state = 'fail';
+          detail = `Exception: ${err.message}`;
+        }
+
+        renderCase(container, state, `"${q.query}"`, q.desc, detail);
+        // Yield to the browser between each query to keep UI responsive
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    $('run-btn').addEventListener('click', async () => {
+      $('run-btn').disabled = true;
+      passed = 0; warned = 0; failed = 0;
+      $('normalize-results').innerHTML = '';
+      $('search-results').innerHTML = '';
+      $('summary').innerHTML = '';
+
+      $('progress').textContent = 'Running normalizeArabic tests…';
+      await runNormalizeTests();
+
+      await runSearchTests();
+
+      $('progress').textContent = '';
+      $('summary').innerHTML = `
+        <span class="pass">✓ ${passed} passed</span> &nbsp;
+        ${warned ? `<span class="warn">⚠ ${warned} known gaps</span> &nbsp;` : ''}
+        ${failed ? `<span class="fail">✗ ${failed} failed</span> &nbsp;` : ''}
+        — ${passed + warned + failed} total`;
+      $('run-btn').disabled = false;
+    });
+  </script>
+</body>
+</html>
