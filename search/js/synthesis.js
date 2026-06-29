@@ -95,7 +95,7 @@ Object.assign(QuranApp.prototype, {
     return groups;
   },
 
-  async _startSynthesis(query, results, subtopics, gen) {
+  async _startSynthesis(query, results, subtopics, gen, signal) {
     if (this._synthesisGen === gen) return;
     this._synthesisGen = gen;
     try {
@@ -130,6 +130,7 @@ Object.assign(QuranApp.prototype, {
             groupNames,
             groupVerses,
           }),
+          signal,
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 28000)),
       ]);

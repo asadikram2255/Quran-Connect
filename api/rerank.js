@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  if (!HF_TOKEN) return res.status(500).json({ error: 'Missing env var: HF_TOKEN' });
+  if (!HF_TOKEN) return res.status(200).json({ scores: [], error: 'Missing env var: HF_TOKEN' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -70,6 +70,6 @@ export default async function handler(req, res) {
 
   } catch (e) {
     console.error('Rerank error:', e);
-    return res.status(500).json({ error: e.message || String(e) });
+    return res.status(200).json({ scores: [], error: e.message || String(e) });
   }
 }

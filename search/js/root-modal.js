@@ -55,13 +55,15 @@ Object.assign(QuranApp.prototype, {
       renderBatch(0);
     });
 
+    const onKey = e => { if (e.key === 'Escape') close(); };
     const close = () => {
       overlay.hidden = true;
       document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKey);
     };
     document.getElementById('root-modal-close').onclick = close;
     overlay.onclick = e => { if (e.target === overlay) close(); };
-    document.onkeydown = e => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
   },
 
 });

@@ -4,16 +4,6 @@
 
 const PAGE_SIZE = 20;
 
-// ── Optional AI reranking ─────────────────────────────────────────────────────
-// Active only on Vercel deployments where /api/rerank is a real serverless function.
-// Returns '' on GitHub Pages / local dev so that _rerank() is never called,
-// avoiding 404 hangs. To enable on a custom domain, replace the condition below
-// with: return '/api/rerank';
-const RERANK_ENDPOINT = (() => {
-  const h = window.location.hostname;
-  if (h.endsWith('vercel.app') || h.endsWith('.vercel.app')) return '/api/rerank';
-  return '';
-})();
 
 class QuranApp {
   constructor() {
@@ -35,7 +25,6 @@ class QuranApp {
     this._flatIdx        = 0;      // current position in _flatResults during pagination
     this._renderedCount  = 0;      // number of result cards rendered so far
     this._rootToLabel    = null;   // lazy cache: root → { ar, en }
-    this._rerankActive   = false;  // true when AI reranker improved this result set (#7)
     this._topScore       = 1;      // highest raw score in current result set (#2)
   }
 
@@ -293,9 +282,11 @@ class QuranApp {
                           : wordCount <= 3 ? 120
                           : 200;
 
-      // Abort any in-flight semantic search from a previous query
+      // Abort any in-flight requests from a previous query
       if (this._semanticAbort) this._semanticAbort.abort();
       this._semanticAbort = new AbortController();
+      if (this._synthesisAbort) this._synthesisAbort.abort();
+      this._synthesisAbort = new AbortController();
 
       // Fire semantic search in parallel — results arrive later and silently update
       const semanticPromise = this._semanticSearch(query, this._semanticAbort.signal);
@@ -402,7 +393,7 @@ class QuranApp {
       const isCategoryQ = this._isCategoryQuery(query);
       if (!isIdQuery && this._allResults.length > 0) {
         if (!isCategoryQ) this._renderSynthesisLoading(query, subtopics);
-        this._startSynthesis(query, this._allResults, subtopics, myGen);
+        this._startSynthesis(query, this._allResults, subtopics, myGen, this._synthesisAbort.signal);
       }
 
       // When semantic results arrive, merge with LLM-enhanced base and re-render
@@ -676,16 +667,11 @@ class QuranApp {
       ? `Found in <strong>${totalMatched}</strong> ayaat across the Quran (showing top ${displayCount})`
       : `Found in <strong>${displayCount}</strong> ayaat across the Quran`;
 
-    const rerankBadge = this._rerankActive
-      ? `<span class="cb-ai-badge" title="Results re-ordered by AI cross-encoder">✦ AI-enhanced</span>`
-      : '';
-
     el.innerHTML = `
       <div class="cb-row">
         <span class="cb-label">You searched</span>
         <span class="cb-query">${this._esc(query)}</span>
         <span class="cb-confidence ${confidence}">${confidenceLabel}</span>
-        ${rerankBadge}
       </div>
       ${conceptsHtml ? `
       <div class="cb-row">
@@ -1491,14 +1477,17 @@ class QuranApp {
   async _fetchLlmSuggestions(q) {
     if (q === this._sgLastQuery) return;
     this._sgLastQuery = q;
+    if (this._suggestAbort) this._suggestAbort.abort();
+    this._suggestAbort = new AbortController();
     try {
       const res = await Promise.race([
         fetch('/api/expand', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: q, mode: 'suggest' }),
+          signal: this._suggestAbort.signal,
         }),
-        new Promise((_, rej) => setTimeout(() => rej(), 3500)),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3500)),
       ]);
       if (!res.ok) return;
       const data = await res.json();
@@ -1646,41 +1635,6 @@ class QuranApp {
   }
 
   // [Hadith panel moved to hadith-panel.js]
-
-  // ── #7 AI reranking (optional — only when RERANK_ENDPOINT is set) ────────
-
-  async _rerank(query, results) {
-    const TIMEOUT_MS = 4000;
-    const top50 = results.slice(0, 50);
-    const passages = top50.map(r => [r.ayah.en, r.ayah.t1, r.ayah.t2, r.ayah.t3]
-      .filter(Boolean)[0] || r.ayah.ar || '');
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    const res = await fetch(RERANK_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, passages }),
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    if (!res.ok) throw new Error(`Rerank API ${res.status}`);
-    const { scores } = await res.json();
-
-    if (!Array.isArray(scores) || scores.length !== top50.length) {
-      throw new Error('Unexpected rerank response shape');
-    }
-
-    // Merge rerank scores into result objects, sort top-50 by rerank score
-    const reranked = top50
-      .map((r, i) => ({ ...r, _rerankScore: scores[i] }))
-      .sort((a, b) => b._rerankScore - a._rerankScore);
-
-    // Append remaining results (below top-50) unchanged after reranked
-    return [...reranked, ...results.slice(50)];
-  }
 
   // ── Text helpers ─────────────────────────────────────────────────────────
 
