@@ -719,6 +719,12 @@ mark {
 .hadith-placeholder-icon { font-size: 2rem; }
 .hadith-placeholder p    { font-size: .85rem; line-height: 1.6; max-width: 240px; }
 
+.hadith-lang-note {
+  padding: 20px 0;
+  color: var(--text-ter);
+  font-size: .82rem;
+  text-align: center;
+}
 .hadith-loading {
   display: flex;
   align-items: center;

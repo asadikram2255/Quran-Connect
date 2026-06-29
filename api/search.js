@@ -163,11 +163,11 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
-  if (!HF_TOKEN) return res.status(500).json({ error: "Missing env var: HF_TOKEN" });
+  if (!HF_TOKEN) return res.status(200).json({ results: [], error: "Missing env var: HF_TOKEN" });
 
   // Pre-flight: make sure embeddings are loadable
   try { loadEmbeddings(); } catch (e) {
-    return res.status(500).json({ error: "Embedding load failed: " + e.message, embDir: EMB_DIR });
+    return res.status(200).json({ results: [], error: "Embedding load failed: " + e.message });
   }
 
   let body = req.body;

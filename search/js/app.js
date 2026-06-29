@@ -48,14 +48,20 @@ class QuranApp {
     try {
       this._setLoading('Loading Quran data…');
 
-      const [ayaatData, surahData, wordRootsData, rootVocabData] = await Promise.all([
-        fetch('data/quran.json').then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        }),
-        fetch('data/surah.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-        fetch('data/word_roots.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-        fetch('data/root_vocab.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+      const loadTimeout = new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('timeout')), 15000)
+      );
+      const [ayaatData, surahData, wordRootsData, rootVocabData] = await Promise.race([
+        Promise.all([
+          fetch('data/quran.json').then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status} loading quran.json`);
+            return r.json();
+          }),
+          fetch('data/surah.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading surah.json`); return r.json(); }),
+          fetch('data/word_roots.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading word_roots.json`); return r.json(); }),
+          fetch('data/root_vocab.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading root_vocab.json`); return r.json(); }),
+        ]),
+        loadTimeout,
       ]);
 
       this.ayaat     = ayaatData;
@@ -75,7 +81,10 @@ class QuranApp {
 
     } catch (err) {
       console.error(err);
-      this._setLoading(`Error: ${err.message} — Make sure you have run scripts/build_data.py first.`, true);
+      const msg = err.message === 'timeout'
+        ? 'Quran data took too long to load — please check your connection and refresh.'
+        : `Failed to load search data (${err.message}). Please refresh the page.`;
+      this._setLoading(msg, true);
     }
   }
 
@@ -284,8 +293,12 @@ class QuranApp {
                           : wordCount <= 3 ? 120
                           : 200;
 
+      // Abort any in-flight semantic search from a previous query
+      if (this._semanticAbort) this._semanticAbort.abort();
+      this._semanticAbort = new AbortController();
+
       // Fire semantic search in parallel — results arrive later and silently update
-      const semanticPromise = this._semanticSearch(query);
+      const semanticPromise = this._semanticSearch(query, this._semanticAbort.signal);
 
       // Mutable metadata — updated in two phases (fast sync, then LLM-enhanced)
       let arabicQuery = '', extractedRoots = [], exactCount = 0, totalMatched = 0, subtopics = [];
@@ -317,7 +330,7 @@ class QuranApp {
             this._renderAnswerPanel(query, parsed, vocabRoots);
           }
 
-          this._runHadithSearch(parsed.keywords);
+          this._runHadithSearch(parsed.keywords, query);
         }
 
         this._renderPage(false);
@@ -1439,13 +1452,14 @@ class QuranApp {
 
   // ── Semantic search via /api/search (HuggingFace multilingual embeddings) ──
   // Returns top-N results mapped to the same format as BM25 results, or null on failure.
-  async _semanticSearch(query) {
+  async _semanticSearch(query, signal) {
     try {
       const res = await Promise.race([
         fetch('/api/search', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ query }),
+          signal,
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000)),
       ]);
