@@ -21,6 +21,7 @@ Outputs (to search/data/):
     search/data/root_vocab.json   — root → word frequency list
 """
 
+import argparse
 import pandas as pd
 import json
 import os
@@ -49,9 +50,16 @@ def normalize_arabic(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+def _parse_args():
+    p = argparse.ArgumentParser(description="Rebuild Quran search data from raw CSV sources.")
+    p.add_argument("--input-dir",  default=None, help="Directory containing raw CSV files (default: <repo-root>/raw)")
+    p.add_argument("--output-dir", default=None, help="Directory for output JSON files (default: <repo-root>/search/data)")
+    return p.parse_args()
+
+_args = _parse_args()
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATASET_DIR = os.path.join(ROOT, "raw")          # raw CSV source files
-OUTPUT_DIR = os.path.join(ROOT, "search", "data") # outputs to search/data/
+DATASET_DIR = _args.input_dir  or os.path.join(ROOT, "raw")
+OUTPUT_DIR  = _args.output_dir or os.path.join(ROOT, "search", "data")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

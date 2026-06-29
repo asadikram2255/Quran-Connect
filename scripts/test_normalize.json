@@ -1,0 +1,72 @@
+[
+  {
+    "comment": "Basic tashkeel strip (fatha, kasra, damma)",
+    "input":    "رَحِيمٌ",
+    "expected": "رحيم"
+  },
+  {
+    "comment": "Superscript alef (U+0670) → regular alef BEFORE diacritic strip",
+    "input":    "مُنَٰفِق",
+    "expected": "منافق"
+  },
+  {
+    "comment": "Alef with hamza above (أ) → plain alef",
+    "input":    "أَكْبَر",
+    "expected": "اكبر"
+  },
+  {
+    "comment": "Alef with hamza below (إ) → plain alef",
+    "input":    "إِيمَان",
+    "expected": "ايمان"
+  },
+  {
+    "comment": "Alef with madda (آ) → plain alef",
+    "input":    "آيَة",
+    "expected": "ايه"
+  },
+  {
+    "comment": "Alef wasla (ٱ) → plain alef",
+    "input":    "ٱللَّهُ",
+    "expected": "الله"
+  },
+  {
+    "comment": "Standalone hamza (ء) is removed",
+    "input":    "شَيْءٍ",
+    "expected": "شي"
+  },
+  {
+    "comment": "Alef maqsura (ى) → ya (ي)",
+    "input":    "عَلَى",
+    "expected": "علي"
+  },
+  {
+    "comment": "Ta marbuta (ة) → ha (ه)",
+    "input":    "رَحْمَةً",
+    "expected": "رحمه"
+  },
+  {
+    "comment": "Shadda (ّ) stripped",
+    "input":    "رَبُّ",
+    "expected": "رب"
+  },
+  {
+    "comment": "Multiple spaces collapsed to single space",
+    "input":    "بِسْمِ  اللَّهِ",
+    "expected": "بسم الله"
+  },
+  {
+    "comment": "Sukun (ْ) stripped",
+    "input":    "قُلْ",
+    "expected": "قل"
+  },
+  {
+    "comment": "Full Basmala normalization",
+    "input":    "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+    "expected": "بسم الله الرحمان الرحيم"
+  },
+  {
+    "comment": "Empty string passthrough",
+    "input":    "",
+    "expected": ""
+  }
+]

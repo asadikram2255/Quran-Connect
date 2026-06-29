@@ -817,6 +817,14 @@ mark {
   font-size: .78rem; color: var(--text-ter);
   display: flex; flex-direction: column; gap: 6px;
 }
+.footer-privacy {
+  font-size: .72rem;
+  color: var(--text-ter);
+  opacity: .7;
+  max-width: 560px;
+  margin: 2px auto 0;
+  line-height: 1.6;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE

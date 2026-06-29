@@ -4,13 +4,15 @@
 
 const PAGE_SIZE = 20;
 
-// ── Optional AI reranking (improvement #7) ───────────────────────────────────
-// Enabled only on Vercel deployments where /api/rerank is a real serverless function.
-// Disabled for static servers (GitHub Pages, npx serve, etc.) to avoid 404 hangs.
+// ── Optional AI reranking ─────────────────────────────────────────────────────
+// Active only on Vercel deployments where /api/rerank is a real serverless function.
+// Returns '' on GitHub Pages / local dev so that _rerank() is never called,
+// avoiding 404 hangs. To enable on a custom domain, replace the condition below
+// with: return '/api/rerank';
 const RERANK_ENDPOINT = (() => {
   const h = window.location.hostname;
-  if (h.endsWith('vercel.app')) return '/api/rerank';
-  return '';   // disabled on static hosts — enable by setting to your Vercel URL
+  if (h.endsWith('vercel.app') || h.endsWith('.vercel.app')) return '/api/rerank';
+  return '';
 })();
 
 class QuranApp {
@@ -401,8 +403,20 @@ class QuranApp {
       }).catch(() => {});
 
     } catch (err) {
-      console.error(err);
-      if (this._searchGen === myGen) this._hideProgress();
+      if (this._searchGen !== myGen) return;
+      this._hideProgress();
+      // Surface a meaningful error rather than a silent spinner
+      const msg = err.name === 'AbortError'  ? 'Search timed out — please try again.'
+                : !navigator.onLine          ? 'You appear to be offline.'
+                : err.message?.includes('500') ? 'Search service error — try again in a moment.'
+                : `Search failed: ${err.message || err}`;
+      console.error('[search]', err);
+      const grid = document.getElementById('results-grid');
+      if (grid) {
+        grid.innerHTML = `<p style="padding:32px;color:var(--text-sec);font-size:.9rem;">${msg}</p>`;
+        document.getElementById('results-section').hidden = false;
+        document.getElementById('results-layout').removeAttribute('hidden');
+      }
     }
   }
 
@@ -714,70 +728,7 @@ class QuranApp {
     section.hidden = container.children.length === 0;
   }
 
-  // ── Root modal ───────────────────────────────────────────────────────────
-
-  _openRootModal(root, label) {
-    const overlay = document.getElementById('root-modal-overlay');
-    const title   = document.getElementById('root-modal-title');
-    const body    = document.getElementById('root-modal-body');
-
-    // Count
-    const ids   = this.engine.rootIdx[root] ? [...this.engine.rootIdx[root]] : [];
-    const count = ids.length;
-    const en    = (label && label.en) ? label.en : '';
-
-    title.innerHTML = `
-      <span class="rm-root" dir="rtl" lang="ar">${this._esc(root)}</span>
-      ${en ? `<span class="rm-en">${this._esc(en)}</span>` : ''}
-      <span class="rm-count">${count} ayaat</span>`;
-
-    // Show loading then render
-    body.innerHTML = '<div class="root-modal-loading">Loading…</div>';
-    overlay.hidden = false;
-    document.body.style.overflow = 'hidden';
-
-    // Batch render to avoid freezing on high-frequency roots (500+ ayaat)
-    const BATCH = 50;
-    const sorted = ids.slice().sort((a, b) => a - b);
-
-    const renderBatch = (offset) => {
-      const batch = sorted.slice(offset, offset + BATCH);
-      for (const id of batch) {
-        const ayah = this.engine.ayaatMap[id];
-        if (!ayah) continue;
-        const card = this._buildCard({ ayah, score: 0, matchedRoots: [root], matchedKeywords: [], matchedPatterns: [] });
-        body.appendChild(card);
-      }
-      const remaining = sorted.length - (offset + BATCH);
-      const btn = body.querySelector('.rm-load-more');
-      if (btn) btn.remove();
-      if (remaining > 0) {
-        const more = document.createElement('button');
-        more.className = 'rm-load-more';
-        more.textContent = `Load ${Math.min(remaining, BATCH)} more of ${remaining} remaining`;
-        more.addEventListener('click', () => renderBatch(offset + BATCH));
-        body.appendChild(more);
-      }
-    };
-
-    requestAnimationFrame(() => {
-      body.innerHTML = '';
-      if (!sorted.length) {
-        body.innerHTML = '<div class="root-modal-loading">No ayaat found.</div>';
-        return;
-      }
-      renderBatch(0);
-    });
-
-    // Close handlers
-    const close = () => {
-      overlay.hidden = true;
-      document.body.style.overflow = '';
-    };
-    document.getElementById('root-modal-close').onclick = close;
-    overlay.onclick = e => { if (e.target === overlay) close(); };
-    document.onkeydown = e => { if (e.key === 'Escape') close(); };
-  }
+  // [Root modal moved to root-modal.js]
 
   // ── Summary paragraph ────────────────────────────────────────────────────
 
@@ -1169,49 +1120,13 @@ class QuranApp {
     return card;
   }
 
-  // ── Knowledge Synthesis Panel ─────────────────────────────────────────────
+  // [Synthesis panel methods moved to synthesis.js — see search/js/synthesis.js]
 
-  _hideSynthesisPanel() {
-    const p = document.getElementById('synthesis-panel');
-    if (p) { p.hidden = true; p.innerHTML = ''; }
-  }
+  // [Root modal moved to root-modal.js — see search/js/root-modal.js]
 
-  _renderSynthesisLoading(query, subtopics) {
-    const p = document.getElementById('synthesis-panel');
-    if (!p) return;
-    const subtopicChips = (subtopics || []).map(s =>
-      `<span class="syn-chip">${this._esc(s.name)}</span>`
-    ).join('');
-    p.innerHTML = `
-      <div class="syn-loading">
-        <div class="syn-spinner"></div>
-        <div class="syn-loading-text">
-          <span>Synthesising Quranic knowledge on <strong>${this._esc(query)}</strong></span>
-          ${subtopicChips ? `<div class="syn-chip-row">${subtopicChips}</div>` : ''}
-        </div>
-      </div>`;
-    p.hidden = false;
-  }
+  // [Hadith panel moved to hadith-panel.js — see search/js/hadith-panel.js]
 
-  // Returns true if the query is asking for an exhaustive list/enumeration
-  _isCategoryQuery(q) {
-    return /\b(list|all|every|each|types? of|categories|enumerate|how many|what are the|mention(ed)?|named)\b/i.test(q);
-  }
-
-  // Detects which curated catalog best matches the query topic.
-  // Returns one of: 'prophets' | 'haram_foods' | 'jannah' | 'jahannam' |
-  //                 'major_sins' | 'divine_names' | 'worship' | 'people_groups'
-  _detectCatalogType(q) {
-    const l = q.toLowerCase();
-    if (/\b(prophet|messenger|nabi|rasul|anbiya|apostle|25 prophet)\b/.test(l))                                     return 'prophets';
-    if (/\b(haram|forbidden|prohibited|impermissible).{0,30}(food|eat|drink|diet)\b|(food|drink|eat).{0,30}(haram|forbidden|prohibited)\b|\bdietary\b/.test(l)) return 'haram_foods';
-    if (/\b(jannah|paradise|firdaus|heaven(?!ly fire)|rivers? of paradise|features? of paradise|description.? of paradise)\b/.test(l)) return 'jannah';
-    if (/\b(jahannam|hellfire|hell fire|levels? of hell|gates? of (hell|jahannam)|punishment.{0,20}(hell|fire)|description.? of hell)\b/.test(l)) return 'jahannam';
-    if (/\b(major sins?|grave sins?|kaba.ir|biggest sins?|worst sins?|list.{0,10}sins?)\b/.test(l))                return 'major_sins';
-    if (/\b(asma.?ul.?husna|names? of allah|attributes? of allah|divine names?|99 names?|beautiful names? of allah)\b/.test(l)) return 'divine_names';
-    if (/\b(acts? of worship|ibadat|pillars? of islam|obligations? in islam|forms? of worship)\b/.test(l))          return 'worship';
-    return 'people_groups';
-  }
+  // ── Curated topic catalogs (methods that use these are in synthesis.js) ──────
 
   // prettier-ignore
   static QURAN_PEOPLE_GROUPS = [
@@ -1409,252 +1324,10 @@ class QuranApp {
     { name: '\'Itikaf and Night Prayer — Qiyam al-Layl',    query: 'night prayer qiyam tahajjud stand portion night gift' },
   ];
 
-  // Picks the right curated catalog for a given query type.
-  _getCatalog(type) {
-    switch (type) {
-      case 'prophets':     return QuranApp.QURAN_PROPHETS;
-      case 'haram_foods':  return QuranApp.QURAN_HARAM_FOODS;
-      case 'jannah':       return QuranApp.QURAN_JANNAH_FEATURES;
-      case 'jahannam':     return QuranApp.QURAN_JAHANNAM_FEATURES;
-      case 'major_sins':   return QuranApp.QURAN_MAJOR_SINS;
-      case 'divine_names': return QuranApp.QURAN_DIVINE_NAMES;
-      case 'worship':      return QuranApp.QURAN_WORSHIP_ACTS;
-      default:             return QuranApp.QURAN_PEOPLE_GROUPS;
-    }
-  }
 
-  // For category queries: search the database for each item in the chosen catalog
-  // and return their top verses. 100% grounded — content from quran.json only.
-  async _gatherCategoryVerses(catalog) {
-    const seen = new Set();
-    const pool = [];
-    for (const item of catalog) {
-      try {
-        const { results } = await this.engine.search(item.query, {}, 6);
-        for (const r of results) {
-          if (!seen.has(r.ayah.id)) {
-            seen.add(r.ayah.id);
-            pool.push(r);
-          }
-        }
-      } catch (_) { /* skip failed item */ }
-    }
-    return pool;
-  }
 
-  // Returns [{name, results:[], verses:[{ref,text}]}]
-  // results = raw ayah result objects (for card rendering)
-  // verses  = compact {ref,text} for synthesis API (first 2 per group)
-  async _gatherGroupedVerses(catalog) {
-    const groups = [];
-    for (const item of catalog) {
-      try {
-        const { results } = await this.engine.search(item.query, {}, 8);
-        const verses = results.slice(0, 2).map(r => ({
-          ref:  `${r.ayah.sn}:${r.ayah.an}`,
-          text: (r.ayah.en || r.ayah.t1 || '').slice(0, 90),
-        }));
-        groups.push({ name: item.name, results, verses });
-      } catch (_) {
-        groups.push({ name: item.name, results: [], verses: [] });
-      }
-    }
-    return groups;
-  }
 
-  async _startSynthesis(query, results, subtopics, gen) {
-    // Prevent double-firing: if synthesis already in flight for this gen, skip
-    if (this._synthesisGen === gen) return;
-    this._synthesisGen = gen;
-    try {
-      // For "list all / every / categories" queries: gather targeted verses
-      // per catalog item from the actual database instead of using generic results
-      let versePool = results;
-      let groupNames = [];
-      let groupVerses = null; // structured: [{name, verses:[{ref,text}]}]
 
-      if (this._isCategoryQuery(query)) {
-        const catalogType = this._detectCatalogType(query);
-        const catalog     = this._getCatalog(catalogType);
-        groupVerses = await this._gatherGroupedVerses(catalog);
-        if (this._searchGen !== gen) return; // aborted
-        groupNames = catalog.map(g => g.name);
-        const totalVerses = groupVerses.reduce((n, g) => n + g.verses.length, 0);
-        // Render grouped verse sections in the results area
-        this._renderGroupedCategoryResults(groupVerses, gen);
-      }
-
-      // Category queries: grouped view already rendered — no prose synthesis needed
-      if (groupVerses) return;
-
-      // Non-category queries: flat verse list → prose synthesis
-      const verses = versePool.slice(0, 15).map(r => ({
-        ref:  `${r.ayah.sn}:${r.ayah.an}`,
-        text: (r.ayah.en || r.ayah.t1 || '').slice(0, 100),
-      }));
-
-      const resp = await Promise.race([
-        fetch('/api/synthesize', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            query,
-            verses,
-            subtopics: subtopics.map(s => s.name),
-            groupNames,
-            groupVerses, // null for non-category; structured for category
-          }),
-        }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 28000)),
-      ]);
-      if (this._searchGen !== gen) return;
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      if (this._searchGen !== gen) return;
-      this._renderSynthesisPanel(data, results);
-    } catch (e) {
-      console.error('[QC synthesize] error:', e.message);
-      if (this._searchGen === gen) {
-        // Show visible error instead of silently vanishing
-        const p = document.getElementById('synthesis-panel');
-        if (p) {
-          const isRateLimit = e.message.includes('429') || e.message.includes('rate') || e.message.includes('Rate');
-          p.innerHTML = `<div class="syn-error">${isRateLimit
-            ? '⏳ Knowledge synthesis is rate-limited — please wait a moment and search again.'
-            : '⚠️ Knowledge synthesis unavailable right now.'
-          }</div>`;
-          p.hidden = false;
-          setTimeout(() => { if (p) p.hidden = true; }, 6000);
-        }
-      }
-    }
-  }
-
-  _renderGroupedCategoryResults(groupVerses, gen) {
-    if (this._searchGen !== gen) return;
-    const grid = document.getElementById('results-grid');
-    if (!grid) return;
-
-    grid.innerHTML = '';
-    const container = document.createElement('div');
-    container.className = 'category-groups-view';
-
-    for (const group of groupVerses) {
-      if (!group.results || !group.results.length) continue;
-
-      const section = document.createElement('div');
-      section.className = 'category-group';
-
-      // Header row
-      const header = document.createElement('div');
-      header.className = 'category-group-header';
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'category-group-name';
-      nameSpan.textContent = group.name;
-
-      const searchBtn = document.createElement('button');
-      searchBtn.className = 'category-search-btn';
-      searchBtn.textContent = 'Search all ›';
-      const shortName = group.name.split('—')[0].trim();
-      searchBtn.addEventListener('click', () => {
-        document.getElementById('search-input').value = shortName;
-        this.search(shortName);
-      });
-
-      header.appendChild(nameSpan);
-      header.appendChild(searchBtn);
-      section.appendChild(header);
-
-      // Verse cards
-      const versesRow = document.createElement('div');
-      versesRow.className = 'category-group-verses';
-      for (const r of group.results.slice(0, 4)) {
-        versesRow.appendChild(this._buildCard(r));
-      }
-      section.appendChild(versesRow);
-      container.appendChild(section);
-    }
-
-    grid.appendChild(container);
-  }
-
-  _renderSynthesisPanel(data, allResults) {
-    const p = document.getElementById('synthesis-panel');
-    if (!p) return;
-
-    // ── Zero-hallucination renderer ───────────────────────────────────────────
-    // The API returns { theme, groups:[{label, refs}] } — NO prose from the LLM.
-    // All verse text is pulled from this.engine.ayaatMap (authenticated local DB).
-    // The LLM cannot hallucinate text it never writes.
-
-    const groups = Array.isArray(data?.groups) ? data.groups : [];
-
-    // Graceful fallback: if API returned nothing meaningful, hide the panel
-    if (!groups.length && !data?.theme) { this._hideSynthesisPanel(); return; }
-
-    // Build a ref → card element id map for scroll-to-card behaviour
-    const refToCardId = {};
-    for (const r of (allResults || [])) {
-      const key = `${r.ayah.sn}:${r.ayah.an}`;
-      refToCardId[key] = r.ayah.id;
-    }
-
-    // Render each group: label + verse rows (arabic + translation from local DB)
-    const groupsHtml = groups.map(g => {
-      const refs = Array.isArray(g.refs) ? g.refs : [];
-      const rowsHtml = refs.map(ref => {
-        // Look up in local DB — guaranteed authentic Quranic text
-        const ayah = this.engine.ayaatMap[ref];
-        if (!ayah) return ''; // ref was validated server-side, but belt-and-suspenders
-
-        const cardId  = refToCardId[ref] || ayah.id || '';
-        const arabic  = ayah.ar  || '';
-        const english = ayah.en || ayah.t1 || ayah.t2 || ayah.t3 || '';
-
-        return `
-          <div class="syn-verse-row" data-ref="${this._esc(ref)}" data-card-id="${this._esc(cardId)}">
-            <span class="syn-verse-ref">${this._esc(ref)}</span>
-            ${arabic ? `<span class="syn-verse-arabic" dir="rtl" lang="ar">${this._esc(arabic)}</span>` : ''}
-            ${english ? `<span class="syn-verse-english">${this._esc(english)}</span>` : ''}
-          </div>`;
-      }).filter(Boolean).join('');
-
-      if (!rowsHtml) return ''; // skip empty groups after lookup
-
-      return `
-        <div class="syn-group">
-          <div class="syn-group-label">${this._esc(g.label || '')}</div>
-          <div class="syn-group-verses">${rowsHtml}</div>
-        </div>`;
-    }).filter(Boolean).join('');
-
-    p.innerHTML = `
-      <div class="syn-header">
-        <span class="syn-header-icon">🌟</span>
-        <div class="syn-header-text">
-          <span class="syn-header-title">${this._esc(data.theme || 'Quranic Knowledge')}</span>
-          <span class="syn-header-note">All text is directly from the Quran · zero AI-generated content</span>
-        </div>
-      </div>
-      ${groupsHtml || '<p class="syn-empty">No grouped results — see verses on the right.</p>'}`;
-
-    p.hidden = false;
-
-    // Click a verse row → scroll to its card on the right
-    p.onclick = (e) => {
-      const row = e.target.closest('.syn-verse-row[data-card-id]');
-      if (!row) return;
-      const cardId = row.dataset.cardId;
-      if (!cardId) return;
-      const el = document.getElementById('card-' + cardId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('syn-highlight');
-        setTimeout(() => el.classList.remove('syn-highlight'), 1800);
-      }
-    };
-  }
 
   // ── Text helpers ─────────────────────────────────────────────────────────
 
@@ -1958,41 +1631,7 @@ class QuranApp {
     } catch (_) { return []; }
   }
 
-  // ── Hadith search ─────────────────────────────────────────────────────────
-
-  async _runHadithSearch(keywords) {
-    const col  = document.getElementById('hadith-col');
-    const grid = document.getElementById('hadith-grid');
-    const countEl = document.getElementById('hadith-count');
-    if (!col || !grid) return;
-
-    if (!keywords || keywords.length === 0) { col.hidden = true; return; }
-
-    grid.innerHTML = '<div class="hadith-loading"><div class="hadith-loading-spinner"></div> Searching hadith…</div>';
-    col.hidden = false;
-
-    try {
-      await this.hadithSearch.ensureLoaded();
-    } catch (_) {
-      col.hidden = true;
-      return;
-    }
-
-    const results = this.hadithSearch.search(keywords, '', 15);
-    if (!results.length) { col.hidden = true; return; }
-
-    if (countEl) countEl.textContent = `${results.length} found`;
-
-    grid.innerHTML = results.map(h => `
-      <div class="hadith-card">
-        <div class="hadith-card-meta">
-          <span class="hadith-collection-badge">${this._esc(h.book)}</span>
-          <span class="hadith-ref">${this._esc(h.ref)}</span>
-        </div>
-        <p class="hadith-text">${this._esc(h.text.slice(0, 320))}${h.text.length > 320 ? '…' : ''}</p>
-      </div>`
-    ).join('');
-  }
+  // [Hadith panel moved to hadith-panel.js]
 
   // ── #7 AI reranking (optional — only when RERANK_ENDPOINT is set) ────────
 

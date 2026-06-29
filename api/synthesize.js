@@ -44,11 +44,11 @@ export default async function handler(req, res) {
 
   const query  = String(body?.query ?? '').trim().slice(0, 300);
   const REF_RE = /^\d{1,3}:\d{1,3}$/;
-  const verses = Array.isArray(body?.verses)
-    ? body.verses
-        .slice(0, 30)
-        .filter(v => v && typeof v.ref === 'string' && REF_RE.test(v.ref.trim()))
-    : [];
+  const rawVerses = Array.isArray(body?.verses) ? body.verses : [];
+  const truncated = rawVerses.length > 30;
+  const verses = rawVerses
+    .slice(0, 30)
+    .filter(v => v && typeof v.ref === 'string' && REF_RE.test(v.ref.trim()));
 
   if (!query || !verses.length) {
     return res.status(400).json({ error: 'Missing query or verses' });
@@ -100,9 +100,11 @@ export default async function handler(req, res) {
     })).filter(g => g.refs.length > 0);
 
     return res.status(200).json({
-      theme:     String(parsed.theme || query).slice(0, 80),
+      theme:      String(parsed.theme || query).slice(0, 80),
       groups,
-      timing_ms: Date.now() - t0,
+      timing_ms:  Date.now() - t0,
+      truncated,
+      verse_limit: 30,
     });
 
   } catch (e) {

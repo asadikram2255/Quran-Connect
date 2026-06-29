@@ -80,7 +80,7 @@ class QuranSearch {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(t => t.length > 2 && !STOP_WORDS.has(t));
+      .filter(t => t.length > 2 && !ENGLISH_STOP_WORDS.has(t));
   }
 
   _stem(tok) {
@@ -168,17 +168,28 @@ class QuranSearch {
     // For any keyword not found in the index, find the closest known word
     // (edit distance ≤ 2) so that "mersy" → "mercy", "patiance" → "patience".
     // Reuses _editDistance() from concepts.js (loaded before this file).
-    const _corrected = parsed.keywords.map(k => {
-      if (k.length < 5 || this.invIndex[k]) return k;  // short or already known
-      const maxDist = k.length >= 8 ? 2 : 1;
-      let best = k, bestDist = maxDist + 1;
+    //
+    // F2: two-pass correction — first try the raw keyword, then its stemmed form.
+    // This handles e.g. "forgiven" (stem "forgiv") → finds "forgive" in index
+    // even though the raw word isn't present.
+    const _fuzzyMatch = (candidate) => {
+      if (candidate.length < 4) return candidate;
+      if (this.invIndex[candidate]) return candidate;
+      const maxDist = candidate.length >= 8 ? 2 : 1;
+      let best = candidate, bestDist = maxDist + 1;
       for (const key of Object.keys(this.invIndex)) {
-        if (Math.abs(key.length - k.length) > maxDist) continue;
-        const d = _editDistance(k, key, maxDist);
+        if (Math.abs(key.length - candidate.length) > maxDist) continue;
+        const d = _editDistance(candidate, key, maxDist);
         if (d < bestDist) { bestDist = d; best = key; }
-        if (bestDist === 1 && maxDist === 1) break; // can't do better
+        if (bestDist === 1 && maxDist === 1) break;
       }
       return best;
+    };
+    const _corrected = parsed.keywords.map(k => {
+      if (k.length < 5 || this.invIndex[k]) return k;  // short or already known
+      const direct  = _fuzzyMatch(k);
+      if (direct !== k) return direct;          // raw form corrected — done
+      return _fuzzyMatch(this._stem(k));        // try stemmed form as fallback
     });
     const allKeywords = [...new Set([
       ...parsed.keywords, ..._corrected,
@@ -467,8 +478,10 @@ class QuranSearch {
       const hasRoots     = Array.isArray(data?.roots)     && data.roots.length > 0;
       const hasSubtopics = Array.isArray(data?.subtopics) && data.subtopics.length > 0;
       return (hasRoots || hasSubtopics) ? data : null;
-    } catch {
-      return null; // Endpoint missing (GitHub Pages) or network error — fall through
+    } catch (err) {
+      // Endpoint missing (GitHub Pages) or network error — fall through to MyMemory
+      if (err.message !== 'timeout') console.warn('[expand] fetch failed:', err.message);
+      return null;
     }
   }
 
@@ -538,6 +551,28 @@ class QuranSearch {
 
   // ── Root extraction from Arabic text ─────────────────────────────────────
 
+  /**
+   * Extract Quranic root words from a normalized Arabic string.
+   *
+   * Algorithm:
+   *   1. Normalize input (normalizeArabic — strips harakat, unifies alef variants).
+   *   2. Split into words; skip single-char particles.
+   *   3. For each word: strip common attached prefixes (ال و ف ب ك …), then strip
+   *      common suffixes (pronoun/plural endings: ها هم ون ين ات …), with a special
+   *      guard that the bare-ه strip only fires when the result is ≥ 3 chars.
+   *   4. Look each candidate up in wordRoots (built from word_roots.json).
+   *   5. Return unique roots found.
+   *
+   * Limitations:
+   *   - No morphological parser — relies on word_roots.json coverage.
+   *   - Fusional forms (verb + pronoun contracted) may not be handled.
+   *   - Arabic-only; pass pre-translated text for non-Arabic queries.
+   *
+   * NORMALIZATION CONTRACT (F1):
+   *   This function calls normalizeArabic() which MUST match normalize_arabic() in
+   *   scripts/build_search_data.py exactly. If you change either implementation,
+   *   update both and verify with the test vectors in scripts/test_normalize.json.
+   */
   _extractRootsFromArabic(arabicText) {
     const roots = [];
     const norm  = normalizeArabic(arabicText);
@@ -551,12 +586,21 @@ class QuranSearch {
     // to ه), but word_roots.json indexes the stem WITHOUT the taa marbuta.
     // e.g. تزكيه → تزكي (root ز ك و)  |  رحمه → رحم (root ر ح م)
     // We also try stripping pronoun suffixes (ها، هم، كم، نا) and plural ون/ين.
+    //
+    // F12 guard: bare ه is only stripped when the result is ≥ 3 chars, preventing
+    // false stripping of roots that end in ه (e.g. وجه, فقه, نبه → keep as-is
+    // if stripping would leave a single char).
     const _stems = stem => {
       const out = [stem];
-      const SUFFIXES = ['ها','هم','هن','كم','كن','نا','ني','هو','ون','ين','ات','وا','ه'];
+      const SUFFIXES = ['ها','هم','هن','كم','كن','نا','ني','هو','ون','ين','ات','وا'];
       for (const sfx of SUFFIXES) {
         if (stem.endsWith(sfx) && stem.length > sfx.length + 1)
           out.push(stem.slice(0, -sfx.length));
+      }
+      // Strip bare ه only when the remaining stem is ≥ 3 chars (avoids over-stripping
+      // roots like وجه or فقه where ه is part of the root, not a suffix).
+      if (stem.endsWith('ه') && stem.length - 1 >= 3) {
+        out.push(stem.slice(0, -1));
       }
       return out;
     };
@@ -739,7 +783,7 @@ class QuranSearch {
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+      .filter(w => w.length > 2 && !ENGLISH_STOP_WORDS.has(w));
     for (let i = 0; i < words.length - 1; i++) phrases.push(`${words[i]} ${words[i + 1]}`);
     return phrases;
   }

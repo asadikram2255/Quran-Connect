@@ -4,7 +4,7 @@
  * These maps add signal for well-known Islamic terms and addressee patterns.
  */
 
-const STOP_WORDS = new Set([
+const ENGLISH_STOP_WORDS = new Set([
   'a','an','the','in','on','at','to','for','of','and','or','but','is','are',
   'was','were','be','been','being','have','has','had','do','does','did','will',
   'would','could','should','may','might','shall','can','that','this','these',
@@ -3177,7 +3177,7 @@ function parseQuery(rawQuery) {
   if (vocativePrefix.test(qNorm) && matched.addresseeIds.length > 0) {
     const afterPrefix = qNorm.replace(vocativePrefix, '').trim();
     const extraWords  = afterPrefix.split(/\s+/)
-                          .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+                          .filter(w => w.length > 2 && !ENGLISH_STOP_WORDS.has(w));
     // Only activate when the query is essentially just "O <addressee name>"
     if (extraWords.length <= 2) {
       for (const addrId of matched.addresseeIds) {
@@ -3223,7 +3223,7 @@ function parseQuery(rawQuery) {
     .toLowerCase()
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
-    .filter(t => t.length > 2 && !STOP_WORDS.has(t) && !_arabicPreciseTokens.has(t));
+    .filter(t => t.length > 2 && !ENGLISH_STOP_WORDS.has(t) && !_arabicPreciseTokens.has(t));
 
   for (const t of tokens) {
     if (!matched.keywords.includes(t)) matched.keywords.push(t);

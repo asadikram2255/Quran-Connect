@@ -40,7 +40,8 @@ export default async function handler(req, res) {
 
   if (!query)            return res.status(400).json({ error: "Missing 'query'" });
   if (!passages.length)  return res.status(400).json({ error: "Missing 'passages'" });
-  if (passages.length > 100) return res.status(400).json({ error: 'Too many passages (max 100)' });
+  const truncated = passages.length > 100;
+  if (truncated) return res.status(400).json({ error: 'Too many passages (max 100)', truncated: true, passage_limit: 100 });
 
   try {
     const t0   = Date.now();
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
       return sigmoid(raw);
     });
 
-    return res.status(200).json({ scores, timings_ms: { rerank: t1 - t0 } });
+    return res.status(200).json({ scores, timings_ms: { rerank: t1 - t0 }, passage_limit: 100 });
 
   } catch (e) {
     console.error('Rerank error:', e);

@@ -20,17 +20,26 @@ After running, commit data/embeddings/ and Vercel will serve Smart Search
 using these local files instead of Qdrant.
 """
 
+import argparse
 import json
 import sys
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
+def _parse_args():
+    p = argparse.ArgumentParser(description="Export pre-computed Quran embeddings to binary format.")
+    p.add_argument("--cache-dir",  default=None, help="Directory containing q_ar_emb.npy / q_en_emb.npy (default: <repo-root>/data/cache)")
+    p.add_argument("--output-dir", default=None, help="Destination for ar_emb.bin / en_emb.bin / meta.json (default: <repo-root>/data/embeddings)")
+    p.add_argument("--raw-dir",    default=None, help="Directory containing raw Quran CSV files (default: <repo-root>/raw)")
+    return p.parse_args()
+
+_args = _parse_args()
 SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent
-CACHE_DIR  = ROOT / "data" / "cache"
-RAW_DIR    = ROOT / "raw"
-OUT_DIR    = ROOT / "data" / "embeddings"
+CACHE_DIR  = Path(_args.cache_dir)  if _args.cache_dir  else ROOT / "data" / "cache"
+RAW_DIR    = Path(_args.raw_dir)    if _args.raw_dir    else ROOT / "raw"
+OUT_DIR    = Path(_args.output_dir) if _args.output_dir else ROOT / "data" / "embeddings"
 OUT_DIR.mkdir(exist_ok=True)
 
 # ── Verify cache exists ──────────────────────────────────────────
