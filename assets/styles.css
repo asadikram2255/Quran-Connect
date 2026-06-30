@@ -108,6 +108,7 @@ body.view-mood .results,
 body.view-mood .stickyTop,
 body.view-mood .footer { display: none; }
 body.view-research .moodHero { display: none; }
+body.view-research #landingCard { display: none; }
 
 /* Subtle film-grain — kills banding on the dark gradient */
 body::before {

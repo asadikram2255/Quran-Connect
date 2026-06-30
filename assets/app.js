@@ -1045,6 +1045,7 @@ function enterResearchView() {
 function exitToMoodView() {
   document.body.classList.remove("view-research");
   document.body.classList.add("view-mood");
+  showLanding(true);
   // Reset any active drill state so returning home feels clean
   state.selectedAyahId = null;
   state.detailHistory  = [];
