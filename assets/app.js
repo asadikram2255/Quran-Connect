@@ -2466,6 +2466,9 @@ async function init() {
     wireMoodFirstView();
     renderDailyAyah();
 
+    const backToTop = document.getElementById("moodBackToTop");
+    if (backToTop) backToTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
     // Feelings modal
     if (els.feelingsBtn) els.feelingsBtn.addEventListener("click", openFeelingsModal);
     if (els.feelingsModalClose) els.feelingsModalClose.addEventListener("click", closeFeelingsModal);
