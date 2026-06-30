@@ -51,6 +51,11 @@
           </p>
         </div>
 
+        <div class="mode-toggle" id="mode-toggle">
+          <button class="mode-btn active" data-mode="search" type="button">🔍 Search</button>
+          <button class="mode-btn" data-mode="chat" type="button">💬 Ask</button>
+        </div>
+
         <div class="search-box-wrapper">
           <div class="search-box">
             <span class="search-icon">
@@ -137,7 +142,7 @@
       <!-- Knowledge Synthesis — sticky left panel when visible -->
       <div id="synthesis-panel" class="synthesis-panel" hidden></div>
 
-      <!-- Verse cards + load more + hadith -->
+      <!-- Verse cards + load more -->
       <main id="results-section" hidden>
         <div class="results-grid" id="results-grid"></div>
 
@@ -150,21 +155,32 @@
           <p class="no-results-hint">Try rephrasing — the engine searches Arabic roots across all 6,236 ayaat.</p>
         </div>
 
-        <!-- Hadith results (below verse cards) -->
-        <div id="hadith-col" hidden>
-          <div class="hadith-section-header">
-            <span class="col-icon">📜</span>
-            <span class="col-title">Related Hadith</span>
-            <span class="col-count" id="hadith-count"></span>
-          </div>
-          <div class="hadith-grid" id="hadith-grid"></div>
-        </div>
-
       </main><!-- end #results-section -->
 
     </div><!-- end .main-content-area -->
 
   </div><!-- end .results-layout -->
+
+  <!-- ── Chat panel (Quran-grounded chat client) ────────────────────────────── -->
+  <div class="chat-layout" id="chat-layout" hidden>
+    <div class="chat-window" id="chat-window">
+      <div class="chat-empty" id="chat-empty">
+        <p>Ask anything — answers are grounded only in retrieved ayaat, with citations.</p>
+      </div>
+      <div class="chat-messages" id="chat-messages"></div>
+    </div>
+    <div class="chat-input-bar">
+      <input
+        type="text"
+        id="chat-input"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Ask about the Quran… e.g. what does it say about patience?"
+      >
+      <button class="chat-send-btn" id="chat-send-btn">Send</button>
+      <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation">Clear</button>
+    </div>
+  </div>
 
   <!-- ── Root-word modal ──────────────────────────────────────────────────── -->
   <div class="root-modal-overlay" id="root-modal-overlay" hidden>
@@ -197,10 +213,9 @@
 
   <script src="js/concepts.js?v=44"></script>
   <script src="js/search.js?v=45"></script>
-  <script src="js/hadith_search.js?v=1"></script>
-  <script src="js/app.js?v=76"></script>
+  <script src="js/app.js?v=77"></script>
   <script src="js/synthesis.js?v=1"></script>
   <script src="js/root-modal.js?v=1"></script>
-  <script src="js/hadith-panel.js?v=2"></script>
+  <script src="js/chat.js?v=1"></script>
 </body>
 </html>

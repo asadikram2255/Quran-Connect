@@ -62,11 +62,11 @@ class QuranApp {
       await new Promise(r => setTimeout(r, 30));
 
       this.engine = new QuranSearch(this.ayaat, this.wordRoots, this.rootVocab);
-      this.hadithSearch = new HadithSearch();
 
       this._hideLoading();
       this._populateFilters();
       this._bindSearch();
+      this._initChat();
 
     } catch (err) {
       console.error(err);
@@ -266,8 +266,6 @@ class QuranApp {
     document.getElementById('filter-bar').hidden      = true;
     document.getElementById('results-section').hidden = true;
     document.getElementById('results-grid').innerHTML = '';
-    const hadithColEl = document.getElementById('hadith-col');
-    if (hadithColEl) hadithColEl.hidden = true;
     this._showProgress('translate');
 
     try {
@@ -321,7 +319,6 @@ class QuranApp {
             this._renderAnswerPanel(query, parsed, vocabRoots);
           }
 
-          this._runHadithSearch(parsed.keywords, query);
         }
 
         this._renderPage(false);
@@ -1123,8 +1120,6 @@ class QuranApp {
 
   // [Root modal moved to root-modal.js — see search/js/root-modal.js]
 
-  // [Hadith panel moved to hadith-panel.js — see search/js/hadith-panel.js]
-
   // ── Curated topic catalogs (methods that use these are in synthesis.js) ──────
 
   // prettier-ignore
@@ -1633,8 +1628,6 @@ class QuranApp {
       return JSON.parse(raw).map(h => h.q);
     } catch (_) { return []; }
   }
-
-  // [Hadith panel moved to hadith-panel.js]
 
   // ── Text helpers ─────────────────────────────────────────────────────────
 
