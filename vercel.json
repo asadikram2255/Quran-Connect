@@ -7,8 +7,8 @@
     "api/expand.js": {
       "maxDuration": 15
     },
-    "api/rerank.js": {
-      "maxDuration": 20
+    "api/chat.js": {
+      "maxDuration": 25
     },
     "api/synthesize.js": {
       "maxDuration": 10
