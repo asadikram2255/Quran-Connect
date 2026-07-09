@@ -38,6 +38,9 @@ function tallyFromChapters() {
       }
     }
   }
+  // Same correction as fetch_analyzequran_roots.mjs: the chapter endpoint
+  // leaves 2:3 word 1 rootless but the site dictionary lists it under 1644.
+  if (tally[1644]) { tally[1644].count++; tally[1644].verses.add('2:3'); }
   return tally;
 }
 

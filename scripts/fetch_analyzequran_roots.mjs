@@ -16,6 +16,20 @@ import path from 'node:path';
 const API = 'https://encode12.com/QuranService.svc/chapter';
 const RAW_DIR = 'raw/analyzequran';
 
+// The chapter endpoint leaves a few words rootless that the site dictionary
+// (the authoritative display) does list. Verified against /arabicwordsgrouped.
+const CORRECTIONS = {
+  '2:3#1': 'ٱلَّذِى', // alladhi (RootWordId 1644)
+};
+
+// Dictionary-only occurrences the chapter endpoint misses entirely:
+// 20:94 is a compound word listed under a second root; 48:29 has a
+// dropped word in the chapter feed. Verified against /arabicwordsgrouped.
+const EXTRA_OCCURRENCES = [
+  { ref: '20:94', root: 'ا م م' }, // a-m-m (id 114)
+  { ref: '48:29', root: 'ع ظ م' }, // ayn-Za-m (id 383)
+];
+
 function normalizeArabic(text) {
   if (!text) return '';
   return text
@@ -88,7 +102,7 @@ async function main() {
       if (!ayahRoots[ref]) ayahRoots[ref] = new Set();
       for (const w of v.Words || []) {
         totalWords++;
-        const root = (w.RootWordAr || '').trim();
+        const root = (w.RootWordAr || CORRECTIONS[ref + '#' + w.WordNo] || '').trim();
         if (!root) continue;
         wordsWithRoot++;
 
@@ -123,6 +137,14 @@ async function main() {
         }
       }
     }
+  }
+  for (const { ref, root } of EXTRA_OCCURRENCES) {
+    if (!rootTally[root]) rootTally[root] = { count: 0, verses: new Set() };
+    rootTally[root].count++;
+    rootTally[root].verses.add(ref);
+    if (!ayahRoots[ref]) ayahRoots[ref] = new Set();
+    ayahRoots[ref].add(root);
+    wordsWithRoot++;
   }
 
   console.log(`\n${totalVerses} verses, ${totalWords} words, ${wordsWithRoot} with a root, ${Object.keys(rootTally).length} distinct roots`);
