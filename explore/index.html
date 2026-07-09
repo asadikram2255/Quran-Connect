@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explore Quran — Reader</title>
+  <meta name="description" content="Pure Quran reading — surah by surah, with selectable translations, tafseer, and word-by-word root exploration.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+  <header class="header">
+    <a class="back-link" href="../">← Quran Connect</a>
+    <div class="header-title">
+      <span class="header-icon">📖</span>
+      <h1>Explore Quran</h1>
+    </div>
+    <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle theme">◐</button>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Surah sidebar ─────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <input type="text" id="surah-filter" class="surah-filter" placeholder="Filter surahs…" autocomplete="off">
+      <nav class="surah-list" id="surah-list" aria-label="Surah list"></nav>
+    </aside>
+
+    <!-- ── Reader ────────────────────────────────────────────────────── -->
+    <main class="reader" id="reader">
+
+      <div class="reader-controls" id="reader-controls">
+        <div class="control-group">
+          <button class="control-btn" id="translations-btn" type="button">Translations <span class="count-pill" id="translations-count">1</span></button>
+          <div class="control-panel" id="translations-panel" hidden></div>
+        </div>
+        <div class="control-group">
+          <button class="control-btn" id="tafsir-btn" type="button">Tafseer <span class="count-pill" id="tafsir-count">0</span></button>
+          <div class="control-panel" id="tafsir-panel" hidden></div>
+        </div>
+        <label class="badges-toggle">
+          <input type="checkbox" id="badges-toggle">
+          <span>Words &amp; Roots</span>
+        </label>
+      </div>
+
+      <div class="surah-header" id="surah-header"></div>
+      <div class="loading" id="loading" hidden>Loading…</div>
+      <div class="ayah-list" id="ayah-list"></div>
+    </main>
+  </div>
+
+  <!-- ── Word / Root modal ───────────────────────────────────────────── -->
+  <div class="modal-overlay" id="word-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <button class="modal-close" id="modal-close" type="button">✕</button>
+      <div class="modal-head">
+        <div class="modal-arabic" id="modal-arabic" dir="rtl" lang="ar"></div>
+        <div class="modal-sub" id="modal-sub"></div>
+      </div>
+      <div class="modal-section" id="modal-meanings-section">
+        <div class="modal-section-head">
+          <h3>Possible meanings</h3>
+          <div class="lang-tabs">
+            <button class="lang-tab active" data-lang="en" type="button">English</button>
+            <button class="lang-tab" data-lang="ur" type="button">اردو</button>
+          </div>
+        </div>
+        <div class="meanings" id="modal-meanings"></div>
+      </div>
+      <div class="modal-section">
+        <h3 id="modal-occ-title">Occurrences</h3>
+        <div class="occurrences" id="modal-occurrences"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+/* Explore Quran — pure reading module. Shares design tokens with search/. */
+
+:root {
+  --bg:           #fdf9f2;
+  --surface:      #f4ede0;
+  --surface2:     #ebe0cc;
+  --border:       #d9cbb5;
+  --text:         #1a1208;
+  --text-sec:     #6b5c44;
+  --text-ter:     #9c8b74;
+  --accent:       #b07d1a;
+  --accent-hov:   #8a5f0d;
+  --accent-dim:   color-mix(in srgb, #b07d1a 11%, transparent);
+  --accent-mid:   color-mix(in srgb, #b07d1a 20%, transparent);
+  --card-shad:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --radius:       12px;
+  --radius-sm:    7px;
+  --font:         'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ar:      'Amiri Quran', 'Noto Naskh Arabic', 'Amiri', serif;
+  --font-ur:      'Noto Nastaliq Urdu', 'Amiri', serif;
+  --trans:        .16s ease;
+  --header-h:     58px;
+  --sidebar-w:    280px;
+}
+
+[data-theme="dark"] {
+  --bg:           #0e0816;
+  --surface:      #1a0f2e;
+  --surface2:     #2b1551;
+  --border:       rgba(255, 240, 230, .12);
+  --text:         #faf7f2;
+  --text-sec:     #d6c9b8;
+  --text-ter:     #9c8d7e;
+  --accent:       #f5b75e;
+  --accent-hov:   #e0a042;
+  --accent-dim:   rgba(245, 183, 94, .14);
+  --accent-mid:   rgba(245, 183, 94, .22);
+  --card-shad:    0 1px 3px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.28);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background var(--trans), color var(--trans);
+  line-height: 1.6;
+}
+button { font-family: inherit; cursor: pointer; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  position: sticky; top: 0; z-index: 40;
+  height: var(--header-h);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.back-link { color: var(--text-ter); text-decoration: none; font-size: .85rem; font-weight: 600; }
+.back-link:hover { color: var(--accent); }
+.header-title { display: flex; align-items: center; gap: 8px; flex: 1; }
+.header-title h1 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; }
+.theme-toggle {
+  background: none; border: 1px solid var(--border); border-radius: 50%;
+  width: 32px; height: 32px; color: var(--text-sec); font-size: 1rem;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.layout { display: flex; max-width: 1500px; margin: 0 auto; }
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--header-h);
+  height: calc(100vh - var(--header-h));
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  padding: 14px 10px 0;
+}
+.surah-filter {
+  width: 100%; padding: 8px 12px; margin-bottom: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: .85rem; outline: none;
+}
+.surah-filter:focus { border-color: var(--accent); }
+.surah-list { overflow-y: auto; flex: 1; padding-bottom: 14px; }
+.surah-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 7px 10px; border: none; border-radius: var(--radius-sm);
+  background: none; color: var(--text-sec); font-size: .84rem;
+  transition: background var(--trans);
+}
+.surah-item:hover { background: var(--surface); color: var(--text); }
+.surah-item.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+.surah-num {
+  width: 26px; height: 26px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 7px;
+  font-size: .7rem; font-weight: 600; color: var(--text-ter);
+}
+.surah-item.active .surah-num { border-color: var(--accent); color: var(--accent); }
+.surah-names { flex: 1; min-width: 0; }
+.surah-name-en { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.surah-meta { font-size: .68rem; color: var(--text-ter); }
+.surah-ar { font-family: var(--font-ar); font-size: 1rem; color: var(--text-ter); }
+.surah-item.active .surah-ar { color: var(--accent); }
+
+/* ── Reader ─────────────────────────────────────────────────────────────── */
+.reader { flex: 1; min-width: 0; padding: 18px 28px 80px; }
+
+.reader-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  position: sticky; top: var(--header-h); z-index: 30;
+  background: var(--bg); padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border); margin-bottom: 20px;
+}
+.control-group { position: relative; }
+.control-btn {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface); color: var(--text-sec);
+  border: 1px solid var(--border); border-radius: 30px;
+  padding: 6px 16px; font-size: .82rem; font-weight: 600;
+  transition: border-color var(--trans), color var(--trans);
+}
+.control-btn:hover, .control-btn.open { border-color: var(--accent); color: var(--text); }
+.count-pill {
+  background: var(--accent-dim); color: var(--accent);
+  border-radius: 10px; padding: 0 7px; font-size: .7rem; font-weight: 700;
+}
+.control-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 35;
+  min-width: 250px; max-height: 320px; overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--card-shad);
+  padding: 8px;
+}
+.panel-option {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 7px 9px; border-radius: var(--radius-sm);
+  font-size: .83rem; color: var(--text-sec); cursor: pointer;
+}
+.panel-option:hover { background: var(--surface); }
+.panel-option input { margin-top: 4px; accent-color: var(--accent); }
+.panel-option .opt-name { color: var(--text); font-weight: 500; display: block; }
+.panel-option .opt-sub { font-size: .7rem; color: var(--text-ter); }
+
+.badges-toggle {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .82rem; font-weight: 600; color: var(--text-sec);
+  border: 1px solid var(--border); border-radius: 30px;
+  padding: 6px 16px; cursor: pointer; user-select: none;
+}
+.badges-toggle:hover { border-color: var(--accent); color: var(--text); }
+.badges-toggle input { accent-color: var(--accent); }
+
+/* ── Surah header ───────────────────────────────────────────────────────── */
+.surah-header { text-align: center; margin: 6px 0 26px; }
+.surah-header .sh-ar { font-family: var(--font-ar); font-size: 2.2rem; color: var(--accent); }
+.surah-header .sh-en { font-family: var(--font-display); font-size: 1.3rem; margin-top: 2px; }
+.surah-header .sh-meta { font-size: .8rem; color: var(--text-ter); margin-top: 4px; }
+.loading { text-align: center; color: var(--text-ter); padding: 40px; }
+
+/* ── Ayah cards ─────────────────────────────────────────────────────────── */
+.ayah-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--card-shad);
+  padding: 18px 22px; margin-bottom: 14px;
+  scroll-margin-top: calc(var(--header-h) + 70px);
+}
+.ayah-card:target, .ayah-card.flash { border-color: var(--accent); }
+.ayah-topline { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ayah-ref {
+  font-size: .72rem; font-weight: 700; color: var(--accent);
+  background: var(--accent-dim); border-radius: 10px; padding: 2px 9px;
+}
+.ayah-badges-btn {
+  margin-left: auto; background: none; border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 12px;
+  font-size: .7rem; font-weight: 600; color: var(--text-ter);
+}
+.ayah-badges-btn:hover, .ayah-badges-btn.on { border-color: var(--accent); color: var(--accent); }
+
+.ayah-arabic {
+  font-family: var(--font-ar); font-size: 1.75rem; line-height: 2.3;
+  text-align: right; direction: rtl; margin-bottom: 10px;
+}
+
+.ayah-translations { display: flex; flex-direction: column; gap: 10px; }
+.ayah-tr { font-size: .92rem; color: var(--text); }
+.ayah-tr.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: 1.05rem; line-height: 2.2; }
+.ayah-tr .tr-label { display: block; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 1px; direction: ltr; text-align: left; }
+
+/* ── Word / root badges ─────────────────────────────────────────────────── */
+.ayah-badges { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.badges-label { font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 6px; }
+.badges-row { display: flex; flex-wrap: wrap; gap: 6px; direction: rtl; margin-bottom: 10px; }
+.word-badge, .root-badge {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg); padding: 3px 10px;
+  display: inline-flex; flex-direction: column; align-items: center;
+  transition: border-color var(--trans), background var(--trans);
+}
+.word-badge:hover, .root-badge:hover { border-color: var(--accent); background: var(--accent-dim); }
+.word-badge .wb-ar { font-family: var(--font-ar); font-size: 1.15rem; }
+.word-badge .wb-gloss { font-size: .62rem; color: var(--text-ter); direction: ltr; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.root-badge { flex-direction: row; gap: 6px; align-items: center; background: var(--accent-dim); border-color: transparent; }
+.root-badge .rb-ar { font-family: var(--font-ar); font-size: 1.05rem; color: var(--accent); letter-spacing: .18em; }
+.root-badge .rb-tag { font-size: .6rem; font-weight: 700; color: var(--text-ter); text-transform: uppercase; }
+
+/* ── Tafsir ─────────────────────────────────────────────────────────────── */
+.ayah-tafsir { margin-top: 12px; }
+.tafsir-block { border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 8px; }
+.tafsir-block summary {
+  cursor: pointer; font-size: .78rem; font-weight: 600; color: var(--accent);
+  list-style: none; user-select: none;
+}
+.tafsir-block summary::before { content: '▸ '; }
+.tafsir-block[open] summary::before { content: '▾ '; }
+.tafsir-text { font-size: .85rem; color: var(--text-sec); margin-top: 8px; white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
+.tafsir-text.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: 1rem; line-height: 2.1; }
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.modal {
+  position: relative; width: 100%; max-width: 680px; max-height: 84vh;
+  overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--card-shad);
+  padding: 26px 28px;
+}
+.modal-close {
+  position: absolute; top: 14px; right: 14px;
+  background: none; border: 1px solid var(--border); border-radius: 50%;
+  width: 30px; height: 30px; color: var(--text-ter);
+}
+.modal-close:hover { border-color: var(--accent); color: var(--accent); }
+.modal-head { text-align: center; margin-bottom: 18px; }
+.modal-arabic { font-family: var(--font-ar); font-size: 2.4rem; color: var(--accent); line-height: 1.6; }
+.modal-sub { font-size: .82rem; color: var(--text-ter); }
+.modal-section { margin-top: 18px; }
+.modal-section h3 { font-family: var(--font-display); font-size: .95rem; margin-bottom: 10px; }
+.modal-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.modal-section-head h3 { margin-bottom: 0; }
+
+.lang-tabs { display: flex; gap: 4px; }
+.lang-tab {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 3px 14px; font-size: .74rem; font-weight: 600; color: var(--text-sec);
+}
+.lang-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.meanings { display: flex; flex-wrap: wrap; gap: 7px; }
+.meaning-chip {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 14px; font-size: .84rem; color: var(--text);
+}
+.meanings.urdu { direction: rtl; }
+.meanings.urdu .meaning-chip { font-family: var(--font-ur); font-size: .95rem; line-height: 1.9; }
+.meanings-empty { font-size: .82rem; color: var(--text-ter); }
+
+.occurrences { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+.occ-item {
+  display: block; width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  transition: border-color var(--trans);
+}
+.occ-item:hover { border-color: var(--accent); }
+.occ-ref { font-size: .7rem; font-weight: 700; color: var(--accent); }
+.occ-ar { font-family: var(--font-ar); font-size: 1.15rem; direction: rtl; text-align: right; display: block; margin: 3px 0; color: var(--text); }
+.occ-en { font-size: .78rem; color: var(--text-sec); display: block; }
+.occ-more { text-align: center; font-size: .78rem; color: var(--text-ter); padding: 6px; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .reader { padding: 14px 14px 60px; }
+  .ayah-arabic { font-size: 1.45rem; }
+}
