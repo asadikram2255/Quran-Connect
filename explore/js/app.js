@@ -58,8 +58,8 @@ class ExploreApp {
     this._initTheme();
     const [surahs, quran, wordRoots, trIndex, tafsirIndex] = await Promise.all([
       this._json('../search/data/surah.json'),
-      this._json('../search/data/quran.json'),
-      this._json('../search/data/word_roots.json'),
+      this._json('../search/data/quran.json?v=2'),
+      this._json('../search/data/word_roots.json?v=2'),
       this._json('../data/translations/index.json'),
       this._json('../data/meta/tafsir_index.json'),
     ]);
@@ -376,8 +376,8 @@ class ExploreApp {
   async _ensureGlosses() {
     if (!this.glosses.word) {
       [this.glosses.word, this.glosses.root] = await Promise.all([
-        this._json('data/word_glosses.json'),
-        this._json('data/root_glosses.json'),
+        this._json('data/word_glosses.json?v=2'),
+        this._json('data/root_glosses.json?v=2'),
       ]);
     }
   }

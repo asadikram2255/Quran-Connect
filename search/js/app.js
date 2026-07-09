@@ -42,13 +42,13 @@ class QuranApp {
       );
       const [ayaatData, surahData, wordRootsData, rootVocabData] = await Promise.race([
         Promise.all([
-          fetch('data/quran.json').then(r => {
+          fetch('data/quran.json?v=2').then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status} loading quran.json`);
             return r.json();
           }),
           fetch('data/surah.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading surah.json`); return r.json(); }),
-          fetch('data/word_roots.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading word_roots.json`); return r.json(); }),
-          fetch('data/root_vocab.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading root_vocab.json`); return r.json(); }),
+          fetch('data/word_roots.json?v=2').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading word_roots.json`); return r.json(); }),
+          fetch('data/root_vocab.json?v=2').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading root_vocab.json`); return r.json(); }),
         ]),
         loadTimeout,
       ]);
