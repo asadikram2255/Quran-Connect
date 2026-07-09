@@ -1041,10 +1041,19 @@ function renderMoodHero() {
 function enterResearchView() {
   document.body.classList.remove("view-mood");
   document.body.classList.add("view-research");
+  setHeaderTitle("Explore Connections", "Deep-dive into any ayah — connections across the Qur'an and authentic Hadith");
+}
+
+function setHeaderTitle(title, sub) {
+  const h1 = document.querySelector(".header .h1");
+  const subEl = document.querySelector(".header .sub");
+  if (h1) h1.textContent = title;
+  if (subEl) subEl.textContent = sub;
 }
 function exitToMoodView() {
   document.body.classList.remove("view-research");
   document.body.classList.add("view-mood");
+  setHeaderTitle("Quran Connect", "Ease your journey of understanding the Qur'an — by Muhammad Asad Ikram");
   showLanding(true);
   // Reset any active drill state so returning home feels clean
   state.selectedAyahId = null;

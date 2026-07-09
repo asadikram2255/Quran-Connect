@@ -72,7 +72,7 @@ button { font-family: inherit; cursor: pointer; }
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
-.layout { display: flex; max-width: 1500px; margin: 0 auto; }
+.layout { display: flex; width: 100%; }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar {
@@ -114,7 +114,7 @@ button { font-family: inherit; cursor: pointer; }
 .surah-item.active .surah-ar { color: var(--accent); }
 
 /* ── Reader ─────────────────────────────────────────────────────────────── */
-.reader { flex: 1; min-width: 0; padding: 18px 28px 80px; }
+.reader { flex: 1; min-width: 0; padding: 18px 48px 80px; }
 
 .reader-controls {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -203,15 +203,15 @@ button { font-family: inherit; cursor: pointer; }
 .badges-label { font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 6px; }
 .badges-row { display: flex; flex-wrap: wrap; gap: 6px; direction: rtl; margin-bottom: 10px; }
 .word-badge, .root-badge {
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--bg); padding: 3px 10px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: var(--accent-dim); padding: 3px 10px;
   display: inline-flex; flex-direction: column; align-items: center;
   transition: border-color var(--trans), background var(--trans);
 }
-.word-badge:hover, .root-badge:hover { border-color: var(--accent); background: var(--accent-dim); }
-.word-badge .wb-ar { font-family: var(--font-ar); font-size: 1.15rem; }
-.word-badge .wb-gloss { font-size: .62rem; color: var(--text-ter); direction: ltr; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.root-badge { flex-direction: row; gap: 6px; align-items: center; background: var(--accent-dim); border-color: transparent; }
+.word-badge:hover, .root-badge:hover { border-color: var(--accent); background: var(--accent-mid); }
+.word-badge .wb-ar { font-family: var(--font-ar); font-size: 1.15rem; color: var(--accent); }
+.word-badge .wb-gloss { font-size: .62rem; color: var(--text-sec); direction: ltr; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.root-badge { flex-direction: row; gap: 6px; align-items: center; }
 .root-badge .rb-ar { font-family: var(--font-ar); font-size: 1.05rem; color: var(--accent); letter-spacing: .18em; }
 .root-badge .rb-tag { font-size: .6rem; font-weight: 700; color: var(--text-ter); text-transform: uppercase; }
 
