@@ -58,7 +58,7 @@ class ExploreApp {
     this._initTheme();
     const [surahs, quran, wordRoots, trIndex, tafsirIndex] = await Promise.all([
       this._json('../search/data/surah.json'),
-      this._json('../search/data/quran.json?v=2'),
+      this._json('../search/data/quran.json?v=3'),
       this._json('../search/data/word_roots.json?v=2'),
       this._json('../data/translations/index.json'),
       this._json('../data/meta/tafsir_index.json'),
