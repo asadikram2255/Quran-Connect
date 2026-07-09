@@ -30,3 +30,4 @@ raw/
 
 # Local Netlify folder
 .netlify
+.env*
