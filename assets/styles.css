@@ -72,6 +72,58 @@
   --tafsir-font-size:  14px;
 }
 
+/* ── Light theme — warm parchment (matches search/explore light) ───────── */
+[data-theme="light"] {
+  --bg-0: #fdf9f2;
+  --bg-1: #f4ede0;
+  --bg-2: #ebe0cc;
+  --bg-grad-end: #f6efe3;
+
+  --surface-1: rgba(244, 237, 224, .96);
+  --surface-2: rgba(235, 224, 204, .97);
+  --surface-3: rgba(240, 231, 214, .75);
+
+  --border:        rgba(90, 70, 40, .14);
+  --border-strong: rgba(90, 70, 40, .26);
+
+  --text:       #1a1208;
+  --text-soft:  #4d4030;
+  --text-muted: #6b5c44;
+  --text-dim:   #9c8b74;
+
+  --accent:        #b07d1a;
+  --accent-soft:   rgba(176, 125, 26, .12);
+  --accent-strong: rgba(176, 125, 26, .45);
+  --accent-glow:   rgba(176, 125, 26, .25);
+
+  --feel:        #7c3aed;
+  --feel-soft:   rgba(124, 58, 237, .10);
+  --feel-glow:   rgba(124, 58, 237, .22);
+
+  --warm:        #b45309;
+  --warm-soft:   rgba(180, 83, 9, .12);
+
+  --rose:        #be185d;
+  --rose-soft:   rgba(190, 24, 93, .10);
+
+  --success: #15803d;
+  --warn:    #b45309;
+  --danger:  #be123c;
+
+  --shadow-sm: 0 1px 2px rgba(60,40,10,.08), 0 4px 12px rgba(60,40,10,.06);
+  --shadow-md: 0 8px 24px rgba(60,40,10,.10), 0 18px 48px rgba(60,40,10,.08);
+  --shadow-lg: 0 12px 36px rgba(60,40,10,.12), 0 28px 72px rgba(60,40,10,.10);
+  --inset-hi:  inset 0 1px 0 rgba(255,255,255,.65);
+  --panel-head-1: rgba(244, 237, 224, .92);
+  --panel-head-2: rgba(244, 237, 224, .65);
+}
+
+[data-theme="light"] body {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% -10%, rgba(180, 83, 9, .08), transparent 65%),
+    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-grad-end) 100%);
+}
+
 /* ============================================================
    Base
    ============================================================ */
@@ -94,7 +146,7 @@ body {
   overflow-x: hidden;
   background:
     radial-gradient(ellipse 60% 45% at 50% -10%, rgba(180, 83, 9, .14), transparent 65%),
-    linear-gradient(180deg, var(--bg-0) 0%, #100920 100%);
+    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-grad-end, #100920) 100%);
   background-attachment: fixed;
 }
 
@@ -240,7 +292,7 @@ body::before {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
-  background: linear-gradient(180deg, rgba(16,22,46,.85), rgba(16,22,46,.55));
+  background: linear-gradient(180deg, var(--panel-head-1, rgba(16,22,46,.85)), var(--panel-head-2, rgba(16,22,46,.55)));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -3262,3 +3314,16 @@ body.view-mood .feelingsBtn { display: none; }
     flex: 1;
   }
 }
+
+/* ── Theme toggle (header) ─────────────────────────────────── */
+.themeToggle {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  width: 34px; height: 34px;
+  color: var(--text-soft);
+  font-size: 16px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.themeToggle:hover { border-color: var(--accent); color: var(--accent); }

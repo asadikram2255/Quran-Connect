@@ -2485,6 +2485,15 @@ async function init() {
 
     // Phase 5 — Mood-first hero
     renderMoodHero();
+    // Theme toggle — shared localStorage key 'theme' across all modules; default dark
+    const themeBtn = document.getElementById("themeToggle");
+    if (themeBtn) themeBtn.addEventListener("click", () => {
+      const isLight = document.documentElement.getAttribute("data-theme") === "light";
+      const next = isLight ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("theme", next); } catch (e) {}
+    });
+
     wireMoodFirstView();
     renderDailyAyah();
 

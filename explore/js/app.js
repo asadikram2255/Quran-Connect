@@ -89,14 +89,15 @@ class ExploreApp {
   /* ── Theme ─────────────────────────────────────────────────────────────── */
 
   _initTheme() {
-    const saved = localStorage.getItem('explore-theme');
-    const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    // Shared theme key across all modules (migrates old 'explore-theme'); default dark
+    const saved = localStorage.getItem('theme') || localStorage.getItem('explore-theme');
+    const dark = saved !== 'light';
     if (dark) document.documentElement.dataset.theme = 'dark';
     document.getElementById('theme-toggle').addEventListener('click', () => {
       const isDark = document.documentElement.dataset.theme === 'dark';
       if (isDark) delete document.documentElement.dataset.theme;
       else document.documentElement.dataset.theme = 'dark';
-      localStorage.setItem('explore-theme', isDark ? 'light' : 'dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
     });
   }
 

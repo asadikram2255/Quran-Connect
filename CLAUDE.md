@@ -78,6 +78,11 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## Last changes (newest first)
 
+- **2026-07-10** Unified light/dark theming across ALL pages: root app (landing + Explore
+  Connections) gained a full warm-parchment light theme + header toggle; all three pages share
+  one localStorage key (theme, default dark) so the choice follows the user across modules;
+  pre-paint scripts prevent theme flash; search toggle glyph unified.
+
 - **2026-07-10** Added "Pairs →" button to every ayah card in Explore Quran → deep-links to
   Explore Connections at that ayah (`../?ayah=SN:AN`). Created this CLAUDE.md context file.
 - **2026-07-10** Fixed remaining root-count display mismatches: Explore Connections root modal now

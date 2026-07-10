@@ -18,7 +18,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital@0;1&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=32" />
+  <script>
+    // Apply saved theme before first paint (shared key across all modules; default dark)
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/styles.css?v=33" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -54,6 +63,7 @@
           <span>Home</span>
         </button>
         <button id="aboutBtn" class="navBtn navBtnQuiet" type="button" aria-label="About">About</button>
+        <button id="themeToggle" class="themeToggle" type="button" title="Toggle dark / light mode" aria-label="Toggle dark or light mode">◐</button>
         <div id="statusBadge" class="badge warn">Loading…</div>
       </div>
     </div>
@@ -503,7 +513,7 @@
     </div>
   </div>
 
-  <script src="assets/app.js?v=39"></script>
+  <script src="assets/app.js?v=40"></script>
   <script type="module" src="assets/motion.js?v=3"></script>
 </body>
 </html>
