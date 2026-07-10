@@ -1220,7 +1220,7 @@ function resolveDataPath(path) {
   return p.startsWith("data/") ? p : `data/${p}`;
 }
 
-const DATA_VERSION = "v3";  // bump to bust browser cache when data files change
+const DATA_VERSION = "v4";  // bump to bust browser cache when data files change
 
 async function fetchJson(path) {
   const fp = resolveDataPath(path);

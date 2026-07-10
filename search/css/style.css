@@ -21,6 +21,7 @@
   --font:         'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Fraunces', 'Newsreader', Georgia, serif;
   --font-ar:      'Amiri Quran', 'Noto Naskh Arabic', 'Amiri', serif;
+  --font-ar-root: 'Noto Naskh Arabic', 'Amiri', serif; /* always-dotted, for root letters */
   --trans:        .16s ease;
   --header-h:     58px;
   --sidebar-w:    272px;
