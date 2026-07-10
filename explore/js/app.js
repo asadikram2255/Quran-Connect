@@ -274,6 +274,7 @@ class ExploreApp {
       let html = `
         <div class="ayah-topline">
           <span class="ayah-ref">${ref}</span>
+          <a class="ayah-pairs-btn" href="../?ayah=${ref}" title="Explore this ayah's connections — meaning & root-word pairs">Pairs →</a>
           <button class="ayah-badges-btn" type="button" data-ref="${ref}">words &amp; roots</button>
         </div>
         <div class="ayah-arabic" lang="ar">${

@@ -183,11 +183,19 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--accent-dim); border-radius: 10px; padding: 2px 9px;
 }
 .ayah-badges-btn {
-  margin-left: auto; background: none; border: 1px solid var(--border);
+  background: none; border: 1px solid var(--border);
   border-radius: 20px; padding: 2px 12px;
   font-size: .7rem; font-weight: 600; color: var(--text-ter);
 }
 .ayah-badges-btn:hover, .ayah-badges-btn.on { border-color: var(--accent); color: var(--accent); }
+.ayah-pairs-btn {
+  margin-left: auto; text-decoration: none;
+  background: var(--accent-dim); border: 1px solid transparent;
+  border-radius: 20px; padding: 2px 12px;
+  font-size: .7rem; font-weight: 700; color: var(--accent);
+  transition: background var(--trans), border-color var(--trans);
+}
+.ayah-pairs-btn:hover { background: var(--accent-mid); border-color: var(--accent); }
 
 .ayah-arabic {
   font-family: var(--font-ar); font-size: 1.75rem; line-height: 2.3;
