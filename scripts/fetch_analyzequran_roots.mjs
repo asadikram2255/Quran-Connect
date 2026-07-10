@@ -159,6 +159,7 @@ async function main() {
   const countsOut = {};
   for (const [root, v] of Object.entries(tallyOut)) countsOut[root] = v.count;
   fs.writeFileSync('explore/data/root_counts.json', JSON.stringify(countsOut));
+  fs.writeFileSync('search/data/root_counts.json', JSON.stringify(countsOut));
 
   // ── search/data/word_roots.json ───────────────────────────────────────────
   const oldWordRoots = JSON.parse(fs.readFileSync('search/data/word_roots.json', 'utf8'));

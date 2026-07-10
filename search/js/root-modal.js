@@ -12,12 +12,13 @@ Object.assign(QuranApp.prototype, {
 
     const ids   = this.engine.rootIdx[root] ? [...this.engine.rootIdx[root]] : [];
     const count = ids.length;
+    const occ   = (this.rootCounts && this.rootCounts[root]) || count;
     const en    = (label && label.en) ? label.en : '';
 
     title.innerHTML = `
       <span class="rm-root" dir="rtl" lang="ar">${this._esc(root)}</span>
       ${en ? `<span class="rm-en">${this._esc(en)}</span>` : ''}
-      <span class="rm-count">${count} ayaat</span>`;
+      <span class="rm-count">occurs ${occ} times · ${count} ayaat</span>`;
 
     body.innerHTML = '<div class="root-modal-loading">Loading…</div>';
     overlay.hidden = false;

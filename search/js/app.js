@@ -40,7 +40,7 @@ class QuranApp {
       const loadTimeout = new Promise((_, rej) =>
         setTimeout(() => rej(new Error('timeout')), 15000)
       );
-      const [ayaatData, surahData, wordRootsData, rootVocabData] = await Promise.race([
+      const [ayaatData, surahData, wordRootsData, rootVocabData, rootCountsData] = await Promise.race([
         Promise.all([
           fetch('data/quran.json?v=3').then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status} loading quran.json`);
@@ -49,14 +49,16 @@ class QuranApp {
           fetch('data/surah.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading surah.json`); return r.json(); }),
           fetch('data/word_roots.json?v=2').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading word_roots.json`); return r.json(); }),
           fetch('data/root_vocab.json?v=3').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status} loading root_vocab.json`); return r.json(); }),
+          fetch('data/root_counts.json?v=1').then(r => r.ok ? r.json() : {}).catch(() => ({})),
         ]),
         loadTimeout,
       ]);
 
-      this.ayaat     = ayaatData;
-      this.surahs    = surahData;
-      this.wordRoots = wordRootsData;
-      this.rootVocab = rootVocabData;
+      this.ayaat      = ayaatData;
+      this.surahs     = surahData;
+      this.wordRoots  = wordRootsData;
+      this.rootVocab  = rootVocabData;
+      this.rootCounts = rootCountsData;
 
       this._setLoading('Building search index…');
       await new Promise(r => setTimeout(r, 30));
@@ -715,7 +717,7 @@ class QuranApp {
         <span class="root-card-ar" dir="rtl" lang="ar">${this._esc(root)}</span>
         <span class="root-card-meta">
           <span class="root-card-en">${this._esc(label.en)}</span>
-          <span class="root-card-count">${count} ayaat</span>
+          <span class="root-card-count">${(this.rootCounts && this.rootCounts[root]) || count} times</span>
         </span>`;
       btn.addEventListener('click', () => this._openRootModal(root, label));
       container.appendChild(btn);

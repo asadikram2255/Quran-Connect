@@ -1220,7 +1220,7 @@ function resolveDataPath(path) {
   return p.startsWith("data/") ? p : `data/${p}`;
 }
 
-const DATA_VERSION = "v4";  // bump to bust browser cache when data files change
+const DATA_VERSION = "v5";  // bump to bust browser cache when data files change
 
 async function fetchJson(path) {
   const fp = resolveDataPath(path);
@@ -1938,9 +1938,21 @@ async function openWordModal(word, kind) {
   const count = ayahIds.length;
   if (!count) return;
 
+  // Authoritative per-root occurrence counts (analyzequran tally)
+  if (kind === "root" && !state.rootCounts) {
+    try {
+      // Plain fetch: fetchJson() would rewrite this path under data/.
+      const res = await fetch('explore/data/root_counts.json?_v=' + DATA_VERSION);
+      state.rootCounts = res.ok ? await res.json() : {};
+    } catch { state.rootCounts = {}; }
+  }
+  const occ = kind === "root" ? (state.rootCounts?.[word] || count) : count;
+
   const kindLabel = kind === "root" ? "Root Word" : "Arabic Word";
   els.wordModalTitle.textContent = word;
-  els.wordModalSub.textContent   = `${kindLabel} · appears ${count} time${count !== 1 ? "s" : ""} in the Quran`;
+  els.wordModalSub.textContent   = kind === "root"
+    ? `${kindLabel} · occurs ${occ} time${occ !== 1 ? "s" : ""} in the Quran · across ${count} ayaat`
+    : `${kindLabel} · appears in ${count} ayaat`;
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
   els.wordModal.classList.remove("hidden");
 
