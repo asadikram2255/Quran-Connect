@@ -16,7 +16,6 @@ __pycache__/
 data/cache/
 
 # Raw source CSVs (large, private data — not for version control)
-raw/
 
 # Vercel
 .vercel/
