@@ -155,6 +155,10 @@ async function main() {
     tallyOut[root] = { count: rootTally[root].count, verses: [...rootTally[root].verses] };
   }
   fs.writeFileSync('data/meta/root_tally_analyzequran.json', JSON.stringify(tallyOut));
+  // Compact per-root occurrence counts for the Explore Quran modal
+  const countsOut = {};
+  for (const [root, v] of Object.entries(tallyOut)) countsOut[root] = v.count;
+  fs.writeFileSync('explore/data/root_counts.json', JSON.stringify(countsOut));
 
   // ── search/data/word_roots.json ───────────────────────────────────────────
   const oldWordRoots = JSON.parse(fs.readFileSync('search/data/word_roots.json', 'utf8'));

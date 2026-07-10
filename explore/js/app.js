@@ -375,9 +375,10 @@ class ExploreApp {
 
   async _ensureGlosses() {
     if (!this.glosses.word) {
-      [this.glosses.word, this.glosses.root] = await Promise.all([
+      [this.glosses.word, this.glosses.root, this.rootCounts] = await Promise.all([
         this._json('data/word_glosses.json?v=2'),
         this._json('data/root_glosses.json?v=2'),
+        this._json('data/root_counts.json?v=1'),
       ]);
     }
   }
@@ -401,9 +402,10 @@ class ExploreApp {
   async openRootModal(root) {
     await this._ensureGlosses();
     const occ = this.quran.filter(a => (a.roots || []).includes(root));
+    const count = this.rootCounts?.[root];
     this._modalState = {
       arabic: root,
-      sub: `Arabic root · appears in ${occ.length} ayaat`,
+      sub: `Arabic root · occurs ${count || occ.length} times in the Quran · across ${occ.length} ayaat`,
       meanings: this.glosses.root[root] || { en: [], ur: [] },
       occurrences: occ,
       occLabel: 'this root',
