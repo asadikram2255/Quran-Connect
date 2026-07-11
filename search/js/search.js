@@ -680,29 +680,59 @@ class QuranSearch {
       'بعد','قبل','عند','مع','عن','منه','منها','منهم','فيه','فيها',
     ]);
 
-    const wordMap = {}; // normWord → { count, roots }
+    // Fold surface variants of the same word into one term:
+    //  - strip zero-width/invisible junk chars (data noise variants)
+    //  - fold a leading و conjunction into the bare form (والارض → الارض),
+    //    but only when the bare form itself occurs under the same root — so
+    //    root-letter و words never fold (وجد stays: جد is no و-ج-د form).
+    const ZW_RE = /[\u200B-\u200F\uFEFF\uE000-\uF8FF]/g;
+    const wordMap = {}; // canonical normWord → { perRoot: {root: sum}, roots }
     for (const root of roots) {
       const entries = this.rootVocab[root] || [];
+      // Pass 1: clean junk chars, summing duplicates that collapse together
+      const cleaned = {};
       for (const { n, c } of entries) {
-        if (n.length < 3 || AR_STOP.has(n)) continue;
-        if (!wordMap[n]) wordMap[n] = { count: 0, roots: [] };
-        if (c > wordMap[n].count) wordMap[n].count = c;
-        if (!wordMap[n].roots.includes(root)) wordMap[n].roots.push(root);
+        const k = n.replace(ZW_RE, '');
+        if (k.length < 2) continue;
+        cleaned[k] = (cleaned[k] || 0) + c;
+      }
+      // Pass 2: fold و-prefixed forms into their bare sibling
+      for (const [k, c] of Object.entries(cleaned)) {
+        const bare = k.startsWith('و') && cleaned[k.slice(1)] !== undefined
+          ? k.slice(1) : k;
+        if (bare.length < 3 || AR_STOP.has(bare)) continue;
+        if (!wordMap[bare]) wordMap[bare] = { perRoot: {}, roots: [] };
+        // Variants folded within one root add up; across roots we take the max
+        wordMap[bare].perRoot[root] = (wordMap[bare].perRoot[root] || 0) + c;
+        if (!wordMap[bare].roots.includes(root)) wordMap[bare].roots.push(root);
       }
     }
     return Object.entries(wordMap)
-      .map(([normWord, { count, roots }]) => ({ normWord, count, roots }))
+      .map(([normWord, { perRoot, roots }]) => ({
+        normWord,
+        count: Math.max(...Object.values(perRoot)),
+        roots,
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
   }
 
   /**
-   * Returns all ayaat containing the exact normalized Arabic word, in Quran order.
+   * Returns all ayaat containing the normalized Arabic word — bare or with a
+   * leading و conjunction — in Quran order. The و-form is only accepted when
+   * the lexicon confirms it is the same word (shares a root with the bare
+   * form), so e.g. جد "majesty" never matches وجد "found" (different root).
    */
   filterByNormWord(normWord, label) {
+    const forms = new Set([normWord]);
+    const waForm  = 'و' + normWord;
+    const wRoots  = this.wordRoots[normWord] || [];
+    const waRoots = this.wordRoots[waForm];
+    if (!waRoots || waRoots.some(r => wRoots.includes(r))) forms.add(waForm);
+
     const results = [];
     for (const ayah of this.ayaat) {
-      if (this.arNorm[ayah.id].split(/\s+/).includes(normWord)) {
+      if (this.arNorm[ayah.id].split(/\s+/).some(t => forms.has(t))) {
         results.push({
           ayah,
           score: 1,
