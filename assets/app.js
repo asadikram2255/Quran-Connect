@@ -1360,6 +1360,16 @@ function normalizeEnglish(s) {
   return String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Display-only stripper: removes tashkeel/quranic marks but keeps letter
+// spellings (ة، ى، أ …) intact — unlike normalizeArabic, which folds letters
+// for matching and would visibly change the word.
+function stripDiacritics(s) {
+  return String(s || "")
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, "")
+    .replace(/ـ/g, "")
+    .replace(/ٱ/g, "ا");
+}
+
 function trigrams(token) {
   if (token.length <= 3) return [token];
   const out = [];
@@ -1799,12 +1809,14 @@ document.querySelectorAll(".tab").forEach(btn => {
 
 function makeWordChips(values) {
   if (!values || !values.length) return `<span class="small">—</span>`;
-  return values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(v)}</span>`).join("");
+  // Display without diacritics; keep the original value in data-key so
+  // click lookups still hit the exact index/data keys.
+  return values.map(v => `<span class="rootChip" dir="rtl" lang="ar" data-key="${escapeHtml(v)}">${escapeHtml(stripDiacritics(v))}</span>`).join("");
 }
 
 function makeSharedChips(label, values) {
   if (!values || !values.length) return "";
-  const chips = values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(v)}</span>`).join("");
+  const chips = values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(stripDiacritics(v))}</span>`).join("");
   return `<div class="sharedRow"><span class="sharedLabel">${escapeHtml(label)}</span><div class="chipGroup">${chips}</div></div>`;
 }
 
@@ -1949,7 +1961,7 @@ async function openWordModal(word, kind) {
   const occ = kind === "root" ? (state.rootCounts?.[word] || count) : count;
 
   const kindLabel = kind === "root" ? "Root Word" : "Arabic Word";
-  els.wordModalTitle.textContent = word;
+  els.wordModalTitle.textContent = stripDiacritics(word);
   els.wordModalSub.textContent   = kind === "root"
     ? `${kindLabel} · occurs ${occ} time${occ !== 1 ? "s" : ""} in the Quran · across ${count} ayaat`
     : `${kindLabel} · appears in ${count} ayaat`;
@@ -2008,11 +2020,11 @@ document.addEventListener("keydown", e => {
 // Chip click delegation on the Words & Roots panel
 if (els.dRoots) els.dRoots.addEventListener("click", e => {
   const chip = e.target.closest(".rootChip");
-  if (chip) openWordModal(chip.textContent.trim(), "root");
+  if (chip) openWordModal(chip.dataset.key || chip.textContent.trim(), "root");
 });
 if (els.dTokens) els.dTokens.addEventListener("click", e => {
   const chip = e.target.closest(".rootChip");
-  if (chip) openWordModal(chip.textContent.trim(), "token");
+  if (chip) openWordModal(chip.dataset.key || chip.textContent.trim(), "token");
 });
 
 // ── Open detail ─────────────────────────────────────────────

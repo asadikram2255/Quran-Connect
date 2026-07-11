@@ -34,6 +34,16 @@ function normVariants(text) {
   return asAlef === stripped ? [asAlef] : [asAlef, stripped];
 }
 
+/* Display-only stripper: removes tashkeel/quranic marks but keeps letter
+   spellings (ة، ى، أ …) intact — unlike normalizeArabic, which folds letters
+   for matching and would visibly change the word. */
+function stripDiacritics(text) {
+  return String(text ?? '')
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, '') // harakat, quranic annotation marks, dagger alef
+    .replace(/ـ/g, '')   // tatweel
+    .replace(/ٱ/g, 'ا');      // alef wasla → plain alef
+}
+
 /* ── App ─────────────────────────────────────────────────────────────────── */
 
 class ExploreApp {
@@ -307,7 +317,7 @@ class ExploreApp {
           <div class="badges-row">${
             words.map((w, i) =>
               `<button class="word-badge" type="button" data-ref="${ref}" data-idx="${i}">
-                 <span class="wb-ar" lang="ar">${this._esc(w.ar)}</span>
+                 <span class="wb-ar" lang="ar">${this._esc(stripDiacritics(w.ar))}</span>
                  <span class="wb-gloss">${this._esc(w.en)}</span>
                </button>`).join('')
           }</div>
@@ -316,7 +326,7 @@ class ExploreApp {
             [...rootSet.keys()].map(r =>
               `<button class="root-badge" type="button" data-root="${this._esc(r)}">
                  <span class="rb-tag">root</span>
-                 <span class="rb-ar" lang="ar">${this._esc(r)}</span>
+                 <span class="rb-ar" lang="ar">${this._esc(stripDiacritics(r))}</span>
                </button>`).join('')
           }</div>` : ''}
         </div>`;
@@ -391,8 +401,8 @@ class ExploreApp {
     const roots = this.wordRoots[norm] || [];
 
     this._modalState = {
-      arabic: word.ar,
-      sub: `${word.tr || ''}${roots.length ? ' · root: ' + roots.join(' ، ') : ''}`,
+      arabic: stripDiacritics(word.ar),
+      sub: `${word.tr || ''}${roots.length ? ' · root: ' + roots.map(stripDiacritics).join(' ، ') : ''}`,
       meanings: this.glosses.word[norm] || { en: [], ur: [] },
       occurrences: this._findWordOccurrences(variants),
       occLabel: 'this word',
@@ -405,7 +415,7 @@ class ExploreApp {
     const occ = this.quran.filter(a => (a.roots || []).includes(root));
     const count = this.rootCounts?.[root];
     this._modalState = {
-      arabic: root,
+      arabic: stripDiacritics(root),
       sub: `Arabic root · occurs ${count || occ.length} times in the Quran · across ${occ.length} ayaat`,
       meanings: this.glosses.root[root] || { en: [], ur: [] },
       occurrences: occ,
