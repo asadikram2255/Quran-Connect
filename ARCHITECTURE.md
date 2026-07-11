@@ -72,6 +72,7 @@ Quran-Connect/
 │   ├── build_search_data.py     ← CSV → search/data/ JSON (accepts --input-dir / --output-dir)
 │   ├── export_embeddings.py     ← numpy cache → binary .bin (accepts --cache-dir / --output-dir)
 │   ├── fetch_*.{py,mjs,js}      ← Fetchers: tafsir, translations, word-by-word, analyzequran roots
+│   ├── build_wa_prefix_map.py   ← وَ-conjunction map (والارض→الارض) from wbw wasla orthography
 │   ├── verify_root_tally.mjs    ← Cross-check root counts against analyzequran dictionary
 │   └── test_normalize.json      ← Normalization test vectors (JS ↔ Python parity check)
 │

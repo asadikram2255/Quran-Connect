@@ -1807,16 +1807,31 @@ document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 
+// Fold a token to its bare form when it's a و-prefixed variant (والارض → الارض).
+// Root keys and unprefixed tokens pass through unchanged.
+function waBaseForm(v) {
+  return state.waPrefixMap?.[v] || v;
+}
+
 function makeWordChips(values) {
   if (!values || !values.length) return `<span class="small">—</span>`;
-  // Display without diacritics; keep the original value in data-key so
-  // click lookups still hit the exact index/data keys.
-  return values.map(v => `<span class="rootChip" dir="rtl" lang="ar" data-key="${escapeHtml(v)}">${escapeHtml(stripDiacritics(v))}</span>`).join("");
+  // Fold و-prefixed forms into the bare word and dedupe; display without
+  // diacritics. data-key carries the exact index/data key for click lookups.
+  const seen = new Set();
+  const out = [];
+  for (const v of values) {
+    const base = waBaseForm(v);
+    if (seen.has(base)) continue;
+    seen.add(base);
+    out.push(base);
+  }
+  return out.map(v => `<span class="rootChip" dir="rtl" lang="ar" data-key="${escapeHtml(v)}">${escapeHtml(stripDiacritics(v))}</span>`).join("");
 }
 
 function makeSharedChips(label, values) {
   if (!values || !values.length) return "";
-  const chips = values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(stripDiacritics(v))}</span>`).join("");
+  const shown = unique(values.map(waBaseForm));
+  const chips = shown.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(stripDiacritics(v))}</span>`).join("");
   return `<div class="sharedRow"><span class="sharedLabel">${escapeHtml(label)}</span><div class="chipGroup">${chips}</div></div>`;
 }
 
@@ -1937,14 +1952,17 @@ async function openWordModal(word, kind) {
   // kind: "root" | "token"
   // Ensure search indexes are available (needed for rootToAyahIds and arTokenToAyah)
   if (!state.enTokenToAyah) await ensureSearchIndex();
+  await ensureWaPrefixMap();
 
   let ayahIds;
   if (kind === "root") {
     ayahIds = state.rootToAyahIds?.[word] || [];
   } else {
-    const norm = normalizeArabic(word);
-    ayahIds = state.arTokenToAyah?.[norm] || [];
-    ayahIds = sortAyahIds(ayahIds);
+    // Union the bare form with all its و-prefixed variants so e.g. الارض
+    // lists ayaat containing الارض AND والارض alike.
+    const norm  = waBaseForm(normalizeArabic(word));
+    const forms = [norm, ...(state.waFormsByBase?.[norm] || [])];
+    ayahIds = sortAyahIds(unique(forms.flatMap(f => state.arTokenToAyah?.[f] || [])));
   }
 
   const count = ayahIds.length;
@@ -2114,6 +2132,8 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   els.dEnglish.className   = "anchorEnglish" + (isUrduActive() ? " urdu-text" : "");
 
   // Words & Roots panel — show whenever there are root/token chips
+  await ensureWaPrefixMap();
+  if (myToken !== state.detailToken) return;
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
   if (els.anchorWordsPanel) {
@@ -2376,6 +2396,32 @@ async function ensureSearchIndex() {
   })();
 
   return _searchIndexPromise;
+}
+
+// ── Wa-prefix unification map ───────────────────────────────
+// { "والارض": "الارض", … } — built offline by scripts/build_wa_prefix_map.py
+// from the word-by-word data, using the Uthmani alef-wasla to identify true
+// وَ conjunction prefixes (root-letter و words like والد are never mapped).
+
+let _waMapPromise = null;
+
+async function ensureWaPrefixMap() {
+  if (state.waPrefixMap) return;
+  if (_waMapPromise) return _waMapPromise;
+  _waMapPromise = (async () => {
+    try {
+      const map = await fetchJson("data/search_index/wa_prefix_map.json");
+      state.waPrefixMap = map || {};
+    } catch {
+      state.waPrefixMap = {};
+    }
+    state.waFormsByBase = {};
+    for (const [pref, base] of Object.entries(state.waPrefixMap)) {
+      (state.waFormsByBase[base] ||= []).push(pref);
+    }
+    _waMapPromise = null;
+  })();
+  return _waMapPromise;
 }
 
 // ── Skeleton helpers ────────────────────────────────────────
