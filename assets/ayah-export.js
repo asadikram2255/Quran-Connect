@@ -81,7 +81,7 @@
     try {
       const csv = await buildCsv(refs, basePath);
       // UTF-8 BOM so Excel renders Arabic/Urdu correctly
-      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
       const safe = String(label || 'ayaat').replace(/[\\/:*?"<>|\s]+/g, '-').replace(/^-+|-+$/g, '');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
