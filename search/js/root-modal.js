@@ -27,6 +27,17 @@ Object.assign(QuranApp.prototype, {
     const BATCH = 50;
     const sorted = ids.slice().sort((a, b) => a - b);
 
+    if (window.QuranCsvExport && sorted.length) {
+      title.appendChild(QuranCsvExport.makeButton(() => ({
+        refs: sorted
+          .map(id => this.engine.ayaatMap[id])
+          .filter(Boolean)
+          .map(a => `${a.sn}:${a.an}`),
+        label: root,
+        basePath: '../',
+      })));
+    }
+
     const renderBatch = (offset) => {
       const batch = sorted.slice(offset, offset + BATCH);
       for (const id of batch) {

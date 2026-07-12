@@ -1983,6 +1983,13 @@ async function openWordModal(word, kind) {
   els.wordModalSub.textContent   = kind === "root"
     ? `${kindLabel} · occurs ${occ} time${occ !== 1 ? "s" : ""} in the Quran · across ${count} ayaat`
     : `${kindLabel} · appears in ${count} ayaat`;
+  if (window.QuranCsvExport) {
+    els.wordModalSub.appendChild(QuranCsvExport.makeButton(() => ({
+      refs: ayahIds,
+      label: stripDiacritics(word),
+      basePath: "",
+    })));
+  }
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
   els.wordModal.classList.remove("hidden");
 

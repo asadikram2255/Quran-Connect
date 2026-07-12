@@ -473,8 +473,16 @@ class ExploreApp {
     document.getElementById('modal-sub').textContent = st.sub;
     this._renderMeanings();
 
-    document.getElementById('modal-occ-title').textContent =
+    const occTitle = document.getElementById('modal-occ-title');
+    occTitle.textContent =
       `Occurrences — ${st.occurrences.length} ayaat contain ${st.occLabel}`;
+    if (window.QuranCsvExport && st.occurrences.length) {
+      occTitle.appendChild(QuranCsvExport.makeButton(() => ({
+        refs: st.occurrences.map(a => `${a.sn}:${a.an}`),
+        label: st.arabic,
+        basePath: '../',
+      })));
+    }
     const host = document.getElementById('modal-occurrences');
     host.innerHTML = '';
     const MAX = 60;
