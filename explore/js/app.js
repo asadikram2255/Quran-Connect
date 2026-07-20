@@ -34,6 +34,31 @@ function normVariants(text) {
   return asAlef === stripped ? [asAlef] : [asAlef, stripped];
 }
 
+/* Wa-prefix detection — Uthmani orthography signal:
+   a true وَ "and" conjunction is always followed by alef-wasla (ٱ),
+   optionally via an attached ب/ك preposition: وَٱلْأَرْضِ، وَبِٱلْآخِرَةِ.
+   A root-letter و (وَالِد "father", وَٰلِدَة "mother") never is, so this
+   strips only genuine conjunctions — no lexicon needed. */
+const WA_PREFIX_RE = /^و[ً-ٟ]?(?=(?:[بك][ً-ٟ]?)?ٱ)/;
+
+function stripWaPrefix(text) {
+  // Drop leading quranic section marks (۞ …) and whitespace so the
+  // conjunction check anchors on the word itself.
+  const s = String(text ?? '').replace(/^[۝-۩\s]+/, '');
+  const m = WA_PREFIX_RE.exec(s);
+  return m ? s.slice(m[0].length) : s;
+}
+
+/* Display-only stripper: removes tashkeel/quranic marks but keeps letter
+   spellings (ة، ى، أ …) intact — unlike normalizeArabic, which folds letters
+   for matching and would visibly change the word. */
+function stripDiacritics(text) {
+  return String(text ?? '')
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, '') // harakat, quranic annotation marks, dagger alef
+    .replace(/ـ/g, '')   // tatweel
+    .replace(/ٱ/g, 'ا');      // alef wasla → plain alef
+}
+
 /* ── App ─────────────────────────────────────────────────────────────────── */
 
 class ExploreApp {
@@ -308,7 +333,7 @@ class ExploreApp {
           <div class="badges-row">${
             words.map((w, i) =>
               `<button class="word-badge" type="button" data-ref="${ref}" data-idx="${i}">
-                 <span class="wb-ar" lang="ar">${this._esc(w.ar)}</span>
+                 <span class="wb-ar" lang="ar">${this._esc(stripDiacritics(stripWaPrefix(w.ar)))}</span>
                  <span class="wb-gloss">${this._esc(w.en)}</span>
                </button>`).join('')
           }</div>
@@ -317,7 +342,7 @@ class ExploreApp {
             [...rootSet.keys()].map(r =>
               `<button class="root-badge" type="button" data-root="${this._esc(r)}">
                  <span class="rb-tag">root</span>
-                 <span class="rb-ar" lang="ar">${this._esc(r)}</span>
+                 <span class="rb-ar" lang="ar">${this._esc(stripDiacritics(r))}</span>
                </button>`).join('')
           }</div>` : ''}
         </div>`;
@@ -387,15 +412,20 @@ class ExploreApp {
 
   async openWordModal(word) {
     await this._ensureGlosses();
-    const variants = normVariants(word.ar);
+    // Fold a وَ-conjunction prefix so والأرض opens as الأرض and its
+    // occurrence list covers both bare and و-prefixed appearances.
+    const bareAr = stripWaPrefix(word.ar);
+    const bareVariants = normVariants(bareAr);
+    // Prefer dictionary entries for the bare form; fall back to the raw form.
+    const variants = [...new Set([...bareVariants, ...normVariants(word.ar)])];
     const norm = variants.find(v => this.wordRoots[v] || this.glosses.word[v]) || variants[0];
     const roots = this.wordRoots[norm] || [];
 
     this._modalState = {
-      arabic: word.ar,
-      sub: `${word.tr || ''}${roots.length ? ' · root: ' + roots.join(' ، ') : ''}`,
+      arabic: stripDiacritics(bareAr),
+      sub: `${word.tr || ''}${roots.length ? ' · root: ' + roots.map(stripDiacritics).join(' ، ') : ''}`,
       meanings: this.glosses.word[norm] || { en: [], ur: [] },
-      occurrences: this._findWordOccurrences(variants),
+      occurrences: this._findWordOccurrences(bareVariants),
       occLabel: 'this word',
     };
     this._renderModal();
@@ -406,7 +436,7 @@ class ExploreApp {
     const occ = this.quran.filter(a => (a.roots || []).includes(root));
     const count = this.rootCounts?.[root];
     this._modalState = {
-      arabic: root,
+      arabic: stripDiacritics(root),
       sub: `Arabic root · occurs ${count || occ.length} times in the Quran · across ${occ.length} ayaat`,
       meanings: this.glosses.root[root] || { en: [], ur: [] },
       occurrences: occ,
@@ -417,8 +447,19 @@ class ExploreApp {
 
   _findWordOccurrences(variants) {
     if (!this.arNormCache) {
+      // Haystack: every word of the ayah in all normalized spellings
+      // (dagger-alef as alef AND dropped), plus — for وَ-conjunction words —
+      // the bare form, so searching الارض also hits ayaat with والارض.
       this.arNormCache = {};
-      for (const a of this.quran) this.arNormCache[a.id] = ` ${normalizeArabic(a.ar)} `;
+      for (const a of this.quran) {
+        const parts = [];
+        for (const t of String(a.ar).split(/\s+/)) {
+          parts.push(...normVariants(t));
+          const s = stripWaPrefix(t);
+          if (s !== t) parts.push(...normVariants(s));
+        }
+        this.arNormCache[a.id] = ` ${parts.join(' ')} `;
+      }
     }
     const needles = variants.map(v => ` ${v} `);
     return this.quran.filter(a => {
@@ -433,8 +474,16 @@ class ExploreApp {
     document.getElementById('modal-sub').textContent = st.sub;
     this._renderMeanings();
 
-    document.getElementById('modal-occ-title').textContent =
+    const occTitle = document.getElementById('modal-occ-title');
+    occTitle.textContent =
       `Occurrences — ${st.occurrences.length} ayaat contain ${st.occLabel}`;
+    if (window.QuranCsvExport && st.occurrences.length) {
+      occTitle.appendChild(QuranCsvExport.makeButton(() => ({
+        refs: st.occurrences.map(a => `${a.sn}:${a.an}`),
+        label: st.arabic,
+        basePath: '../',
+      })));
+    }
     const host = document.getElementById('modal-occurrences');
     host.innerHTML = '';
     const MAX = 60;

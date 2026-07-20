@@ -1360,6 +1360,16 @@ function normalizeEnglish(s) {
   return String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Display-only stripper: removes tashkeel/quranic marks but keeps letter
+// spellings (ة، ى، أ …) intact — unlike normalizeArabic, which folds letters
+// for matching and would visibly change the word.
+function stripDiacritics(s) {
+  return String(s || "")
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, "")
+    .replace(/ـ/g, "")
+    .replace(/ٱ/g, "ا");
+}
+
 function trigrams(token) {
   if (token.length <= 3) return [token];
   const out = [];
@@ -1797,14 +1807,31 @@ document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => setTab(btn.dataset.tab));
 });
 
+// Fold a token to its bare form when it's a و-prefixed variant (والارض → الارض).
+// Root keys and unprefixed tokens pass through unchanged.
+function waBaseForm(v) {
+  return state.waPrefixMap?.[v] || v;
+}
+
 function makeWordChips(values) {
   if (!values || !values.length) return `<span class="small">—</span>`;
-  return values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(v)}</span>`).join("");
+  // Fold و-prefixed forms into the bare word and dedupe; display without
+  // diacritics. data-key carries the exact index/data key for click lookups.
+  const seen = new Set();
+  const out = [];
+  for (const v of values) {
+    const base = waBaseForm(v);
+    if (seen.has(base)) continue;
+    seen.add(base);
+    out.push(base);
+  }
+  return out.map(v => `<span class="rootChip" dir="rtl" lang="ar" data-key="${escapeHtml(v)}">${escapeHtml(stripDiacritics(v))}</span>`).join("");
 }
 
 function makeSharedChips(label, values) {
   if (!values || !values.length) return "";
-  const chips = values.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(v)}</span>`).join("");
+  const shown = unique(values.map(waBaseForm));
+  const chips = shown.map(v => `<span class="rootChip" dir="rtl" lang="ar">${escapeHtml(stripDiacritics(v))}</span>`).join("");
   return `<div class="sharedRow"><span class="sharedLabel">${escapeHtml(label)}</span><div class="chipGroup">${chips}</div></div>`;
 }
 
@@ -1925,14 +1952,17 @@ async function openWordModal(word, kind) {
   // kind: "root" | "token"
   // Ensure search indexes are available (needed for rootToAyahIds and arTokenToAyah)
   if (!state.enTokenToAyah) await ensureSearchIndex();
+  await ensureWaPrefixMap();
 
   let ayahIds;
   if (kind === "root") {
     ayahIds = state.rootToAyahIds?.[word] || [];
   } else {
-    const norm = normalizeArabic(word);
-    ayahIds = state.arTokenToAyah?.[norm] || [];
-    ayahIds = sortAyahIds(ayahIds);
+    // Union the bare form with all its و-prefixed variants so e.g. الارض
+    // lists ayaat containing الارض AND والارض alike.
+    const norm  = waBaseForm(normalizeArabic(word));
+    const forms = [norm, ...(state.waFormsByBase?.[norm] || [])];
+    ayahIds = sortAyahIds(unique(forms.flatMap(f => state.arTokenToAyah?.[f] || [])));
   }
 
   const count = ayahIds.length;
@@ -1949,10 +1979,17 @@ async function openWordModal(word, kind) {
   const occ = kind === "root" ? (state.rootCounts?.[word] || count) : count;
 
   const kindLabel = kind === "root" ? "Root Word" : "Arabic Word";
-  els.wordModalTitle.textContent = word;
+  els.wordModalTitle.textContent = stripDiacritics(word);
   els.wordModalSub.textContent   = kind === "root"
     ? `${kindLabel} · occurs ${occ} time${occ !== 1 ? "s" : ""} in the Quran · across ${count} ayaat`
     : `${kindLabel} · appears in ${count} ayaat`;
+  if (window.QuranCsvExport) {
+    els.wordModalSub.appendChild(QuranCsvExport.makeButton(() => ({
+      refs: ayahIds,
+      label: stripDiacritics(word),
+      basePath: "",
+    })));
+  }
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
   els.wordModal.classList.remove("hidden");
 
@@ -2008,11 +2045,11 @@ document.addEventListener("keydown", e => {
 // Chip click delegation on the Words & Roots panel
 if (els.dRoots) els.dRoots.addEventListener("click", e => {
   const chip = e.target.closest(".rootChip");
-  if (chip) openWordModal(chip.textContent.trim(), "root");
+  if (chip) openWordModal(chip.dataset.key || chip.textContent.trim(), "root");
 });
 if (els.dTokens) els.dTokens.addEventListener("click", e => {
   const chip = e.target.closest(".rootChip");
-  if (chip) openWordModal(chip.textContent.trim(), "token");
+  if (chip) openWordModal(chip.dataset.key || chip.textContent.trim(), "token");
 });
 
 // ── Open detail ─────────────────────────────────────────────
@@ -2102,6 +2139,8 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   els.dEnglish.className   = "anchorEnglish" + (isUrduActive() ? " urdu-text" : "");
 
   // Words & Roots panel — show whenever there are root/token chips
+  await ensureWaPrefixMap();
+  if (myToken !== state.detailToken) return;
   if (els.dRoots)   els.dRoots.innerHTML   = makeWordChips(rec.roots_ordered  || []);
   if (els.dTokens)  els.dTokens.innerHTML  = makeWordChips(rec.tokens_ordered || []);
   if (els.anchorWordsPanel) {
@@ -2364,6 +2403,32 @@ async function ensureSearchIndex() {
   })();
 
   return _searchIndexPromise;
+}
+
+// ── Wa-prefix unification map ───────────────────────────────
+// { "والارض": "الارض", … } — built offline by scripts/build_wa_prefix_map.py
+// from the word-by-word data, using the Uthmani alef-wasla to identify true
+// وَ conjunction prefixes (root-letter و words like والد are never mapped).
+
+let _waMapPromise = null;
+
+async function ensureWaPrefixMap() {
+  if (state.waPrefixMap) return;
+  if (_waMapPromise) return _waMapPromise;
+  _waMapPromise = (async () => {
+    try {
+      const map = await fetchJson("data/search_index/wa_prefix_map.json");
+      state.waPrefixMap = map || {};
+    } catch {
+      state.waPrefixMap = {};
+    }
+    state.waFormsByBase = {};
+    for (const [pref, base] of Object.entries(state.waPrefixMap)) {
+      (state.waFormsByBase[base] ||= []).push(pref);
+    }
+    _waMapPromise = null;
+  })();
+  return _waMapPromise;
 }
 
 // ── Skeleton helpers ────────────────────────────────────────

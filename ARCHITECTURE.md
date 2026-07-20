@@ -6,48 +6,74 @@ A read-only reference for contributors. Keep it up to date when changing data sc
 
 ## Project Purpose
 
-Full-text and semantic search over the Quran (6,236 ayaat) with Hadith pairing, supporting any natural language — English, Urdu, Arabic script, Roman transliteration.
+Full-text and semantic search over the Quran (6,236 ayaat) with Hadith pairing, supporting any natural language — English, Urdu, Arabic script, Roman transliteration — plus a pure-reading module with word-by-word meanings and root exploration.
 
 ---
 
 ## Repository Map
 
 ```
-quran-better-for-me/
+Quran-Connect/
 │
-├── index.html                   ← Landing page / main Quran Connect app
-├── assets/app.js                ← Main app JS (tafsir, translations, navigation)
+├── index.html                   ← Landing page / Explore Connections app
+├── sw.js                        ← Service worker (cache-first for data/ JSON, keyed to manifest version)
+├── assets/
+│   ├── app.js                   ← Main app JS (pairs, tafsir, translations, mood topics, modals)
+│   ├── motion.js                ← Scroll-linked entrance animations
+│   └── styles.css
+│
+├── explore/                     ← Explore Quran module (pure reading, self-contained)
+│   ├── index.html
+│   ├── css/style.css
+│   ├── js/app.js                ← ExploreApp class (word-by-word, word/root modals)
+│   └── data/
+│       ├── wbw/wbw_sNNN.json    ← per-surah word-by-word {ar, en, ur, tr}
+│       ├── word_glosses.json    ← normalized word → {en:[…], ur:[…]}
+│       ├── root_glosses.json    ← root → {en:[…], ur:[…]}
+│       └── root_counts.json     ← authoritative root occurrence counts (analyzequran.com)
 │
 ├── search/                      ← Search Quran module (self-contained)
 │   ├── index.html               ← Search UI entry point
 │   ├── css/style.css
-│   └── js/
-│       ├── concepts.js          ← Islamic concept ontology + ENGLISH_STOP_WORDS
-│       ├── search.js            ← BM25 search engine (QuranSearch class)
-│       ├── hadith_search.js     ← Client-side hadith keyword search (HadithSearch class)
-│       └── app.js               ← UI controller (QuranApp class, 2000+ lines)
+│   ├── js/
+│   │   ├── concepts.js          ← Islamic concept ontology + ENGLISH_STOP_WORDS + normalizeArabic
+│   │   ├── search.js            ← BM25 search engine (QuranSearch class)
+│   │   ├── app.js               ← UI controller (QuranApp class)
+│   │   ├── synthesis.js         ← Synthesis panel (renders /api/synthesize output)
+│   │   ├── chat.js              ← "Ask" chat mode (calls /api/chat)
+│   │   └── root-modal.js        ← Root occurrences modal
+│   └── data/
+│       ├── quran.json           ← 6,236 ayaat (see schema below)
+│       ├── surah.json           ← 114 surah metadata records
+│       ├── word_roots.json      ← normalizedWord → [root, …] lookup
+│       ├── root_vocab.json      ← root → [{n: normWord, c: count}, …]
+│       └── root_counts.json     ← root occurrence counts (analyzequran.com)
 │
 ├── api/                         ← Vercel serverless functions
-│   ├── expand.js                ← Query expansion (Groq LLM → roots + keywords)
-│   ├── search.js                ← Semantic search (HF embeddings + BGE reranker)
+│   ├── expand.js                ← Query expansion + autocomplete suggest (Groq LLM → roots + keywords)
+│   ├── search.js                ← Semantic search: HF embed → local cosine → BGE rerank (one function)
 │   ├── synthesize.js            ← Verse grouping (Groq LLM, zero-hallucination)
-│   └── rerank.js                ← Cross-encoder reranking (BGE via HF API)
+│   └── chat.js                  ← Grounded Quran chat (Groq LLM, cites only supplied verses)
 │
-├── data/                        ← Static data served by Vercel
-│   ├── embeddings/              ← Binary float32 embeddings (ar_emb.bin, en_emb.bin)
-│   ├── meta/manifest.json       ← Data version manifest
-│   └── ...
+├── data/                        ← Static pre-computed data served by Vercel
+│   ├── embeddings/              ← Binary float32 embeddings (ar_emb.bin, en_emb.bin, meta.json)
+│   ├── meta/                    ← manifest.json, shard maps, root tallies, pairing diagnostics
+│   ├── quran_text/              ← per-surah ayah shards (quran_sNNN.json)
+│   ├── quran_pairs/             ← per-surah semantic + lexical pair shards (pairs_sNNN.json)
+│   ├── hadith_text/             ← 43,393 hadith in 1,000-record shards
+│   ├── search_index/            ← token/root → ayah-id inverted indexes
+│   ├── tafsir/                  ← 5 sources (ibn_kathir, ibn_kathir_ur, maarif, maududi, bayan_ul_quran)
+│   └── translations/            ← 6 translations + Urdu hadith shards
 │
-├── search/data/                 ← Static data for the search module
-│   ├── quran.json               ← 6,236 ayaat (see schema below)
-│   ├── surah.json               ← 114 surah metadata records
-│   ├── word_roots.json          ← normalizedWord → [root, …] lookup
-│   ├── root_vocab.json          ← root → [{n: normWord, c: count}, …]
-│   └── hadith_index.json        ← {books, data:[serial, bookIdx, ref, text][]}
+├── raw/                         ← Source datasets consumed by the offline pipeline
 │
-├── scripts/                     ← Offline data pipeline (Python)
-│   ├── build_search_data.py     ← CSV → JSON (accepts --input-dir / --output-dir)
+├── scripts/                     ← Offline data pipeline (Python + Node)
+│   ├── 01_build_pairs.py        ← Embeddings + TF-IDF → quran_pairs/, hadith pairing, search_index/
+│   ├── build_search_data.py     ← CSV → search/data/ JSON (accepts --input-dir / --output-dir)
 │   ├── export_embeddings.py     ← numpy cache → binary .bin (accepts --cache-dir / --output-dir)
+│   ├── fetch_*.{py,mjs,js}      ← Fetchers: tafsir, translations, word-by-word, analyzequran roots
+│   ├── build_wa_prefix_map.py   ← وَ-conjunction map (والارض→الارض) from wbw wasla orthography
+│   ├── verify_root_tally.mjs    ← Cross-check root counts against analyzequran dictionary
 │   └── test_normalize.json      ← Normalization test vectors (JS ↔ Python parity check)
 │
 └── vercel.json                  ← Function config + cache headers
@@ -85,14 +111,17 @@ User query (any language)
 
         │ (parallel, optional)
         ▼
-[/api/search]             HF embed query → local cosine similarity → top-50
-  └─ [/api/rerank]        BGE cross-encoder → top-30 merged into results
+[/api/search]             HF embed query → local cosine over bundled
+                          embeddings → top-50 → BGE cross-encoder rerank
+                          (in the same function) → top-30 merged into results
 
         │ (after fast results, async)
         ▼
 [/api/synthesize]         Groq organizes verse refs into {theme, groups}
   └─ synthesis panel      All text fetched from local quran.json — zero hallucination
 ```
+
+In "Ask" mode, `search/js/chat.js` runs the same retrieval, then sends the top verses plus the conversation to `/api/chat`, which may only cite the supplied refs.
 
 ---
 
@@ -150,22 +179,24 @@ Rules applied (in order):
 6. Ta marbuta `ة` → ha `ه`
 7. Collapse whitespace
 
+Note: `explore/js/app.js` and `scripts/fetch_wbw.mjs` carry their own mirrored copy of this normalizer for word-by-word lookups — keep those in sync too.
+
 ---
 
 ## API Endpoints
 
 | Endpoint | Method | Input | Output | Timeout | Used when |
 |---|---|---|---|---|---|
-| `/api/expand` | POST | `{query: string}` | `{roots, keywords, subtopics, understood_as}` | 15s | Vercel only; GitHub Pages falls back to MyMemory |
-| `/api/search` | POST | `{query, lang?}` | `{results[{ayah_id, arabic_text, english_text, embed_score, rerank_score}]}` | 30s | Optional semantic layer |
+| `/api/expand` | POST | `{query, mode?}` | `{roots, keywords, subtopics, understood_as}`; `mode:"suggest"` → `{suggestions[]}` | 15s | Vercel only; GitHub Pages falls back to MyMemory |
+| `/api/search` | POST | `{query, lang?}` | `{results[{ayah_id, arabic_text, english_text, embed_score, rerank_score}]}` | 30s | Optional semantic layer; reranking happens inside this function |
 | `/api/synthesize` | POST | `{query, verses[{ref,text}]}` | `{theme, groups[{label, refs[]}], truncated, verse_limit}` | 10s | After BM25 results arrive |
-| `/api/rerank` | POST | `{query, passages[]}` | `{scores[], passage_limit}` | 20s | Optional; Vercel only |
+| `/api/chat` | POST | `{messages[], verses[{ref,text}]}` | `{reply, citedRefs[]}` | 25s | "Ask" mode in the Search module |
 
 All endpoints return `200` even on error (with `{error: "..."}`) so callers can degrade gracefully.
 
 **Limits:**
 - `/api/synthesize`: max 30 verses (returns `truncated: true` if caller sent more)
-- `/api/rerank`: max 100 passages (returns 400 with `truncated: true` if exceeded)
+- `/api/chat`: max 20 verses, last 10 messages, 1,000 chars per message
 
 ---
 
@@ -174,7 +205,7 @@ All endpoints return `200` even on error (with `{error: "..."}`) so callers can 
 | Variable | Required | Used by |
 |---|---|---|
 | `HF_TOKEN` | Yes (Vercel) | `api/search.js` (embed + rerank via HF Inference) |
-| `GROQ_API_KEY` | Yes (Vercel) | `api/expand.js`, `api/synthesize.js` |
+| `GROQ_API_KEY` | Yes (Vercel) | `api/expand.js`, `api/synthesize.js`, `api/chat.js` |
 
 Copy `.env.example` to `.env` to run locally with `vercel dev`.
 
@@ -204,8 +235,8 @@ git add search/data/ data/embeddings/
 
 ## Known Limitations & Open Questions
 
-- **Root lexicon provenance**: `search/data/word_roots.json` is derived from `raw/Root Words.csv`. The source authority of that CSV is undocumented. Sample against Hans Wehr or Lane's Lexicon if adding new terms.
+- **Root lexicon provenance**: `search/data/word_roots.json` is derived from `raw/Root Words.csv`. Root occurrence counts have since been verified against analyzequran.com (`scripts/verify_root_tally.mjs`), but the CSV's original source authority remains undocumented.
 - **Quran text source**: The Arabic text source recitation (Hafs 'an 'Asim, Uthmani orthography?) is undocumented. Should be confirmed and added to this file.
 - **Embedding model choice**: `paraphrase-multilingual-mpnet-base-v2` was chosen for multilingual support. No benchmark comparing it to Arabic-specific models (AraBERT, CAMeL) has been run.
-- **Hadith search is English-only**: `hadith_search.js` tokenizer strips all non-ASCII. Arabic/Urdu hadith searches return zero results.
-- **No automated tests**: There is no test suite. The normalization test vectors in `scripts/test_normalize.json` are the only formal correctness check.
+- **No live hadith search**: Hadith connections are pre-computed offline by `scripts/01_build_pairs.py` and served as static pair shards; there is no runtime hadith keyword search.
+- **No automated tests**: There is no test suite. The normalization test vectors in `scripts/test_normalize.json` and `scripts/verify_root_tally.mjs` are the only formal correctness checks.
