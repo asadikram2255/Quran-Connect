@@ -239,7 +239,10 @@ export default async function handler(req, res) {
     });
 
   } catch (e) {
+    // Same contract as /api/chat, /api/expand and /api/synthesize: always 200
+    // with an `error` field, so the client can degrade to local BM25 rather
+    // than treating this as a transport failure.
     console.error("Search error:", e);
-    return res.status(500).json({ error: e.message || String(e) });
+    return res.status(200).json({ results: [], error: e.message || String(e) });
   }
 }

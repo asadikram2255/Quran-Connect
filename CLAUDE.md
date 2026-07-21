@@ -4,7 +4,7 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-10
+**Last updated:** 2026-07-21
 
 ## What the project does
 
@@ -77,6 +77,28 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 - Commit style: plain messages, no attribution footer visible in history; deploy after commit.
 
 ## Last changes (newest first)
+
+- **2026-07-21** Cut the root app's landing payload from **118.6 MB → 5.0 MB** (heap 200 → 53 MB).
+  `ensureSurahLoaded` was fetching each surah's *pairs* shard alongside its text shard, and the
+  25-surah background warm-up therefore pulled ~114 MB of pairs data on every visit. Pairs loading
+  is now a separate `ensurePairsLoaded` (with in-flight dedup, `state.loadedPairSurahs`) called
+  only from `openDetail`, which already renders a skeleton while it loads. **Do not warm pairs
+  shards** — `pairs_s002.json` alone is 17 MB.
+- **2026-07-21** Fixed the service worker cache being dead after the first session: `CACHE_NAME`
+  was a module `let` assigned only inside `install`, so every worker restart reverted it to the
+  fallback and missed the real cache. Verified in-browser — two caches existed, `quran-data-v5`
+  (113 entries) and a stray `quran-data-2` (108). Cache name is now resolved lazily via
+  `cacheName()` (manifest → existing `quran-data-v*` scan for offline → fallback) and `activate`
+  reaps legacy `quran-data*` caches. All 66 data requests now serve from cache, 0 from network.
+- **2026-07-21** `/api/search` now returns `200 + {results: [], error}` on failure like the other
+  three functions, instead of `500` (client fallback to local BM25 was already equivalent).
+- **2026-07-21** Full project audit. Open items NOT yet fixed, highest first: (1) all four `api/*`
+  functions are wildcard-CORS, unauthenticated and unthrottled — anyone can drain the Groq/HF
+  quota; (2) raw `e.message` (incl. upstream response bodies) returned to clients from all four;
+  (3) duplicate `POST /api/expand` per search; (4) `site.webmanifest` has `"icons": []` and stale
+  "Quran Better For Me" / "43,000+ Hadith" branding; (5) no favicon on root `index.html`;
+  (6) `Android-Appl/` is neither tracked nor gitignored; (7) unused `QDRANT_*` keys in `.env`
+  should be revoked; (8) repo is 312 MB packed, `raw/` CSVs are build inputs.
 
 - **2026-07-10** Unified light/dark theming across ALL pages: root app (landing + Explore
   Connections) gained a full warm-parchment light theme + header toggle; all three pages share
