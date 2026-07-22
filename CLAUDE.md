@@ -81,6 +81,23 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## Last changes (newest first)
 
+- **2026-07-22** **The 416 quotations that could not be restored are exported for hand correction.**
+  `scripts/export_quote_fixes.py` writes `raw/quote_fixes.xlsx` — one row per unmatched
+  `[surah:ayah]` reference with the root, the **printed book page** (the PDF is indexed page by
+  page; printed number = PDF page − 5, carried forward across pages that print none), the quote as
+  the book prints it, the Urdu leading up to it, why it was left alone, and blank columns for the
+  correct reference / Arabic. 412 of 416 rows resolve to a page (378 to the exact page carrying the
+  reference); 24 carry an auto-suggested reference found by rearranging the scrambled digits and
+  keeping the ayah that actually contains the quote (`[5:253]` → 25:53).
+  `python scripts/export_quote_fixes.py --ingest` reads the filled-in workbook into
+  **`raw/quote_fixes.json`**, which `restore_quran_quotes.py` applies *before* anything automatic.
+  A correction may name a reference or supply the Arabic directly (for a part-verse); either way it
+  must still line up with the printed quote under the same word-boundary skeleton rule, so a
+  mistaken correction is **reported (`manual_failed`), never substituted**. An export refuses to
+  overwrite an existing workbook without `--force`; the durable record is the JSON, which an export
+  never touches. `build_root_dictionary.main()` was split into `build_entries()` so the exporter
+  reuses the parse — output byte-identical. **Re-deploy is still pending the filled-in sheet.**
+
 - **2026-07-22** **Quranic quotations inside the dictionary articles are restored** from the repo's
   own Quran text, working around the source corruption described in the entry below.
   `scripts/restore_quran_quotes.py` (called from `build_root_dictionary.py`) walks every printed
