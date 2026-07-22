@@ -221,6 +221,7 @@ def restore_all(entries):
 
             if not hit:
                 st['nomatch'] += 1
+                log.append((root, m.group(0), '', 'nomatch', window, ''))
                 continue
 
             kind, aid, ayah, a_idx, (length, pos) = hit
