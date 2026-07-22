@@ -26,6 +26,9 @@ import sys
 import zipfile
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import restore_quran_quotes
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 DOCX = os.path.join(REPO, 'raw', 'Fatuhat-al-Quran- Final Draft.docx')
@@ -236,9 +239,19 @@ def main():
             matched_extra += 1
     print(f'non-root keys matched: {matched_extra}')
 
+    # The book's Arabic is corrupted at the source; every quotation that
+    # carries a [surah:ayah] reference is swapped for the repo's own text.
+    out, qst, _ = restore_quran_quotes.restore_all(out)
+    print('quotes: %d refs, %d restored (%d cited, %d repaired ref, '
+          '%d found by search), %d without a quote, %d unmatched'
+          % (qst['refs'], qst['cited'] + qst['repaired'] + qst['global'],
+             qst['cited'], qst['repaired'], qst['global'],
+             qst['no_quote'], qst['nomatch']))
+
     payload = {
         'source': 'Fatuhat al-Quran',
         'lang': 'ur',
+        'quotes_restored': qst['cited'] + qst['repaired'] + qst['global'],
         'entries': out,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

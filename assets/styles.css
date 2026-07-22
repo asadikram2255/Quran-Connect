@@ -1287,6 +1287,14 @@ body.view-research .searchHint { display: none; }
 }
 .rootdict-article p { margin: 0 0 .9em; }
 .rootdict-article p:last-child { margin-bottom: 0; }
+/* Quranic quotations, restored from the repo's own text (see
+   scripts/restore_quran_quotes.py) — set in the Arabic face, not Nastaliq. */
+.rootdict-ayah {
+  font-family: 'Amiri', serif;
+  font-size: 1.12em;
+  line-height: 1.9;
+  color: var(--accent);
+}
 .rootdict-source {
   margin-top: 6px;
   font-size: 11px;

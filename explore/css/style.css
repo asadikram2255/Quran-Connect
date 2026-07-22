@@ -291,6 +291,9 @@ button { font-family: inherit; cursor: pointer; }
 }
 .rootdict-article p { margin: 0 0 .9em; }
 .rootdict-article p:last-child { margin-bottom: 0; }
+/* Quranic quotations, restored from the repo's own text (see
+   scripts/restore_quran_quotes.py) — Arabic face, not Nastaliq. */
+.rootdict-ayah { font-family: var(--font-ar); font-size: 1.1em; line-height: 1.9; color: var(--accent); }
 .rootdict-source {
   margin-top: 6px; font-size: .74rem; color: var(--text-ter);
   direction: rtl; text-align: right;
