@@ -13,11 +13,11 @@ Object.assign(QuranApp.prototype, {
     const ids   = this.engine.rootIdx[root] ? [...this.engine.rootIdx[root]] : [];
     const count = ids.length;
     const occ   = (this.rootCounts && this.rootCounts[root]) || count;
-    const en    = (label && label.en) ? label.en : '';
 
+    // The meaning shown is the Fatuhat al-Quran article (rendered in the body),
+    // so the old one-word English label is no longer part of the title.
     title.innerHTML = `
       <span class="rm-root" dir="rtl" lang="ar">${this._esc(root)}</span>
-      ${en ? `<span class="rm-en">${this._esc(en)}</span>` : ''}
       <span class="rm-count">occurs ${occ} times · ${count} ayaat</span>`;
 
     body.innerHTML = '<div class="root-modal-loading">Loading…</div>';
@@ -60,8 +60,21 @@ Object.assign(QuranApp.prototype, {
 
     requestAnimationFrame(() => {
       body.innerHTML = '';
+
+      // Meaning first: the root's article from Fatuhat al-Quran.
+      const dict = document.createElement('div');
+      dict.className = 'rm-dict';
+      dict.innerHTML = '<div class="root-modal-loading">Loading meaning…</div>';
+      body.appendChild(dict);
+      RootDictionary.load('../').then(() => {
+        dict.innerHTML = RootDictionary.html(root);
+      });
+
       if (!sorted.length) {
-        body.innerHTML = '<div class="root-modal-loading">No ayaat found.</div>';
+        const none = document.createElement('div');
+        none.className = 'root-modal-loading';
+        none.textContent = 'No ayaat found.';
+        body.appendChild(none);
         return;
       }
       renderBatch(0);

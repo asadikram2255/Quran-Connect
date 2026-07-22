@@ -1,10 +1,47 @@
 // Service Worker — cache-first for all static data files
 //
 // Cache version is derived from data/meta/manifest.json's `version` field so it
-// invalidates automatically whenever the pipeline rebuilds the data. The SW reads
-// manifest.json with cache: "no-cache" on every install to get the latest version.
+// invalidates automatically whenever the pipeline rebuilds the data.
 
-let CACHE_NAME = "quran-data-2"; // fallback; overwritten during install
+// The browser terminates and re-evaluates this worker constantly, but `install`
+// fires only once per version — so the cache name must NOT be a plain variable
+// assigned during install, or every restart would fall back to a name that
+// matches nothing and re-download the whole corpus. Instead it is resolved
+// lazily (and memoised per worker lifetime) from three sources, in order:
+//   1. manifest.json over the network — authoritative
+//   2. an existing quran-data-v* cache — keeps us correct while offline
+//   3. FALLBACK_VERSION
+const FALLBACK_VERSION = 2;
+const CACHE_PREFIX = "quran-data-v";
+
+let _cacheNamePromise = null;
+
+async function resolveCacheName() {
+  try {
+    const r = await fetch("data/meta/manifest.json", { cache: "no-cache" });
+    if (r.ok) {
+      const meta = await r.json();
+      if (meta && meta.version) return CACHE_PREFIX + meta.version;
+    }
+  } catch (_) { /* offline — fall through to the cache scan */ }
+
+  try {
+    const existing = (await caches.keys()).filter(k => k.startsWith(CACHE_PREFIX));
+    if (existing.length) {
+      // Highest version wins if several linger from an interrupted activate.
+      existing.sort((a, b) =>
+        parseInt(b.slice(CACHE_PREFIX.length), 10) - parseInt(a.slice(CACHE_PREFIX.length), 10));
+      return existing[0];
+    }
+  } catch (_) { /* fall through */ }
+
+  return CACHE_PREFIX + FALLBACK_VERSION;
+}
+
+function cacheName() {
+  if (!_cacheNamePromise) _cacheNamePromise = resolveCacheName();
+  return _cacheNamePromise;
+}
 
 // Critical files to precache on install so first page load after SW registration is instant
 const PRECACHE_URLS = [
@@ -15,11 +52,8 @@ const PRECACHE_URLS = [
 // Install: fetch manifest to get data version, then precache essential files
 self.addEventListener("install", event => {
   event.waitUntil(
-    fetch("data/meta/manifest.json", { cache: "no-cache" })
-      .then(r => r.ok ? r.json() : Promise.reject("manifest unavailable"))
-      .then(meta => { CACHE_NAME = `quran-data-v${meta.version || 2}`; })
-      .catch(() => {})
-      .then(() => caches.open(CACHE_NAME))
+    cacheName()
+      .then(name => caches.open(name))
       .then(cache =>
         Promise.all(
           PRECACHE_URLS.map(url =>
@@ -29,6 +63,7 @@ self.addEventListener("install", event => {
           )
         )
       )
+      .catch(() => {})
       .then(() => self.skipWaiting())
   );
 });
@@ -36,9 +71,17 @@ self.addEventListener("install", event => {
 // Activate: delete any old-version caches
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    cacheName()
+      .then(name => caches.keys().then(keys =>
+        // Matches on "quran-data" rather than CACHE_PREFIX so this also reaps
+        // the legacy un-versioned "quran-data-2" cache that older workers wrote
+        // into on every restart. Scoped so unrelated caches are left alone.
+        Promise.all(keys
+          .filter(k => k.startsWith("quran-data") && k !== name)
+          .map(k => caches.delete(k)))
+      ))
+      .catch(() => {})
+      .then(() => self.clients.claim())
   );
 });
 
@@ -55,7 +98,7 @@ self.addEventListener("fetch", event => {
   if (!url.pathname.endsWith(".json") && !url.pathname.includes(".json?")) return;
 
   event.respondWith(
-    caches.open(CACHE_NAME).then(async cache => {
+    cacheName().then(name => caches.open(name)).then(async cache => {
       // Strip query strings for cache key consistency
       const cacheKey = new Request(url.origin + url.pathname);
       const cached = await cache.match(cacheKey);

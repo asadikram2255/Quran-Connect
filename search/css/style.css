@@ -1053,11 +1053,6 @@ mark {
   line-height: 1.4;
 }
 
-.root-modal-title .rm-en {
-  font-size: .9rem;
-  color: var(--text-sec);
-}
-
 .root-modal-title .rm-count {
   font-size: .82rem;
   font-weight: 600;
@@ -1095,6 +1090,41 @@ mark {
   padding: 40px 0;
   font-size: .95rem;
 }
+
+/* Root meaning: the root's article from Fatuhat al-Quran, Urdu, RTL. */
+.rm-dict { margin: 0 0 18px; }
+.rm-dict .rootdict-article {
+  font-family: 'Noto Nastaliq Urdu', serif;
+  direction: rtl;
+  text-align: right;
+  font-size: 1rem;
+  line-height: 2.35;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.rm-dict .rootdict-article p { margin: 0 0 .9em; }
+.rm-dict .rootdict-article p:last-child { margin-bottom: 0; }
+/* Quranic quotations, restored from the repo's own text (see
+   scripts/restore_quran_quotes.py) — Arabic face, not Nastaliq. */
+.rm-dict .rootdict-ayah {
+  font-family: var(--font-ar);
+  font-size: 1.1em;
+  line-height: 1.9;
+  color: var(--accent);
+}
+.rm-dict .rootdict-source {
+  margin-top: 6px;
+  font-size: .74rem;
+  color: var(--text-sec);
+  direction: rtl;
+  text-align: right;
+}
+.rm-dict .rootdict-empty { font-size: .85rem; color: var(--text-sec); margin: 0; }
 
 /* Cards inside the modal: spacing + restore content visibility */
 .root-modal-body .result-card {

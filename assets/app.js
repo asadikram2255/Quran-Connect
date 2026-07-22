@@ -116,6 +116,7 @@ const state = {
   arTokenToAyah: null,
 
   loadedSurahs: new Set(),
+  loadedPairSurahs: new Set(),
   loadedHadithShardFiles: new Set(),
 
   quranById:   new Map(),
@@ -1220,7 +1221,7 @@ function resolveDataPath(path) {
   return p.startsWith("data/") ? p : `data/${p}`;
 }
 
-const DATA_VERSION = "v5";  // bump to bust browser cache when data files change
+const DATA_VERSION = "v6";  // bump to bust browser cache when data files change
 
 async function fetchJson(path) {
   const fp = resolveDataPath(path);
@@ -1417,13 +1418,32 @@ async function ensureSurahLoaded(surah) {
   surah = String(surah);
   if (state.loadedSurahs.has(surah)) return;
   const qPath = state.shardMapQuran?.[surah];
-  const pPath = state.shardMapPairs?.[surah];
   if (!qPath) throw new Error(`No Quran shard for surah ${surah}`);
-  if (!pPath) throw new Error(`No pairs shard for surah ${surah}`);
-  const [qShard, pShard] = await Promise.all([fetchJson(qPath), fetchJson(pPath)]);
+  const qShard = await fetchJson(qPath);
   for (const rec of qShard) state.quranById.set(rec.ayah_id, rec);
-  for (const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
   state.loadedSurahs.add(surah);
+}
+
+// Pairs shards are one to two orders of magnitude bigger than text shards
+// (pairs_s002.json alone is 17 MB), so they load separately and only when a
+// detail panel actually needs them — never as part of a warm-up. In-flight
+// fetches are deduped so rapid clicks within one surah can't fetch it twice.
+const _pairsInFlight = new Map();
+async function ensurePairsLoaded(surah) {
+  surah = String(surah);
+  if (state.loadedPairSurahs.has(surah)) return;
+  if (_pairsInFlight.has(surah)) return _pairsInFlight.get(surah);
+
+  const pPath = state.shardMapPairs?.[surah];
+  if (!pPath) throw new Error(`No pairs shard for surah ${surah}`);
+
+  const job = fetchJson(pPath).then(pShard => {
+    for (const rec of pShard) state.pairsByAyah.set(rec.ayah_id, rec);
+    state.loadedPairSurahs.add(surah);
+  }).finally(() => _pairsInFlight.delete(surah));
+
+  _pairsInFlight.set(surah, job);
+  return job;
 }
 
 // ── Tafsir scaffold (loader + renderer) ────────────────────
@@ -1993,6 +2013,12 @@ async function openWordModal(word, kind) {
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
   els.wordModal.classList.remove("hidden");
 
+  // Roots carry a dictionary article (Fatuhat al-Quran); start it loading now
+  // so it is usually ready by the time the ayaat shards land.
+  const dictReady = kind === "root" && window.RootDictionary
+    ? RootDictionary.load("")
+    : null;
+
   const groups   = groupBySurah(ayahIds);
   const surahs   = [...groups.keys()];
 
@@ -2001,6 +2027,16 @@ async function openWordModal(word, kind) {
 
   // Render grouped by surah
   els.wordModalBody.innerHTML = "";
+
+  // Meaning first, above the occurrences.
+  if (dictReady) {
+    const dictEl = document.createElement("div");
+    dictEl.className = "rootdict";
+    dictEl.innerHTML = `<div class="wordModalLoading">Loading meaning…</div>`;
+    els.wordModalBody.appendChild(dictEl);
+    dictReady.then(() => { dictEl.innerHTML = RootDictionary.html(word); });
+  }
+
   for (const surahNum of surahs) {
     const surahNm  = SURAH_NAMES[Number(surahNum)] || "";
     const groupEl  = document.createElement("div");
@@ -2125,7 +2161,8 @@ async function openDetail(ayahId, { preserveHistory = false } = {}) {
   if (els.dEnglish) els.dEnglish.textContent = "";
   showSkeletonPairs(3);
 
-  await ensureSurahLoaded(surahFromAyahId(ayahId));
+  const detailSurah = surahFromAyahId(ayahId);
+  await Promise.all([ensureSurahLoaded(detailSurah), ensurePairsLoaded(detailSurah)]);
   if (myToken !== state.detailToken) return;
 
   const rec   = state.quranById.get(ayahId);
@@ -2487,6 +2524,8 @@ async function init() {
 
     // Background warm-up: preload the most commonly accessed surahs
     // so first searches feel instant. Low-priority — runs after UI is ready.
+    // Text shards only (~2.6 MB total) — do NOT warm pairs shards here, they
+    // are ~114 MB across these 25 surahs and load on demand in openDetail.
     setTimeout(() => {
       const warmSurahs = ["1","2","3","4","5","6","7","9","10","12","18","19","20",
                           "21","26","27","28","36","37","38","55","67","112","113","114"];

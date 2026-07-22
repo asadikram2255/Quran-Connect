@@ -4,7 +4,7 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-10
+**Last updated:** 2026-07-22
 
 ## What the project does
 
@@ -40,6 +40,9 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## What it contains
 
+- `data/root_dictionary.json` + `assets/root-dictionary.js` — the Fatuhat al-Quran root articles
+  (Urdu, one paragraph-style article per root) and the shared loader/renderer used by the root
+  modal in all three modules. Built by `scripts/build_root_dictionary.py` from the DOCX in `raw/`.
 - `index.html`, `assets/{app.js,styles.css,motion.js}` — landing + Explore Connections (root app).
   `DATA_VERSION` const in app.js busts data-file caches; bump when data under `data/` changes.
 - `explore/` — Explore Quran module (`index.html`, `css/style.css`, `js/app.js`,
@@ -77,6 +80,69 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 - Commit style: plain messages, no attribution footer visible in history; deploy after commit.
 
 ## Last changes (newest first)
+
+- **2026-07-22** **Quranic quotations inside the dictionary articles are restored** from the repo's
+  own Quran text, working around the source corruption described in the entry below.
+  `scripts/restore_quran_quotes.py` (called from `build_root_dictionary.py`) walks every printed
+  `[surah:ayah]` reference, reduces the text before it to a **consonant skeleton** (alef, hamza and
+  every hamza seat dropped; Urdu letter forms folded onto Arabic ones), finds the longest suffix of
+  that skeleton occurring contiguously in the cited ayah, and substitutes the authoritative text.
+  **Both ends of a match must land on a word boundary in the article and in the ayah alike** —
+  without that, a quote picks up the tail of the Urdu word before it (…ادراک matching the ـك of
+  سبحانك) or anchors to the wrong ayah word (the و of الربوا matching وَيُرْبِي). Damaged references
+  are repaired (digit-reversed / swapped / ±3 neighbours), else a long *unique* whole-Quran match is
+  searched for. **4,711 of 5,127 references restored (91.9%)**; the remaining 416 stay as printed.
+  Verified: all 4,711 replacements are skeleton-identical to what the book printed (so only vowels
+  and orthography changed, never the wording) and all 1,668 entries' Urdu prose is byte-identical.
+  Restored quotes are wrapped in **U+FDD0 / U+FDD1** in the JSON (permanent noncharacters, cannot
+  collide with real text); `RootDictionary.html()` escapes first, then turns each pair into
+  `<span class="rootdict-ayah">` so quotes render in an Arabic face, not Nastaliq (CSS added in all
+  three stylesheets). `RootDictionary.get()` returns marker-free plain text.
+  **Gotcha learned:** `sw.js` strips the query string when building its cache key, so `?v=` does
+  **not** invalidate cached JSON — only bumping `data/meta/manifest.json` `version` does (now 6;
+  `DATA_VERSION` in app.js now `v6`).
+
+- **2026-07-22** **Root meanings now come from Fatuhat al-Quran** (the user's book, in
+  `raw/Fatuhat-al-Quran- Final Draft.{docx,pdf}`). `scripts/build_root_dictionary.py` extracts the
+  DOCX into `data/root_dictionary.json` (1.9 MB, `{source,lang,entries:{root:article}}`) — 1,668
+  roots, 1,612/1,664 app keys, **98.5% occurrence-weighted coverage** of real roots. Headwords are
+  found at RUN level (bold + `w:sz` 36/40/44), because the DOCX lost paragraph breaks; two source
+  defects are repaired (headwords missing their first letter → supplied by the enclosing باب;
+  headwords not letter-spaced), both gated on the app's known-root set. New shared loader
+  `assets/root-dictionary.js` (`RootDictionary.load(basePath)` / `.html(root)`), wired into all
+  three modules: Explore Quran (replaces the `meaning-chip` list; lang tabs hidden for roots,
+  word glosses untouched; `root_glosses.json` no longer loaded), Explore Connections (new article
+  block at the top of `wordModalBody` for `kind === "root"`), Search Quran (article at the top of
+  `root-modal-body`; the one-word `rm-en` English label removed). Articles render verbatim —
+  escaped and split on newlines only.
+  **Known source defect:** the Arabic *inside* the articles is corrupted in both the DOCX and the
+  PDF (every fatha is encoded as shadda+fatha, so genuine shadda is unrecoverable; marks also drift
+  across base letters). The Urdu prose is clean. *Quoted ayaat carrying a `[S:A]` reference are now
+  repaired from the repo's own text — see the entry above.* Arabic that is **not** a referenced
+  quotation (isolated word forms such as صَّبرًْا at the head of an article) is still corrupt and can
+  only be fixed by a clean source file from the author.
+
+- **2026-07-21** Cut the root app's landing payload from **118.6 MB → 5.0 MB** (heap 200 → 53 MB).
+  `ensureSurahLoaded` was fetching each surah's *pairs* shard alongside its text shard, and the
+  25-surah background warm-up therefore pulled ~114 MB of pairs data on every visit. Pairs loading
+  is now a separate `ensurePairsLoaded` (with in-flight dedup, `state.loadedPairSurahs`) called
+  only from `openDetail`, which already renders a skeleton while it loads. **Do not warm pairs
+  shards** — `pairs_s002.json` alone is 17 MB.
+- **2026-07-21** Fixed the service worker cache being dead after the first session: `CACHE_NAME`
+  was a module `let` assigned only inside `install`, so every worker restart reverted it to the
+  fallback and missed the real cache. Verified in-browser — two caches existed, `quran-data-v5`
+  (113 entries) and a stray `quran-data-2` (108). Cache name is now resolved lazily via
+  `cacheName()` (manifest → existing `quran-data-v*` scan for offline → fallback) and `activate`
+  reaps legacy `quran-data*` caches. All 66 data requests now serve from cache, 0 from network.
+- **2026-07-21** `/api/search` now returns `200 + {results: [], error}` on failure like the other
+  three functions, instead of `500` (client fallback to local BM25 was already equivalent).
+- **2026-07-21** Full project audit. Open items NOT yet fixed, highest first: (1) all four `api/*`
+  functions are wildcard-CORS, unauthenticated and unthrottled — anyone can drain the Groq/HF
+  quota; (2) raw `e.message` (incl. upstream response bodies) returned to clients from all four;
+  (3) duplicate `POST /api/expand` per search; (4) `site.webmanifest` has `"icons": []` and stale
+  "Quran Better For Me" / "43,000+ Hadith" branding; (5) no favicon on root `index.html`;
+  (6) `Android-Appl/` is neither tracked nor gitignored; (7) unused `QDRANT_*` keys in `.env`
+  should be revoked; (8) repo is 312 MB packed, `raw/` CSVs are build inputs.
 
 - **2026-07-10** Unified light/dark theming across ALL pages: root app (landing + Explore
   Connections) gained a full warm-parchment light theme + header toggle; all three pages share

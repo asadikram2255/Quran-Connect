@@ -7,7 +7,7 @@
  *   ../search/data/word_roots.json   normalized word → [roots]
  *   data/wbw/wbw_sNNN.json           per-surah word-by-word {ar,en,ur,tr}
  *   data/word_glosses.json           normalized word → {en:[…], ur:[…]}   (lazy)
- *   data/root_glosses.json           root → {en:[…], ur:[…]}              (lazy)
+ *   ../data/root_dictionary.json     root → Fatuhat al-Quran article      (lazy)
  *   ../data/translations/*.json      full translations keyed "s:a"        (lazy)
  *   ../data/tafsir/{src}/quran_sNNN.json  tafsir shards keyed "s:a"       (lazy)
  */
@@ -402,9 +402,10 @@ class ExploreApp {
 
   async _ensureGlosses() {
     if (!this.glosses.word) {
-      [this.glosses.word, this.glosses.root, this.rootCounts] = await Promise.all([
+      // root_glosses.json is no longer loaded: root meanings now come from the
+      // Fatuhat al-Quran dictionary (assets/root-dictionary.js).
+      [this.glosses.word, this.rootCounts] = await Promise.all([
         this._json('data/word_glosses.json?v=2'),
-        this._json('data/root_glosses.json?v=2'),
         this._json('data/root_counts.json?v=1'),
       ]);
     }
@@ -432,13 +433,14 @@ class ExploreApp {
   }
 
   async openRootModal(root) {
-    await this._ensureGlosses();
+    await Promise.all([this._ensureGlosses(), RootDictionary.load('../')]);
     const occ = this.quran.filter(a => (a.roots || []).includes(root));
     const count = this.rootCounts?.[root];
     this._modalState = {
       arabic: stripDiacritics(root),
       sub: `Arabic root · occurs ${count || occ.length} times in the Quran · across ${occ.length} ayaat`,
-      meanings: this.glosses.root[root] || { en: [], ur: [] },
+      // Root meanings come from Fatuhat al-Quran as a whole article, not chips.
+      article: root,
       occurrences: occ,
       occLabel: 'this root',
     };
@@ -514,9 +516,23 @@ class ExploreApp {
   _renderMeanings() {
     const st = this._modalState;
     if (!st) return;
-    const lang = this.modalLang;
-    const list = st.meanings[lang] || [];
     const host = document.getElementById('modal-meanings');
+    const head = document.getElementById('modal-meanings-title');
+    const tabs = document.querySelector('#modal-meanings-section .lang-tabs');
+
+    // Roots: one Urdu article from Fatuhat al-Quran (no language choice).
+    if (st.article) {
+      head.textContent = `Meaning — ${RootDictionary.SOURCE_EN}`;
+      tabs.hidden = true;
+      host.className = 'meanings rootdict';
+      host.innerHTML = RootDictionary.html(st.article);
+      return;
+    }
+
+    head.textContent = 'Possible meanings';
+    tabs.hidden = false;
+    const lang = this.modalLang;
+    const list = (st.meanings || {})[lang] || [];
     host.className = `meanings${lang === 'ur' ? ' urdu' : ''}`;
     host.innerHTML = list.length
       ? list.map(m => `<span class="meaning-chip">${this._esc(m)}</span>`).join('')
