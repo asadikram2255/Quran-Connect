@@ -24,5 +24,8 @@ data/cache/
 # OS
 .DS_Store
 
+# Office lock files, written next to a workbook while it is open in Excel
+~$*
+
 # Editor / agent local settings
 .claude/
