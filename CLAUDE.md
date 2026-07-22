@@ -106,10 +106,16 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   endpoints, so no third-party bundle is loaded. Sync is last-write-wins per note id (the client
   mints the uuid, so an offline note keeps its identity and syncing twice cannot duplicate it), and
   deletes are tombstones so a delete on the phone doesn't get re-uploaded by the laptop. **Sync is
-  off until configured:** the user must create the Supabase project themselves, run
-  `supabase/notes_schema.sql` (table + four RLS policies keyed to `auth.uid()`), and paste the
-  project URL and anon key into `assets/notes-config.js` — both are public-by-design values, never
-  the service_role key. Until then everything works, saved on that one device, and the account box
+  configured** (project `anitonryhccpgfisrzlm`): `supabase/notes_schema.sql` has been run there
+  (table + four RLS policies keyed to `auth.uid()`) and `assets/notes-config.js` carries the
+  project URL and anon key — both public-by-design values, never the service_role key. Verified
+  `GET /rest/v1/notes` → `200 []` anonymously, i.e. RLS hides every row without a session.
+  **Gotchas hit while setting it up:** the SQL Editor refused DDL with `25006: cannot execute
+  CREATE TABLE in a read-only transaction` (session-level read-only; cleared by running
+  `set default_transaction_read_only = 'off';` alone first — noted at the top of the schema file),
+  and email auth ships disabled on a new project, so sign-in returns
+  `422 email_provider_disabled` until **Authentication → Sign In / Providers → Email** is enabled.
+  With no config at all the feature still works fully, saved on one device, and the account box
   says so.
 
 - **2026-07-22** **Root meanings are now the book's own page, not extracted text.** The root modal
