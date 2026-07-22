@@ -21,6 +21,6 @@
  * their own notes and nobody else's. Never put the *service_role* key here.
  */
 window.QURAN_NOTES_CONFIG = {
-  url: "",
-  anonKey: "",
+  url: "https://anitonryhccpgfisrzlm.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuaXRvbnJ5aGNjcGdmaXNyemxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MTE5ODYsImV4cCI6MjEwMDI4Nzk4Nn0.gwZBqkS6ab43iSi_tvFLCDUsGm0uKFV8wBR9Ww8vcnM",
 };

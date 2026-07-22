@@ -6,6 +6,12 @@
 --
 -- The client generates each note's id, so a note written offline keeps the same
 -- identity when it is later uploaded, and syncing twice cannot duplicate it.
+--
+-- If the editor answers "25006: cannot execute CREATE TABLE in a read-only
+-- transaction", the database is refusing writes, not rejecting this SQL. Run
+--     set default_transaction_read_only = 'off';
+-- on its own in the same tab first, and check Project Settings → Database for a
+-- read-only toggle and the toolbar's Source selector for a read replica.
 
 create table if not exists public.notes (
   id      uuid        primary key,
