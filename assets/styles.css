@@ -3140,6 +3140,9 @@ body.view-research .searchHint { display: none; }
   padding: 6px 10px;
 }
 .navBtnQuiet:hover { color: var(--text-soft); }
+/* Same pill, but it is a real link so it can be opened in a new tab. */
+.navBtnLink { display: inline-block; text-decoration: none; }
+.navBtnLink::after { content: none; }
 
 /* "Back to home" pill (shown in research mode only) */
 .backHome {

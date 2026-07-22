@@ -4,7 +4,7 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-22 (book-page viewer)
+**Last updated:** 2026-07-22 (per-ayah notes)
 
 ## What the project does
 
@@ -47,6 +47,10 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 - `data/root_dictionary.json` + `assets/root-dictionary.js` — the extracted *text* of the same
   articles. Built by `scripts/build_root_dictionary.py` from the DOCX. **No page loads this any
   more** (the Arabic in it is corrupt — see below); kept as a build input and for search/analysis.
+- `assets/{notes.js,notes-ui.js,notes-config.js}` + `notes/` + `supabase/notes_schema.sql` — per-ayah
+  study notes. `notes.js` is the store (localStorage, many notes per ayah, tombstoned deletes) plus
+  an optional Supabase account layer talked to over plain REST; `notes-ui.js` is the "Add Notes"
+  button, the note editor and the account box; `notes/` is the printable "My Notes" page.
 - `index.html`, `assets/{app.js,styles.css,motion.js}` — landing + Explore Connections (root app).
   `DATA_VERSION` const in app.js busts data-file caches; bump when data under `data/` changes.
 - `explore/` — Explore Quran module (`index.html`, `css/style.css`, `js/app.js`,
@@ -88,6 +92,25 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-22** **Per-ayah notes, with accounts and a printable notebook.** Every ayah card in
+  Explore Quran carries an **Add Notes** button (it becomes "Notes · N" with a dot once notes
+  exist); it opens an editor listing every previous note on that ayah, each dated, each editable
+  and deletable, plus a box for a new one (Ctrl/Cmd+Enter saves). The landing page's header has a
+  **Print Notes** link to `notes/?auto=1` — a page that lays every note out in Quran order with the
+  Arabic and the Saheeh International translation and opens the browser's print dialog once
+  `document.fonts.ready` resolves (the browser is what shapes Arabic and Urdu correctly; a JS PDF
+  builder does not). Storage is **local-first**: `assets/notes.js` writes to localStorage
+  immediately, so notes work offline and never block on the network. Signing in mirrors them to
+  **Supabase** for cross-device access — talked to over plain `fetch` against its auth and REST
+  endpoints, so no third-party bundle is loaded. Sync is last-write-wins per note id (the client
+  mints the uuid, so an offline note keeps its identity and syncing twice cannot duplicate it), and
+  deletes are tombstones so a delete on the phone doesn't get re-uploaded by the laptop. **Sync is
+  off until configured:** the user must create the Supabase project themselves, run
+  `supabase/notes_schema.sql` (table + four RLS policies keyed to `auth.uid()`), and paste the
+  project URL and anon key into `assets/notes-config.js` — both are public-by-design values, never
+  the service_role key. Until then everything works, saved on that one device, and the account box
+  says so.
 
 - **2026-07-22** **Root meanings are now the book's own page, not extracted text.** The root modal
   in all three modules shows a **"See Meanings"** button (plus "Fatuhat al-Quran · page N"); it

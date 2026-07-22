@@ -81,6 +81,8 @@ class ExploreApp {
 
   async init() {
     this._initTheme();
+    const acc = document.getElementById('notes-account');
+    if (acc && window.NotesUI) acc.appendChild(NotesUI.accountChip());
     const [surahs, quran, wordRoots, trIndex, tafsirIndex] = await Promise.all([
       this._json('../search/data/surah.json'),
       this._json('../search/data/quran.json?v=3'),
@@ -379,6 +381,19 @@ class ExploreApp {
         }));
       card.querySelectorAll('.root-badge').forEach(btn =>
         btn.addEventListener('click', () => this.openRootModal(btn.dataset.root)));
+
+      // A study note belongs to the ayah, so its button sits on the same line
+      // as the reference. The context is read at click time so the note editor
+      // shows whichever translation is on screen right then.
+      if (window.NotesUI) {
+        card.querySelector('.ayah-topline').appendChild(
+          NotesUI.ayahButton(no, a, () => ({
+            surah: `${meta.no}. ${meta.en}`,
+            arabic: ayah?.ar || '',
+            translation: this.translations.loaded.en_sahih?.[ref]
+              || this.translations.loaded[this.selectedTranslations[0]]?.[ref] || '',
+          })));
+      }
 
       listEl.appendChild(card);
     }

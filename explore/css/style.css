@@ -71,6 +71,15 @@ button { font-family: inherit; cursor: pointer; }
   width: 32px; height: 32px; color: var(--text-sec); font-size: 1rem;
 }
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.notes-print-link {
+  color: var(--text-sec); text-decoration: none; font-size: .8rem; font-weight: 600;
+  padding: 7px 13px; border: 1px solid var(--border); border-radius: 999px;
+}
+.notes-print-link:hover { color: var(--accent); border-color: var(--accent); }
+/* On a phone the header has no room for three controls; the print link lives
+   on the landing page too, so it is the one that goes. */
+@media (max-width: 560px) { .notes-print-link { display: none; } }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 .layout { display: flex; width: 100%; }
@@ -177,7 +186,9 @@ button { font-family: inherit; cursor: pointer; }
   scroll-margin-top: calc(var(--header-h) + 70px);
 }
 .ayah-card:target, .ayah-card.flash { border-color: var(--accent); }
-.ayah-topline { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+/* Four controls have to fit on a phone, so the line wraps instead of
+   squeezing the notes button off the card. */
+.ayah-topline { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .ayah-ref {
   font-size: .72rem; font-weight: 700; color: var(--accent);
   background: var(--accent-dim); border-radius: 10px; padding: 2px 9px;
