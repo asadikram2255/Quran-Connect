@@ -61,13 +61,11 @@ Object.assign(QuranApp.prototype, {
     requestAnimationFrame(() => {
       body.innerHTML = '';
 
-      // Meaning first: the root's article from Fatuhat al-Quran.
+      // Meaning first: the page of Fatuhat al-Quran this root is printed on.
       const dict = document.createElement('div');
-      dict.className = 'rm-dict';
-      dict.innerHTML = '<div class="root-modal-loading">Loading meaning…</div>';
       body.appendChild(dict);
-      RootDictionary.load('../').then(() => {
-        dict.innerHTML = RootDictionary.html(root);
+      BookViewer.load('../').then(() => {
+        dict.replaceWith(BookViewer.button(root));
       });
 
       if (!sorted.length) {

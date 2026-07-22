@@ -4,7 +4,7 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-22
+**Last updated:** 2026-07-22 (book-page viewer)
 
 ## What the project does
 
@@ -40,9 +40,13 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## What it contains
 
-- `data/root_dictionary.json` + `assets/root-dictionary.js` — the Fatuhat al-Quran root articles
-  (Urdu, one paragraph-style article per root) and the shared loader/renderer used by the root
-  modal in all three modules. Built by `scripts/build_root_dictionary.py` from the DOCX in `raw/`.
+- `assets/book/p010.webp … p477.webp` + `data/book_index.json` + `assets/book-viewer.js` — the
+  **root meaning shown in the app**: page images of Fatuhat al-Quran and a root → page index, with
+  a shared "See Meanings" viewer used by the root modal in all three modules. Built by
+  `scripts/build_book_pages.py` from the PDF in `raw/`.
+- `data/root_dictionary.json` + `assets/root-dictionary.js` — the extracted *text* of the same
+  articles. Built by `scripts/build_root_dictionary.py` from the DOCX. **No page loads this any
+  more** (the Arabic in it is corrupt — see below); kept as a build input and for search/analysis.
 - `index.html`, `assets/{app.js,styles.css,motion.js}` — landing + Explore Connections (root app).
   `DATA_VERSION` const in app.js busts data-file caches; bump when data under `data/` changes.
 - `explore/` — Explore Quran module (`index.html`, `css/style.css`, `js/app.js`,
@@ -78,8 +82,34 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 - Local preview: `.claude/launch.json` has "root" (port 5501, serves repo root) and "search"
   (port 5500) configs. `/api/*` 404s locally under `npx serve` — expected, client falls back.
 - Commit style: plain messages, no attribution footer visible in history; deploy after commit.
+- **The book PDF's text layer is corrupt but its rendering is exact.** Glyphs are addressed by
+  index in the content stream, so extraction returns `[517:4]` where the page prints `[51:47]` and
+  every fatha comes out as shadda+fatha — yet what the page *draws* is what the author typeset.
+  Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-22** **Root meanings are now the book's own page, not extracted text.** The root modal
+  in all three modules shows a **"See Meanings"** button (plus "Fatuhat al-Quran · page N"); it
+  opens `assets/book-viewer.js`, an overlay that displays the rendered page image scrolled to the
+  root's headword with a highlight band. This sidesteps the text-layer corruption entirely — the
+  reader sees exactly what the book prints, including the isolated Arabic word-forms that could
+  never be repaired from the text. `scripts/build_book_pages.py` renders pages 10–477 at 144 dpi
+  to WebP (`assets/book/pNNN.webp`, 468 files, 44.7 MB, ~98 KB/page) and writes
+  `data/book_index.json` (41 KB: `{version, source, dpi, first, last, printed[], roots{root:
+  [page, y]}}`, y = vertical position as a fraction of page height). Headwords are found the same
+  way `build_root_dictionary.py` finds them (large spaced-letter lines, باب fallback for headwords
+  missing their first letter, skeleton match for unspaced ones): **1,697 located, covering
+  1,619 / 1,664 app root keys**. The 45 without a page are 11 particles (ٱلَّذِى, إِلَىٰ, إِذَا …,
+  2,931 occurrences — not roots, the book has no article for them) and 34 real roots
+  (730 occurrences, 1.4%); for those the modal says "This root is not in the book's dictionary."
+  Pages between headwords are published too, so an article running past a page break stays
+  readable via Next. Arrow keys are reversed for RTL (← next, → previous).
+  `assets/root-dictionary.js` and the 1.9 MB `data/root_dictionary.json` fetch are no longer loaded
+  by any page (saving that download on every root click); the quote-restoration pipeline still
+  builds the JSON. **Gotcha:** `data/book_index.json` sits under `/data`, so `sw.js` caches it
+  cache-first — a change to the index needs `data/meta/manifest.json` `version` bumped, `?v=` does
+  nothing.
 
 - **2026-07-22** **The 416 quotations that could not be restored are exported for hand correction.**
   `scripts/export_quote_fixes.py` writes `raw/quote_fixes.xlsx` — one row per unmatched

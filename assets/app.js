@@ -2013,10 +2013,10 @@ async function openWordModal(word, kind) {
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
   els.wordModal.classList.remove("hidden");
 
-  // Roots carry a dictionary article (Fatuhat al-Quran); start it loading now
-  // so it is usually ready by the time the ayaat shards land.
-  const dictReady = kind === "root" && window.RootDictionary
-    ? RootDictionary.load("")
+  // A root's meaning is the page of Fatuhat al-Quran it is printed on; start
+  // the index loading now so the button is ready with the ayaat shards.
+  const bookReady = kind === "root" && window.BookViewer
+    ? BookViewer.load("")
     : null;
 
   const groups   = groupBySurah(ayahIds);
@@ -2029,12 +2029,10 @@ async function openWordModal(word, kind) {
   els.wordModalBody.innerHTML = "";
 
   // Meaning first, above the occurrences.
-  if (dictReady) {
-    const dictEl = document.createElement("div");
-    dictEl.className = "rootdict";
-    dictEl.innerHTML = `<div class="wordModalLoading">Loading meaning…</div>`;
-    els.wordModalBody.appendChild(dictEl);
-    dictReady.then(() => { dictEl.innerHTML = RootDictionary.html(word); });
+  if (bookReady) {
+    const bookEl = document.createElement("div");
+    els.wordModalBody.appendChild(bookEl);
+    bookReady.then(() => bookEl.replaceWith(BookViewer.button(word)));
   }
 
   for (const surahNum of surahs) {
