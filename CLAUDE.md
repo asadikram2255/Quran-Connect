@@ -81,6 +81,27 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## Last changes (newest first)
 
+- **2026-07-22** **Quranic quotations inside the dictionary articles are restored** from the repo's
+  own Quran text, working around the source corruption described in the entry below.
+  `scripts/restore_quran_quotes.py` (called from `build_root_dictionary.py`) walks every printed
+  `[surah:ayah]` reference, reduces the text before it to a **consonant skeleton** (alef, hamza and
+  every hamza seat dropped; Urdu letter forms folded onto Arabic ones), finds the longest suffix of
+  that skeleton occurring contiguously in the cited ayah, and substitutes the authoritative text.
+  **Both ends of a match must land on a word boundary in the article and in the ayah alike** —
+  without that, a quote picks up the tail of the Urdu word before it (…ادراک matching the ـك of
+  سبحانك) or anchors to the wrong ayah word (the و of الربوا matching وَيُرْبِي). Damaged references
+  are repaired (digit-reversed / swapped / ±3 neighbours), else a long *unique* whole-Quran match is
+  searched for. **4,711 of 5,127 references restored (91.9%)**; the remaining 416 stay as printed.
+  Verified: all 4,711 replacements are skeleton-identical to what the book printed (so only vowels
+  and orthography changed, never the wording) and all 1,668 entries' Urdu prose is byte-identical.
+  Restored quotes are wrapped in **U+FDD0 / U+FDD1** in the JSON (permanent noncharacters, cannot
+  collide with real text); `RootDictionary.html()` escapes first, then turns each pair into
+  `<span class="rootdict-ayah">` so quotes render in an Arabic face, not Nastaliq (CSS added in all
+  three stylesheets). `RootDictionary.get()` returns marker-free plain text.
+  **Gotcha learned:** `sw.js` strips the query string when building its cache key, so `?v=` does
+  **not** invalidate cached JSON — only bumping `data/meta/manifest.json` `version` does (now 6;
+  `DATA_VERSION` in app.js now `v6`).
+
 - **2026-07-22** **Root meanings now come from Fatuhat al-Quran** (the user's book, in
   `raw/Fatuhat-al-Quran- Final Draft.{docx,pdf}`). `scripts/build_root_dictionary.py` extracts the
   DOCX into `data/root_dictionary.json` (1.9 MB, `{source,lang,entries:{root:article}}`) — 1,668
@@ -96,9 +117,10 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   escaped and split on newlines only.
   **Known source defect:** the Arabic *inside* the articles is corrupted in both the DOCX and the
   PDF (every fatha is encoded as shadda+fatha, so genuine shadda is unrecoverable; marks also drift
-  across base letters). The Urdu prose is clean. Not repairable by rule — needs a clean source file
-  from the author, or the quoted ayaat can be restored from the repo's own Quran text via each
-  article's `[S:A]` references.
+  across base letters). The Urdu prose is clean. *Quoted ayaat carrying a `[S:A]` reference are now
+  repaired from the repo's own text — see the entry above.* Arabic that is **not** a referenced
+  quotation (isolated word forms such as صَّبرًْا at the head of an article) is still corrupt and can
+  only be fixed by a clean source file from the author.
 
 - **2026-07-21** Cut the root app's landing payload from **118.6 MB → 5.0 MB** (heap 200 → 53 MB).
   `ensureSurahLoaded` was fetching each surah's *pairs* shard alongside its text shard, and the
