@@ -4,7 +4,7 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 
 ## What the project does
 
@@ -40,6 +40,9 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## What it contains
 
+- `data/root_dictionary.json` + `assets/root-dictionary.js` — the Fatuhat al-Quran root articles
+  (Urdu, one paragraph-style article per root) and the shared loader/renderer used by the root
+  modal in all three modules. Built by `scripts/build_root_dictionary.py` from the DOCX in `raw/`.
 - `index.html`, `assets/{app.js,styles.css,motion.js}` — landing + Explore Connections (root app).
   `DATA_VERSION` const in app.js busts data-file caches; bump when data under `data/` changes.
 - `explore/` — Explore Quran module (`index.html`, `css/style.css`, `js/app.js`,
@@ -77,6 +80,25 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 - Commit style: plain messages, no attribution footer visible in history; deploy after commit.
 
 ## Last changes (newest first)
+
+- **2026-07-22** **Root meanings now come from Fatuhat al-Quran** (the user's book, in
+  `raw/Fatuhat-al-Quran- Final Draft.{docx,pdf}`). `scripts/build_root_dictionary.py` extracts the
+  DOCX into `data/root_dictionary.json` (1.9 MB, `{source,lang,entries:{root:article}}`) — 1,668
+  roots, 1,612/1,664 app keys, **98.5% occurrence-weighted coverage** of real roots. Headwords are
+  found at RUN level (bold + `w:sz` 36/40/44), because the DOCX lost paragraph breaks; two source
+  defects are repaired (headwords missing their first letter → supplied by the enclosing باب;
+  headwords not letter-spaced), both gated on the app's known-root set. New shared loader
+  `assets/root-dictionary.js` (`RootDictionary.load(basePath)` / `.html(root)`), wired into all
+  three modules: Explore Quran (replaces the `meaning-chip` list; lang tabs hidden for roots,
+  word glosses untouched; `root_glosses.json` no longer loaded), Explore Connections (new article
+  block at the top of `wordModalBody` for `kind === "root"`), Search Quran (article at the top of
+  `root-modal-body`; the one-word `rm-en` English label removed). Articles render verbatim —
+  escaped and split on newlines only.
+  **Known source defect:** the Arabic *inside* the articles is corrupted in both the DOCX and the
+  PDF (every fatha is encoded as shadda+fatha, so genuine shadda is unrecoverable; marks also drift
+  across base letters). The Urdu prose is clean. Not repairable by rule — needs a clean source file
+  from the author, or the quoted ayaat can be restored from the repo's own Quran text via each
+  article's `[S:A]` references.
 
 - **2026-07-21** Cut the root app's landing payload from **118.6 MB → 5.0 MB** (heap 200 → 53 MB).
   `ensureSurahLoaded` was fetching each surah's *pairs* shard alongside its text shard, and the

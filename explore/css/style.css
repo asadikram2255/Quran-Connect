@@ -264,6 +264,7 @@ button { font-family: inherit; cursor: pointer; }
 .modal-section-head h3 { margin-bottom: 0; }
 
 .lang-tabs { display: flex; gap: 4px; }
+.lang-tabs[hidden] { display: none; }
 .lang-tab {
   background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
   padding: 3px 14px; font-size: .74rem; font-weight: 600; color: var(--text-sec);
@@ -278,6 +279,23 @@ button { font-family: inherit; cursor: pointer; }
 .meanings.urdu { direction: rtl; }
 .meanings.urdu .meaning-chip { font-family: var(--font-ur); font-size: .95rem; line-height: 1.9; }
 .meanings-empty { font-size: .82rem; color: var(--text-ter); }
+
+/* Root meaning: a full article from Fatuhat al-Quran, Urdu, RTL. */
+.meanings.rootdict { display: block; }
+.rootdict-article {
+  font-family: var(--font-ur); direction: rtl; text-align: right;
+  font-size: 1.02rem; line-height: 2.35; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 18px;
+  max-height: 380px; overflow-y: auto;
+}
+.rootdict-article p { margin: 0 0 .9em; }
+.rootdict-article p:last-child { margin-bottom: 0; }
+.rootdict-source {
+  margin-top: 6px; font-size: .74rem; color: var(--text-ter);
+  direction: rtl; text-align: right;
+}
+.rootdict-empty { font-size: .82rem; color: var(--text-ter); margin: 0; }
 
 .occurrences { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
 .occ-item {

@@ -1269,6 +1269,33 @@ body.view-research .searchHint { display: none; }
   font-style: italic;
 }
 
+/* Root meaning — the root's article from Fatuhat al-Quran (Urdu, RTL). */
+.rootdict { margin: 0 0 18px; }
+.rootdict-article {
+  font-family: 'Noto Nastaliq Urdu', serif;
+  direction: rtl;
+  text-align: right;
+  font-size: 15px;
+  line-height: 2.4;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.rootdict-article p { margin: 0 0 .9em; }
+.rootdict-article p:last-child { margin-bottom: 0; }
+.rootdict-source {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  direction: rtl;
+  text-align: right;
+}
+.rootdict-empty { font-size: 12px; color: var(--text-muted); margin: 0; }
+
 /* ============================================================
    Feelings modal
    ============================================================ */

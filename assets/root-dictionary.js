@@ -1,0 +1,56 @@
+/* Fatuhat al-Quran — root-word dictionary, shared by all three modules.
+ *
+ * One Urdu article per root, keyed by the app's spaced root form ("ص ب ر").
+ * Articles are rendered verbatim: the only transformation applied here is
+ * escaping and splitting on newlines into paragraphs.
+ *
+ * Usage:  await RootDictionary.load('../');   // path back to the repo root
+ *         el.innerHTML = RootDictionary.html('ص ب ر');
+ */
+(function () {
+  "use strict";
+
+  const VERSION = 1;               // bump when data/root_dictionary.json changes
+  const SOURCE_EN = "Fatuhat al-Quran";
+  const SOURCE_AR = "فتوحات القرآن";
+
+  let entries = null;
+  let inflight = null;
+
+  function load(basePath) {
+    if (entries) return Promise.resolve(entries);
+    if (!inflight) {
+      const url = (basePath || "") + "data/root_dictionary.json?v=" + VERSION;
+      inflight = fetch(url)
+        .then(r => (r.ok ? r.json() : null))
+        .catch(() => null)
+        .then(d => (entries = (d && d.entries) || {}));
+    }
+    return inflight;
+  }
+
+  function get(root) {
+    return (entries && entries[root]) || "";
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function html(root) {
+    const article = get(root);
+    if (!article) {
+      return '<p class="rootdict-empty">This root has no entry in ' +
+             SOURCE_EN + ".</p>";
+    }
+    const paras = article.split("\n").filter(p => p.trim());
+    return '<div class="rootdict-article" dir="rtl" lang="ur">' +
+           paras.map(p => "<p>" + esc(p) + "</p>").join("") +
+           '</div><div class="rootdict-source">' +
+           SOURCE_AR + " · " + SOURCE_EN + "</div>";
+  }
+
+  window.RootDictionary = { load, get, html, SOURCE_EN, SOURCE_AR };
+})();

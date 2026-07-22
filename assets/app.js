@@ -2013,6 +2013,12 @@ async function openWordModal(word, kind) {
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;
   els.wordModal.classList.remove("hidden");
 
+  // Roots carry a dictionary article (Fatuhat al-Quran); start it loading now
+  // so it is usually ready by the time the ayaat shards land.
+  const dictReady = kind === "root" && window.RootDictionary
+    ? RootDictionary.load("")
+    : null;
+
   const groups   = groupBySurah(ayahIds);
   const surahs   = [...groups.keys()];
 
@@ -2021,6 +2027,16 @@ async function openWordModal(word, kind) {
 
   // Render grouped by surah
   els.wordModalBody.innerHTML = "";
+
+  // Meaning first, above the occurrences.
+  if (dictReady) {
+    const dictEl = document.createElement("div");
+    dictEl.className = "rootdict";
+    dictEl.innerHTML = `<div class="wordModalLoading">Loading meaning…</div>`;
+    els.wordModalBody.appendChild(dictEl);
+    dictReady.then(() => { dictEl.innerHTML = RootDictionary.html(word); });
+  }
+
   for (const surahNum of surahs) {
     const surahNm  = SURAH_NAMES[Number(surahNum)] || "";
     const groupEl  = document.createElement("div");
