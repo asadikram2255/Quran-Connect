@@ -197,7 +197,9 @@ def skeleton(s):
     return fold(DIACRITICS.sub('', s)).replace(' ', '').replace('ٱ', 'ا')
 
 
-def main():
+def build_entries(verbose=True):
+    """Articles keyed by root, exactly as the book has them — before the
+    Quranic quotations are restored. Also used by export_quote_fixes.py."""
     if not os.path.exists(DOCX):
         sys.exit('missing source: ' + DOCX)
     known = set(json.load(io.open(ROOT_COUNTS, encoding='utf-8')))
@@ -237,21 +239,29 @@ def main():
         if hit:
             out[k] = hit[1]
             matched_extra += 1
-    print(f'non-root keys matched: {matched_extra}')
+    if verbose:
+        print(f'non-root keys matched: {matched_extra}')
+    return out, entries, unmatched, known
+
+
+def main():
+    out, entries, unmatched, known = build_entries()
 
     # The book's Arabic is corrupted at the source; every quotation that
     # carries a [surah:ayah] reference is swapped for the repo's own text.
     out, qst, _ = restore_quran_quotes.restore_all(out)
     print('quotes: %d refs, %d restored (%d cited, %d repaired ref, '
-          '%d found by search), %d without a quote, %d unmatched'
-          % (qst['refs'], qst['cited'] + qst['repaired'] + qst['global'],
+          '%d found by search, %d fixed by hand), %d without a quote, '
+          '%d unmatched, %d hand fixes that did not line up'
+          % (qst['refs'], restore_quran_quotes.restored_total(qst),
              qst['cited'], qst['repaired'], qst['global'],
-             qst['no_quote'], qst['nomatch']))
+             qst['manual-ref'] + qst['manual-text'],
+             qst['no_quote'], qst['nomatch'], qst['manual_failed']))
 
     payload = {
         'source': 'Fatuhat al-Quran',
         'lang': 'ur',
-        'quotes_restored': qst['cited'] + qst['repaired'] + qst['global'],
+        'quotes_restored': restore_quran_quotes.restored_total(qst),
         'entries': out,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

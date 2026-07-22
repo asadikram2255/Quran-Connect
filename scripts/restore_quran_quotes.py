@@ -28,6 +28,12 @@ Printed references are themselves sometimes damaged by the conversion
 first, then its digit-reversed / swapped variants, then the immediate
 neighbours, and finally — for a long, unique match only — the whole Quran.
 
+What none of that can rescue — a reference the conversion destroyed beyond
+repair, a quotation the book abridges — is corrected by hand: see
+scripts/export_quote_fixes.py, which writes the outstanding cases to a
+workbook and ingests the filled-in file to raw/quote_fixes.json. Those
+corrections are applied here before anything automatic is tried.
+
 Restored quotations are wrapped in U+FDD0 … U+FDD1 (permanent noncharacters,
 so they can never collide with real text); assets/root-dictionary.js turns them
 into a span so they can be rendered in an Arabic face.
@@ -46,6 +52,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 DICT = os.path.join(REPO, 'data', 'root_dictionary.json')
 QURAN_DIR = os.path.join(REPO, 'data', 'quran_text')
+FIXES = os.path.join(REPO, 'raw', 'quote_fixes.json')
 
 OPEN, CLOSE = '﷐', '﷑'
 
@@ -54,6 +61,7 @@ WINDOW = 300                 # how far back a quotation may reach
 MIN_CITED = 6                # letters needed when the printed reference matches
 MIN_REPAIRED = 10            # …when the reference had to be repaired/guessed
 MIN_GLOBAL = 12              # …when the quote is found by searching the Quran
+MIN_MANUAL = 4               # …when a human supplied the reference by hand
 
 FOLD = {'ى': 'ي', 'ی': 'ي', 'ة': 'ه', 'ہ': 'ه', 'ھ': 'ه', 'ۃ': 'ه', 'ک': 'ك'}
 DROP_LETTERS = set('اأإآٱءؤئ')
@@ -83,6 +91,11 @@ def skel(s):
     return ''.join(out), idx
 
 
+def restored_total(st):
+    return (st['cited'] + st['repaired'] + st['global'] +
+            st['manual-ref'] + st['manual-text'])
+
+
 def load_quran():
     ayaat, last = {}, collections.Counter()
     for path in sorted(glob.glob(os.path.join(QURAN_DIR, 'quran_s*.json'))):
@@ -91,6 +104,26 @@ def load_quran():
             s, a = (int(x) for x in rec['ayah_id'].split(':'))
             last[s] = max(last[s], a)
     return ayaat, last
+
+
+def load_overrides(path=None):
+    """Corrections made by hand, from raw/quote_fixes.json.
+
+    scripts/export_quote_fixes.py writes one row per quotation this script
+    could not restore into a workbook; a reader fills in the correct reference
+    (and, where the reference alone will not resolve the quotation, the Arabic
+    itself); `export_quote_fixes.py --ingest` turns the filled workbook into
+    that JSON. Each correction is keyed on the root, the reference *as the book
+    prints it* and the quotation as printed, so it keeps pointing at the same
+    quotation however the articles are re-parsed.
+    """
+    path = path or FIXES
+    if not os.path.exists(path):
+        return {}
+    doc = json.load(io.open(path, encoding='utf-8'))
+    return {(f['root'], f['ref'], f['quote']): (f.get('fix_ref', ''),
+                                                f.get('fix_text', ''))
+            for f in doc.get('fixes', [])}
 
 
 def reference_candidates(sr, ar, last):
@@ -153,6 +186,16 @@ def longest_suffix(ws, wi, window, ayah_skel, a_idx, ayah, minlen):
     return None
 
 
+def manual_target(fix, ayaat):
+    """The authoritative text a hand-made correction points at: the ayah it
+    names, or — where the reference alone cannot resolve the quotation (a part
+    verse, two verses run together) — the Arabic the reader typed in."""
+    fix_ref, fix_txt = fix
+    if fix_txt:
+        return fix_txt, 'manual-text'
+    return ayaat.get(fix_ref.replace(' ', '')), 'manual-ref'
+
+
 def grow(s, i, j, limit):
     """Extend [i, j] over the rest of the Arabic word at each end."""
     while i > 0 and is_quote_char(s[i - 1]):
@@ -162,9 +205,11 @@ def grow(s, i, j, limit):
     return i, j
 
 
-def restore_all(entries):
+def restore_all(entries, overrides=None):
     ayaat, last = load_quran()
     index = [(aid, *skel(txt), txt) for aid, txt in ayaat.items()]
+    if overrides is None:
+        overrides = load_overrides()
 
     st = collections.Counter()
     log = []
@@ -188,17 +233,36 @@ def restore_all(entries):
                 continue
 
             hit = None
-            for i, (s, a) in enumerate(reference_candidates(
-                    m.group(1), m.group(2), last)):
-                aid = '%d:%d' % (s, a)
-                a_skel, a_idx = skel(ayaat[aid])
-                found = longest_suffix(ws, wi, window, a_skel, a_idx,
-                                       ayaat[aid],
-                                       MIN_CITED if i == 0 else MIN_REPAIRED)
+            # A correction made by hand outranks anything found automatically.
+            fix = overrides.get((root, m.group(0), ' '.join(window.split())))
+            if fix:
+                target, kind = manual_target(fix, ayaat)
+                found = None
+                if target:
+                    t_skel, t_idx = skel(target)
+                    found = longest_suffix(ws, wi, window, t_skel, t_idx,
+                                           target, MIN_MANUAL)
                 if found:
-                    hit = ('cited' if i == 0 else 'repaired',
-                           aid, ayaat[aid], a_idx, found)
-                    break
+                    hit = (kind, fix[0] or '(text)', target, t_idx, found)
+                else:
+                    # The correction does not line up with what the book
+                    # printed; say so rather than substituting blindly.
+                    st['manual_failed'] += 1
+                    log.append((root, m.group(0), fix[0], 'manual-failed',
+                                window, fix[1]))
+
+            if not hit:
+                for i, (s, a) in enumerate(reference_candidates(
+                        m.group(1), m.group(2), last)):
+                    aid = '%d:%d' % (s, a)
+                    a_skel, a_idx = skel(ayaat[aid])
+                    found = longest_suffix(ws, wi, window, a_skel, a_idx,
+                                           ayaat[aid],
+                                           MIN_CITED if i == 0 else MIN_REPAIRED)
+                    if found:
+                        hit = ('cited' if i == 0 else 'repaired',
+                               aid, ayaat[aid], a_idx, found)
+                        break
 
             if not hit:
                 # Reference unusable: search the whole Quran, and accept only a
@@ -221,7 +285,11 @@ def restore_all(entries):
 
             if not hit:
                 st['nomatch'] += 1
-                log.append((root, m.group(0), '', 'nomatch', window, ''))
+                # For a failure the last two fields are the quote as printed
+                # and the article text leading up to it, so the reference can
+                # be found in the book and corrected by hand.
+                log.append((root, m.group(0), '', 'nomatch', window,
+                            text[max(0, start - 220):start]))
                 continue
 
             kind, aid, ayah, a_idx, (length, pos) = hit
@@ -255,10 +323,11 @@ def main():
     doc = json.load(io.open(DICT, encoding='utf-8'))
     entries, st, log = restore_all(doc['entries'])
     doc['entries'] = entries
-    doc['quotes_restored'] = st['cited'] + st['repaired'] + st['global']
+    doc['quotes_restored'] = restored_total(st)
     with io.open(DICT, 'w', encoding='utf-8') as f:
         json.dump(doc, f, ensure_ascii=False, separators=(',', ':'))
-    for k in ('refs', 'cited', 'repaired', 'global', 'nomatch', 'no_quote',
+    for k in ('refs', 'cited', 'repaired', 'global', 'manual-ref',
+              'manual-text', 'manual_failed', 'nomatch', 'no_quote',
               'rejected'):
         print('%-10s %5d' % (k, st[k]))
     print('output    ', DICT, '(%.0f KB)' % (os.path.getsize(DICT) / 1024))
