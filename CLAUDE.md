@@ -107,7 +107,11 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   **Explore Ayaah Connections**, "Prophet Module" → **Prophet Stories** and "How are you feeling
   today?" → **Ideas and Topics** everywhere; strip Supabase and the account UI from
   `assets/notes.js`, delete `assets/notes-config.js`, and switch to local storage plus
-  import/export in that same format; add a **Root Words Directory**; fix the credits block (it
+  import/export in that same format; add a **Root Words Directory**; **give Explore Quran a surah
+  picker on narrow screens** — `explore/css/style.css` hides `.sidebar` below 860px and puts
+  nothing in its place, so on a phone there is no way to leave the surah you landed on (found
+  while testing the Android build, which works around it in its own overlay); fix the credits
+  block (it
   names 4 tafsir sources though 5 ship — Maududi/Tafhim is missing — and **Fatuhat al-Quran**,
   the source of every root meaning, is not credited at all).
 
