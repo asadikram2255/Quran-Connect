@@ -3,6 +3,15 @@
 .env*
 !.env.example
 
+# Android signing material and builds. This repo is the web version and has no
+# business carrying either — but it is a deploy root, so a stray keystore here
+# would become a public URL, not just a bad commit.
+*.jks
+*.keystore
+keystore.properties
+*.apk
+Backup/
+
 # Node
 node_modules/
 
