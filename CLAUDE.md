@@ -100,9 +100,10 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   the copy, so `explore/js/app.js` and the rest stay byte-identical on both sides. It is native
   Kotlin/Compose for the shell (splash, navigation, notes, share) and a WebView for the reading
   surfaces, which are this repo's HTML/CSS/JS unmodified — parity in Nastaliq and Uthmani shaping
-  is why. It ships **fully offline**: 153.8 MB of assets → a 102.8 MB debug / 88.5 MB signed
-  release APK, with **no `INTERNET` permission** and **no Supabase** (notes are a device SQLite
-  database, exported in a versioned JSON format both platforms read).
+  is why. It ships **fully offline**: 427.3 MB of assets → a **130.6 MB signed release APK**
+  (version 1.1.0, all six modules plus notes and a Root Words Directory), with **no `INTERNET`
+  permission** and **no Supabase** (notes are a device SQLite database, exported in a versioned
+  JSON format both platforms read).
   **Changes still owed to this repo (milestone 5, not started):** rename "Explore Connections" →
   **Explore Ayaah Connections**, "Prophet Module" → **Prophet Stories** and "How are you feeling
   today?" → **Ideas and Topics** everywhere; strip Supabase and the account UI from
@@ -113,7 +114,13 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   while testing the Android build, which works around it in its own overlay); fix the credits
   block (it
   names 4 tafsir sources though 5 ship — Maududi/Tafhim is missing — and **Fatuhat al-Quran**,
-  the source of every root meaning, is not credited at all).
+  the source of every root meaning, is not credited at all); and **regenerate
+  `explore/data/root_glosses.json`, which is stale and still loaded by Explore Quran** — it was
+  aggregated 2026-07-09, the roots were rebuilt from analyzequran on 2026-07-10, and 46 of its
+  1,664 entries are now filed under the wrong root (و ع د, "promise", is glossed "Allah"). The
+  Android app's `tools/build_root_directory.py` shows the correct aggregation: `explore/data/wbw/`
+  against `data/meta/ayah_roots_analyzequran.json`, skipping 20:94, which carries one more root
+  than it has words.
 
 - **2026-07-22** **Per-ayah notes, with accounts and a printable notebook.** Every ayah card in
   Explore Quran carries an **Add Notes** button (it becomes "Notes · N" with a dot once notes
