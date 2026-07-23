@@ -4,7 +4,7 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-22 (per-ayah notes)
+**Last updated:** 2026-07-23 (Android app split into its own repo)
 
 ## What the project does
 
@@ -92,6 +92,24 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-23** **The Android app now lives in its own repository —
+  `../quran-connect-android`.** This repo stays the web version and the source of truth for the
+  data pipeline (`scripts/`, `raw/`); **nothing here was modified for Android.** The app copies
+  what it needs from here with its own `tools/sync_web_assets.py` and layers app-only files over
+  the copy, so `explore/js/app.js` and the rest stay byte-identical on both sides. It is native
+  Kotlin/Compose for the shell (splash, navigation, notes, share) and a WebView for the reading
+  surfaces, which are this repo's HTML/CSS/JS unmodified — parity in Nastaliq and Uthmani shaping
+  is why. It ships **fully offline**: 153.8 MB of assets → a 102.8 MB debug / 88.5 MB signed
+  release APK, with **no `INTERNET` permission** and **no Supabase** (notes are a device SQLite
+  database, exported in a versioned JSON format both platforms read).
+  **Changes still owed to this repo (milestone 5, not started):** rename "Explore Connections" →
+  **Explore Ayaah Connections**, "Prophet Module" → **Prophet Stories** and "How are you feeling
+  today?" → **Ideas and Topics** everywhere; strip Supabase and the account UI from
+  `assets/notes.js`, delete `assets/notes-config.js`, and switch to local storage plus
+  import/export in that same format; add a **Root Words Directory**; fix the credits block (it
+  names 4 tafsir sources though 5 ship — Maududi/Tafhim is missing — and **Fatuhat al-Quran**,
+  the source of every root meaning, is not credited at all).
 
 - **2026-07-22** **Per-ayah notes, with accounts and a printable notebook.** Every ayah card in
   Explore Quran carries an **Add Notes** button (it becomes "Notes · N" with a dot once notes
