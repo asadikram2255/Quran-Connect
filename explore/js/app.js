@@ -98,6 +98,7 @@ class ExploreApp {
     this.tafsir.index = tafsirIndex.sources || {};
 
     this._renderSurahList();
+    this._wireMobileSidebar();
     this._renderControlPanels();
     this._bindControls();
     this._bindModal();
@@ -154,6 +155,26 @@ class ExploreApp {
         el.hidden = q && !el.textContent.toLowerCase().includes(q);
       });
     });
+  }
+
+  // On narrow screens the sidebar is hidden and reached through the "☰ Surahs"
+  // button as a slide-in drawer. On desktop the button and backdrop are display:
+  // none, so this wiring is inert there.
+  _wireMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (!sidebar || !toggle || !backdrop) return;
+    const setOpen = open => {
+      sidebar.classList.toggle('open', open);
+      backdrop.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    toggle.addEventListener('click', () => setOpen(!sidebar.classList.contains('open')));
+    backdrop.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+    // Picking a surah closes the drawer so the reader is visible again.
+    this._closeMobileSidebar = () => setOpen(false);
   }
 
   /* ── Controls ──────────────────────────────────────────────────────────── */
@@ -251,6 +272,7 @@ class ExploreApp {
   async openSurah(no, jumpAyah = null) {
     this.currentSurah = no;
     history.replaceState(null, '', `#${no}${jumpAyah ? ':' + jumpAyah : ''}`);
+    if (this._closeMobileSidebar) this._closeMobileSidebar();
     document.querySelectorAll('.surah-item').forEach(el =>
       el.classList.toggle('active', +el.dataset.no === no));
 

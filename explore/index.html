@@ -18,7 +18,7 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 
@@ -42,11 +42,15 @@
       <input type="text" id="surah-filter" class="surah-filter" placeholder="Filter surahs…" autocomplete="off">
       <nav class="surah-list" id="surah-list" aria-label="Surah list"></nav>
     </aside>
+    <!-- Backdrop behind the sidebar when it opens as a drawer on narrow screens -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
 
     <!-- ── Reader ────────────────────────────────────────────────────── -->
     <main class="reader" id="reader">
 
       <div class="reader-controls" id="reader-controls">
+        <button class="control-btn sidebar-toggle" id="sidebar-toggle" type="button"
+                aria-controls="sidebar" aria-expanded="false" title="Choose a surah">☰ Surahs</button>
         <div class="control-group">
           <button class="control-btn" id="translations-btn" type="button">Translations <span class="count-pill" id="translations-count">1</span></button>
           <div class="control-panel" id="translations-panel" hidden></div>
@@ -96,6 +100,6 @@
   <script src="../assets/book-viewer.js?v=1"></script>
   <script src="../assets/notes.js?v=2"></script>
   <script src="../assets/notes-ui.js?v=2"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="js/app.js?v=13"></script>
 </body>
 </html>

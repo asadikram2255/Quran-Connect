@@ -324,9 +324,27 @@ button { font-family: inherit; cursor: pointer; }
 .occ-en { font-size: .78rem; color: var(--text-sec); display: block; }
 .occ-more { text-align: center; font-size: .78rem; color: var(--text-ter); padding: 6px; }
 
+/* The "☰ Surahs" button and the drawer backdrop only exist on narrow screens. */
+.sidebar-toggle { display: none; }
+.sidebar-backdrop { display: none; }
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 860px) {
-  .sidebar { display: none; }
+  /* The sidebar becomes a slide-in drawer: below 860px it used to be hidden
+     outright, which stranded a phone on whatever surah it first opened. */
+  .sidebar-toggle { display: inline-flex; }
+  .sidebar {
+    position: fixed; top: var(--header-h); left: 0; z-index: 60;
+    width: min(320px, 86vw); height: calc(100vh - var(--header-h));
+    background: var(--bg); box-shadow: var(--card-shad);
+    transform: translateX(-100%); transition: transform .22s ease;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 55;
+    background: rgba(0, 0, 0, .45);
+  }
+  .sidebar-backdrop[hidden] { display: none; }
   .reader { padding: 14px 14px 60px; }
   .ayah-arabic { font-size: 1.45rem; }
 }
