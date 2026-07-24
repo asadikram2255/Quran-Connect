@@ -2666,6 +2666,16 @@ async function init() {
       if (sn && an) openDetail(`${sn}:${an}`);
     }
 
+    // Handle ?root=<spaced letters> deep-link from the Root Words Directory —
+    // open this ayah's root modal over the landing view (the same modal a root
+    // badge opens), so the directory hands a root straight to its meaning and
+    // every ayah it occurs in without a second ayah renderer.
+    else {
+      const rootParam = new URLSearchParams(window.location.search).get('root');
+      const root = rootParam ? rootParam.trim() : '';
+      if (root) openWordModal(root, "root");
+    }
+
   } catch (err) {
     console.error("init error:", err);
     setBadge("err", String(err.message || err).slice(0,140));

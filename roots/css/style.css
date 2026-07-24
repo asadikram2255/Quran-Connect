@@ -1,0 +1,134 @@
+/* Root Words Directory — shares design tokens with explore/ and search/. */
+
+:root {
+  --bg:           #fdf9f2;
+  --surface:      #f4ede0;
+  --surface2:     #ebe0cc;
+  --border:       #d9cbb5;
+  --text:         #1a1208;
+  --text-sec:     #6b5c44;
+  --text-ter:     #9c8b74;
+  --accent:       #b07d1a;
+  --accent-hov:   #8a5f0d;
+  --accent-dim:   color-mix(in srgb, #b07d1a 11%, transparent);
+  --card-shad:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --radius:       12px;
+  --radius-sm:    7px;
+  --font:         'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ar-root: 'Noto Naskh Arabic', 'Amiri', serif; /* always-dotted, for root letters */
+  --font-ur:      'Noto Nastaliq Urdu', 'Amiri', serif;
+  --trans:        .16s ease;
+  --header-h:     58px;
+}
+
+[data-theme="dark"] {
+  --bg:           #0e0816;
+  --surface:      #1a0f2e;
+  --surface2:     #2b1551;
+  --border:       rgba(255, 240, 230, .12);
+  --text:         #faf7f2;
+  --text-sec:     #d6c9b8;
+  --text-ter:     #9c8d7e;
+  --accent:       #f5b75e;
+  --accent-hov:   #e0a042;
+  --accent-dim:   rgba(245, 183, 94, .14);
+  --card-shad:    0 1px 3px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.28);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background var(--trans), color var(--trans);
+  line-height: 1.6;
+}
+button { font-family: inherit; cursor: pointer; }
+
+/* ── Header (matches explore/) ──────────────────────────────────────────── */
+.header {
+  position: sticky; top: 0; z-index: 40;
+  height: var(--header-h);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.back-link { color: var(--text-ter); text-decoration: none; font-size: .85rem; font-weight: 600; }
+.back-link:hover { color: var(--accent); }
+.header-title { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.header-title h1 {
+  font-family: var(--font-display); font-size: 1.15rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.theme-toggle {
+  background: none; border: 1px solid var(--border); border-radius: 50%;
+  width: 32px; height: 32px; color: var(--text-sec); font-size: 1rem;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.wrap { max-width: 780px; margin: 0 auto; padding: 20px 16px 80px; }
+
+.search-row { position: sticky; top: var(--header-h); z-index: 30; padding: 6px 0 10px; background: var(--bg); }
+.search {
+  width: 100%; padding: 12px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 1rem; outline: none;
+  transition: border-color var(--trans);
+}
+.search:focus { border-color: var(--accent); }
+.search::placeholder { color: var(--text-ter); }
+
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 2px 0; }
+.count { font-size: .8rem; color: var(--text-ter); font-weight: 500; }
+.sort-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: none; color: var(--text-sec); font-size: .8rem; font-weight: 600;
+  transition: border-color var(--trans), color var(--trans);
+}
+.sort-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sort-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+.hint { font-size: .78rem; color: var(--text-ter); padding: 8px 2px 4px; }
+
+.loading, .empty { text-align: center; color: var(--text-ter); padding: 40px 20px; font-size: .9rem; }
+
+/* ── Root rows ──────────────────────────────────────────────────────────── */
+.root-list { margin-top: 6px; }
+.root-row {
+  display: flex; align-items: flex-start; gap: 14px; width: 100%; text-align: left;
+  padding: 14px 12px; border: none; border-bottom: 1px solid var(--border);
+  background: none; color: var(--text);
+  transition: background var(--trans);
+}
+.root-row:hover { background: var(--surface); }
+.root-letters {
+  flex-shrink: 0; width: 104px;
+  font-family: var(--font-ar-root); font-size: 1.5rem; line-height: 1.3;
+  color: var(--accent); text-align: center;
+  direction: rtl;
+}
+.root-body { flex: 1; min-width: 0; }
+.root-en { font-size: .95rem; color: var(--text); }
+.root-en .sep { color: var(--text-ter); padding: 0 2px; }
+.root-ur {
+  font-family: var(--font-ur); font-size: 1.05rem; line-height: 2;
+  color: var(--text-sec); direction: rtl; margin-top: 2px;
+}
+.root-ur .sep { color: var(--text-ter); padding: 0 4px; }
+.root-none { color: var(--text-ter); font-size: .9rem; }
+.root-meta { font-size: .74rem; color: var(--text-ter); margin-top: 5px; }
+.root-meta .dot { padding: 0 5px; opacity: .6; }
+.root-meta .tag-word { color: var(--accent-hov); }
+
+@media (max-width: 520px) {
+  .root-letters { width: 78px; font-size: 1.3rem; }
+  .root-en { font-size: .9rem; }
+}

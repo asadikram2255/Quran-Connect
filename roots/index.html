@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Root Words Directory — Quran Connect</title>
+  <meta name="description" content="Every Arabic root in the Qur'an in one searchable list — its meaning in English and Urdu, how often it occurs, and the page of the book that explains it.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%F0%9F%8C%BF%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600&family=Noto+Nastaliq+Urdu:wght@400&display=swap" rel="stylesheet">
+  <script>
+    // Apply saved theme before first paint (shared key across all modules; default dark)
+    (function () {
+      try {
+        var t = localStorage.getItem("theme") || localStorage.getItem("explore-theme");
+        if (t !== "light") document.documentElement.setAttribute("data-theme", "dark");
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+  <header class="header">
+    <a class="back-link" href="../">← Quran Connect</a>
+    <div class="header-title">
+      <span class="header-icon">🌿</span>
+      <h1>Root Words Directory</h1>
+    </div>
+    <div class="header-actions">
+      <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <div class="search-row">
+      <input type="search" id="search" class="search" autocomplete="off" spellcheck="false"
+             placeholder="Search a root or a meaning…" aria-label="Search a root or a meaning">
+    </div>
+
+    <div class="toolbar">
+      <span class="count" id="count"></span>
+      <button class="sort-btn" id="sort-btn" type="button" aria-pressed="false">
+        <span aria-hidden="true">⇅</span> <span id="sort-label">Commonest</span>
+      </button>
+    </div>
+
+    <p class="hint">
+      Search the Arabic letters (with or without their marks), or an English meaning.
+      Tap a root to open its meaning and every ayah it occurs in.
+    </p>
+
+    <div class="loading" id="loading">Loading the roots…</div>
+    <div class="empty" id="empty" hidden>
+      No root matches that. Try the root's letters (with or without their marks), or an English meaning.
+    </div>
+    <div class="root-list" id="root-list"></div>
+
+  </main>
+
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>
