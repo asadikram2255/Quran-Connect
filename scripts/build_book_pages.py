@@ -39,6 +39,7 @@ IMG_DIR = os.path.join(REPO, 'assets', 'book')
 INDEX = os.path.join(REPO, 'data', 'book_index.json')
 DICT = os.path.join(REPO, 'data', 'root_dictionary.json')
 ROOT_COUNTS = os.path.join(REPO, 'explore', 'data', 'root_counts.json')
+ALIASES = os.path.join(HERE, 'book_root_aliases.json')
 
 DPI = 144                    # 2x nominal; a page lands around 95 KB as WebP
 QUALITY = 74
@@ -140,6 +141,27 @@ def match_unspaced(unspaced, roots, wanted):
     return added
 
 
+def apply_aliases(roots, known):
+    """Add hand-verified app-root -> [page, y] mappings the scan can't reach.
+
+    The book files some roots under a different weak letter, a shorter or
+    augmented root, a related root, or as a proper-noun sub-entry, so the app's
+    key never appears as an isolated spaced headword. book_root_aliases.json
+    carries each such key with the page/y of the article that covers it (read
+    off the page by hand). Only keys in the app's own root list and not already
+    located by the scan are added, so this cannot invent or overwrite an entry.
+    """
+    if not os.path.exists(ALIASES):
+        return 0
+    data = json.load(io.open(ALIASES, encoding='utf-8'))['aliases']
+    added = 0
+    for key, (page, y) in data.items():
+        if key in known and key not in roots:
+            roots[key] = (page, round(float(y), 4))
+            added += 1
+    return added
+
+
 def render(doc, first, last):
     import fitz                                        # noqa: F401
     from PIL import Image
@@ -171,7 +193,9 @@ def main():
 
     roots, printed, unspaced = scan(doc, known)
     extra = match_unspaced(unspaced, roots, entries | known)
-    print('headwords located   : %d (%d unspaced)' % (len(roots), extra))
+    aliased = apply_aliases(roots, known)
+    print('headwords located   : %d (%d unspaced, %d aliased)'
+          % (len(roots), extra, aliased))
     print('app root keys covered: %d / %d' % (len(known & set(roots)), len(known)))
     print('dictionary entries   : %d / %d' % (len(entries & set(roots)), len(entries)))
 

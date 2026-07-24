@@ -4,11 +4,12 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-24 (book index now finds the root ص ر ط — the corrupt PDF text layer had
-glued a full stop onto its headword, so `build_book_pages.py` skipped it and every module wrongly
-said the root was "not in the book"; `HEAD_TRIM` fix recovers it, `book_index.json` + `root_directory.json`
-rebuilt, manifest bumped to 7. Prior same-day: book-viewer toolbar made phone-safe; Android-only
-accordion pairs + compact anchor + module explanations moved to About, shipped as APK 1.3.0)
+**Last updated:** 2026-07-24 (root→book audit finished across all 1,664 roots — a hand-verified
+alias map (`scripts/book_root_aliases.json`) maps 35 more roots the book files under a different
+weak letter / shorter or augmented root / related root / proper-noun sub-entry to their page;
+1,655/1,664 now open a page, only 9 genuinely absent; `book_index.json` + both `root_directory.json`
+rebuilt, manifest bumped to 8, synced to Android and shipped as signed APK 1.3.4. Prior same-day:
+ص ر ط `HEAD_TRIM` recovery (manifest 7, APK 1.3.3); phone-safe book-viewer toolbar, APK 1.3.0)
 
 ## What the project does
 
@@ -107,6 +108,29 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-24** **Root→book audit finished across the whole 1,664-root list** (the task the ص ر ط
+  fix below opened). ص ر ط was one symptom of a general gap: 44 app roots had no book page. Reading
+  the book chapter by chapter showed **35 of them do have an article** — the book just files the root
+  under a spelling the automatic headword scan can't reach: a different weak letter (app ر ض و = book
+  ر ض ي, غ ش و = غ ش ي, ن ص ي = ن ص و, ن د و = ن د ي, ه ز ا = ه ز ء …), a shorter or augmented root
+  (ب ر ه ن = ب ر ه, ا ز ز = ا ز, ذ ب ذ ب = ذ ب ب, د س و = د س س), a related root the word actually sits
+  under (ق س ط س قسطاس → ق س ط, ع ر ج ن عرجون → ع ر ج, ت ر ق تراقي → ر ق ي, ن و س الناس → ا ن س), a
+  biliteral-extracted trilateral (ت ر ك, ا ر ك), or a proper-noun / loanword sub-entry (آدَم→ا د م,
+  آزَر→ا ز ر, إِبْلِيس→ب ل س, إِسْتَبْرَق→ب ر ق, أَبَارِيق→ابریق, أَمْس→ا م س; and **ا ب و**, "father",
+  117 occ — the biggest miss — under the book's own headword "أ ب / أ ب و" on p9). Each mapping was
+  read off the page by hand, `[page, y]` and all. **New mechanism:** `scripts/book_root_aliases.json`
+  (35 entries, each with a provenance comment) plus a new `apply_aliases()` in
+  `scripts/build_book_pages.py` that adds an alias **only if** the key is in `root_counts.json` and the
+  scan didn't already find it — so it can't invent or overwrite an entry. Rebuilding `book_index.json`
+  added exactly those 35 keys (0 removed, 0 changed) and dropped `first` 10 → 9 (p9 now published, so
+  **p009.webp was rendered** — the only new image). App-root coverage **1,620 → 1,655 / 1,664**. The
+  remaining **9 are genuinely absent** and left unmapped on purpose: the five relatives/particles
+  (ٱلَّذِى, إِلَىٰ, إِذَا, إِذ, إِذًا — not roots) and ز ي ل / س و ل / ن و ن / ك ب ك ب (the book has no
+  article for them — e.g. it has only ز و ل, not يزال/زيّل). `data/root_directory.json` (web, 1,655
+  with a page) and the Android native one both rebuilt; `data/meta/manifest.json` **7 → 8**. **Synced
+  to Android and shipped as signed APK 1.3.4** (versionCode 8) — see the Android repo's CLAUDE.md.
+  **Web deploy to Vercel still pending** (carries this + the 1.3.3 ص ر ط fix).
 
 - **2026-07-24** **The book index now finds the root ص ر ط (ṣ-r-ṭ, "path" — as in ٱلصِّرَٰطَ
   ٱلْمُسْتَقِيمَ, 1:6).** Its root modal in every module wrongly said "not in the book's dictionary",

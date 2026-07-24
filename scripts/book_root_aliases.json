@@ -1,0 +1,145 @@
+{
+ "_doc": "Manual app-root -> book-article map for headwords the automatic scan cannot reach: the book files these roots under a different weak letter, a shorter/augmented root, a related root, or as a proper-noun sub-entry, so their app key never appears as an isolated spaced headword. Each [page,y] was verified by reading the article on that PDF page. Applied by build_book_pages.py only for keys present in root_counts.json and not already located by the scan. Genuinely-absent keys (the relative/particle set, and ز ي ل / س و ل / ن و ن / ك ب ك ب) are deliberately omitted.",
+ "aliases": {
+  "ن و س": [
+   29,
+   0.7133
+  ],
+  "ا ب و": [
+   9,
+   0.619
+  ],
+  "ر ض و": [
+   173,
+   0.2221
+  ],
+  "ن د و": [
+   417,
+   0.298
+  ],
+  "ت ر ك": [
+   64,
+   0.653
+  ],
+  "ه ز ا": [
+   442,
+   0.3394
+  ],
+  "غ ش و": [
+   308,
+   0.7368
+  ],
+  "آدَم": [
+   15,
+   0.8048
+  ],
+  "ش ق و": [
+   232,
+   0.3191
+  ],
+  "إِبْلِيس": [
+   54,
+   0.7077
+  ],
+  "ف ا ي": [
+   318,
+   0.6469
+  ],
+  "ب ر ه ن": [
+   44,
+   0.8577
+  ],
+  "ص ر ر": [
+   245,
+   0.344
+  ],
+  "ا ر ك": [
+   18,
+   0.3677
+  ],
+  "ه ا ت": [
+   440,
+   0.2383
+  ],
+  "أَمْس": [
+   26,
+   0.2849
+  ],
+  "ن ص ي": [
+   425,
+   0.0953
+  ],
+  "ر ق ي": [
+   177,
+   0.392
+  ],
+  "إِسْتَبْرَق": [
+   44,
+   0.0954
+  ],
+  "ل ف و": [
+   385,
+   0.563
+  ],
+  "ح ف و": [
+   110,
+   0.0953
+  ],
+  "ص ر ص ر": [
+   245,
+   0.344
+  ],
+  "ح و ش": [
+   119,
+   0.0958
+  ],
+  "ط ر و": [
+   263,
+   0.5312
+  ],
+  "ك ل و": [
+   371,
+   0.65
+  ],
+  "ق س ط س": [
+   347,
+   0.515
+  ],
+  "ا ز ز": [
+   18,
+   0.7766
+  ],
+  "ذ ب ذ ب": [
+   155,
+   0.2001
+  ],
+  "آزَر": [
+   18,
+   0.6052
+  ],
+  "ح و ز": [
+   120,
+   0.5635
+  ],
+  "ع ر ج ن": [
+   283,
+   0.3536
+  ],
+  "أَبَارِيق": [
+   10,
+   0.74
+  ],
+  "ت ر ق": [
+   177,
+   0.392
+  ],
+  "م ط و": [
+   402,
+   0.1967
+  ],
+  "د س و": [
+   147,
+   0.8328
+  ]
+ }
+}
