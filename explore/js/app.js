@@ -82,7 +82,7 @@ class ExploreApp {
   async init() {
     this._initTheme();
     const acc = document.getElementById('notes-account');
-    if (acc && window.NotesUI) acc.appendChild(NotesUI.accountChip());
+    if (acc && window.NotesUI) acc.appendChild(NotesUI.backupChip());
     const [surahs, quran, wordRoots, trIndex, tafsirIndex] = await Promise.all([
       this._json('../search/data/surah.json'),
       this._json('../search/data/quran.json?v=3'),

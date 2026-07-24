@@ -1,12 +1,16 @@
 /**
- * notes-ui.js — the "Add Notes" button, the note editor, and the account box.
+ * notes-ui.js — the "Add Notes" button, the note editor, and the backup box.
  *
  * Shared by every module, so a note written in Explore Quran is the same note
  * everywhere. Requires assets/notes.js (window.QuranNotes) to be loaded first.
  *
+ * Notes are saved in this browser. The backup box exports them to a file that
+ * the Android app reads too, and imports one back, so they move between devices
+ * without an account or a server.
+ *
  * Usage:  card.appendChild(NotesUI.ayahButton(2, 255));
  *         NotesUI.open(2, 255, { arabic, translation, surah });
- *         header.appendChild(NotesUI.accountChip());
+ *         header.appendChild(NotesUI.backupChip());
  */
 (function () {
   "use strict";
@@ -95,20 +99,8 @@
 .qn-foot .qn-spacer{flex:1}
 .qn-err{color:#e0705a}
 
-.qn-field{display:block;margin-bottom:12px}
-.qn-field span{display:block;font-size:.8rem;font-weight:600;margin-bottom:6px;
-  color:var(--text-sec,var(--text-muted,#b9a7d6))}
-.qn-input{width:100%;box-sizing:border-box;padding:10px 13px;border-radius:9px;
-  font:inherit;font-size:.95rem;color:var(--text,#efe7ff);
-  background:var(--bg,rgba(0,0,0,.25));
-  border:1px solid var(--border,rgba(255,255,255,.16))}
-.qn-input:focus{outline:none;border-color:var(--accent,#f5b75e)}
 .qn-note-note{font-size:.84rem;line-height:1.6;
   color:var(--text-sec,var(--text-muted,#b9a7d6))}
-.qn-note-note code{font-size:.9em;padding:1px 5px;border-radius:5px;
-  background:var(--surface2,rgba(255,255,255,.06))}
-.qn-link{color:var(--accent,#f5b75e);background:none;border:none;padding:0;
-  font:inherit;font-size:.82rem;cursor:pointer;text-decoration:underline}
 
 .qn-chip{display:inline-flex;align-items:center;gap:7px;font:inherit;
   font-size:.8rem;font-weight:600;padding:7px 13px;border-radius:999px;
@@ -307,120 +299,94 @@
     return el;
   }
 
-  /* ── Account ───────────────────────────────────────────────────────────── */
+  /* ── Backup: export / import ───────────────────────────────────────────── */
 
-  function status(msg) {
+  function status(msg, isErr) {
     if (!els) return;
     const err = QuranNotes.error();
-    const user = QuranNotes.user();
-    if (msg) { els.status.className = "qn-status"; els.status.textContent = msg; return; }
+    if (msg) { els.status.className = "qn-status" + (isErr ? " qn-err" : ""); els.status.textContent = msg; return; }
     if (err) { els.status.className = "qn-status qn-err"; els.status.textContent = err; return; }
     els.status.className = "qn-status";
-    els.status.textContent = !QuranNotes.configured()
-      ? "Saved on this device."
-      : user
-        ? `Signed in as ${user.email} · saved on all your devices.`
-        : "Saved on this device — sign in to see these notes everywhere.";
+    els.status.textContent = "Saved on this device.";
   }
 
-  function openAccount() {
+  function exportFile() {
+    const doc = QuranNotes.export();
+    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
+    const stamp = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `quran-connect-notes-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    return doc.count;
+  }
+
+  function importFile(file, done) {
+    const reader = new FileReader();
+    reader.onerror = () => done(new Error("Could not read that file."));
+    reader.onload = () => {
+      let doc;
+      try { doc = JSON.parse(reader.result); }
+      catch (e) { return done(new Error("That file is not valid JSON.")); }
+      try { done(null, QuranNotes.import(doc)); }
+      catch (e) { done(e); }
+    };
+    reader.readAsText(file);
+  }
+
+  function openBackup() {
     build();
     els.title.textContent = "Your notes";
     els.sub.textContent = "";
 
     const render = () => {
       els.body.innerHTML = "";
-      const user = QuranNotes.user();
+      const n = QuranNotes.total();
       const box = document.createElement("div");
+      box.innerHTML = `
+        <p class="qn-note-note">
+          ${n} note${n === 1 ? "" : "s"}, saved in this browser. They stay on this
+          device — export them to a file to keep a backup or to carry them to the
+          Android app, and import a file to bring them back. The same file works
+          both ways; importing merges by note, so importing twice changes nothing.
+        </p>
+        <div class="qn-row">
+          <button class="qn-btn" type="button" data-act="export"${n ? "" : " disabled"}>Export notes…</button>
+          <button class="qn-btn ghost" type="button" data-act="import">Import notes…</button>
+        </div>
+        <input type="file" accept="application/json,.json" hidden>`;
+      const file = box.querySelector('input[type="file"]');
 
-      if (!QuranNotes.configured()) {
-        box.innerHTML = `
-          <p class="qn-note-note">
-            Your notes are saved in this browser and stay here. To have them
-            follow you to your phone and any other device, sync has to be
-            switched on once: create a free project at
-            <b>supabase.com</b>, run <code>supabase/notes_schema.sql</code> in its
-            SQL editor, and paste the project URL and anon key into
-            <code>assets/notes-config.js</code>. Full instructions are in that file.
-          </p>`;
-      } else if (user) {
-        box.innerHTML = `
-          <p class="qn-note-note">Signed in as <b>${esc(user.email)}</b>.
-            ${QuranNotes.total()} note${QuranNotes.total() === 1 ? "" : "s"} on this account.</p>
-          <div class="qn-row">
-            <button class="qn-btn ghost" type="button" data-act="sync">Sync now</button>
-            <div class="qn-spacer"></div>
-            <button class="qn-btn ghost" type="button" data-act="out">Sign out</button>
-          </div>`;
-        box.querySelector('[data-act="sync"]').addEventListener("click", async e => {
-          e.target.disabled = true;
-          status("Syncing…");
-          const ok = await QuranNotes.sync();
-          e.target.disabled = false;
-          status(ok ? "Synced." : null);
-        });
-        box.querySelector('[data-act="out"]').addEventListener("click", () => {
-          QuranNotes.signOut();
+      box.querySelector('[data-act="export"]').addEventListener("click", () => {
+        try {
+          const c = exportFile();
+          status(`Exported ${c} note${c === 1 ? "" : "s"}.`);
+        } catch (e) {
+          status(e.message || "Export failed.", true);
+        }
+      });
+      box.querySelector('[data-act="import"]').addEventListener("click", () => file.click());
+      file.addEventListener("change", () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        status("Importing…");
+        importFile(f, (err, r) => {
+          file.value = "";              // let the same file be chosen again
+          if (err) { status(err.message || "Import failed.", true); return; }
+          const parts = [];
+          if (r.added) parts.push(`${r.added} added`);
+          if (r.updated) parts.push(`${r.updated} updated`);
+          if (r.skipped) parts.push(`${r.skipped} skipped`);
+          status(parts.length
+            ? "Imported: " + parts.join(", ") + "."
+            : "Already up to date — nothing to import.");
           render();
         });
-      } else {
-        box.innerHTML = `
-          <p class="qn-note-note">Sign in to keep your notes on every device.
-            Notes already written in this browser are uploaded when you sign in.</p>
-          <form>
-            <label class="qn-field"><span>Email</span>
-              <input class="qn-input" type="email" name="email" autocomplete="email" required></label>
-            <label class="qn-field"><span>Password</span>
-              <input class="qn-input" type="password" name="password"
-                     autocomplete="current-password" minlength="6" required></label>
-            <div class="qn-row">
-              <button class="qn-btn" type="submit">Sign in</button>
-              <button class="qn-btn ghost" type="button" data-act="up">Create account</button>
-              <div class="qn-spacer"></div>
-              <button class="qn-link" type="button" data-act="reset">Forgot password?</button>
-            </div>
-          </form>`;
-        const form = box.querySelector("form");
-        const creds = () => ({
-          email: form.email.value.trim(),
-          password: form.password.value,
-        });
-        const run = async (fn, working) => {
-          const { email, password } = creds();
-          if (!email || !password) { status("Enter an email and a password."); return; }
-          form.querySelectorAll("button").forEach(b => (b.disabled = true));
-          status(working);
-          try {
-            const r = await fn(email, password);
-            if (r && r.signedIn === false) {
-              status("Check your inbox to confirm the address, then sign in.");
-            } else {
-              render();
-              status();
-            }
-          } catch (err) {
-            status(err.message || "That did not work.");
-          } finally {
-            form.querySelectorAll("button").forEach(b => (b.disabled = false));
-          }
-        };
-        form.addEventListener("submit", e => {
-          e.preventDefault();
-          run(QuranNotes.signIn, "Signing in…");
-        });
-        box.querySelector('[data-act="up"]').addEventListener("click", () =>
-          run(QuranNotes.signUp, "Creating your account…"));
-        box.querySelector('[data-act="reset"]').addEventListener("click", async () => {
-          const email = form.email.value.trim();
-          if (!email) { status("Type your email first."); return; }
-          try {
-            await QuranNotes.resetPassword(email);
-            status("Password reset link sent to " + email + ".");
-          } catch (err) {
-            status(err.message || "Could not send the reset link.");
-          }
-        });
-      }
+      });
+
       els.body.appendChild(box);
       status();
     };
@@ -453,21 +419,19 @@
     return btn;
   }
 
-  function accountChip() {
+  function backupChip() {
     build();
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "qn-chip";
     const paint = () => {
-      const user = QuranNotes.user();
-      btn.classList.toggle("on", !!user);
-      btn.textContent = user ? user.email.split("@")[0] : "Notes account";
-      btn.title = user
-        ? `Signed in as ${user.email}`
-        : "Sign in to keep your notes on every device";
+      const n = QuranNotes.total();
+      btn.classList.toggle("on", n > 0);
+      btn.textContent = n ? `Notes · ${n}` : "Notes";
+      btn.title = "Export or import your notes";
     };
     paint();
-    btn.addEventListener("click", openAccount);
+    btn.addEventListener("click", openBackup);
     QuranNotes.subscribe(paint);
     return btn;
   }
@@ -478,5 +442,5 @@
     document.querySelectorAll(".qn-ayah-btn[data-qn-ref]").forEach(label);
   });
 
-  window.NotesUI = { open: openNotes, openAccount, ayahButton, accountChip, close };
+  window.NotesUI = { open: openNotes, openBackup, ayahButton, backupChip, close };
 })();

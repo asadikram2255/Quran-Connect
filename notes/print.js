@@ -16,7 +16,7 @@
   const docEl = document.getElementById("doc");
   const printBtn = document.getElementById("print-btn");
   const acct = document.getElementById("notes-account");
-  if (acct && window.NotesUI) acct.appendChild(NotesUI.accountChip());
+  if (acct && window.NotesUI) acct.appendChild(NotesUI.backupChip());
 
   const esc = s => String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -85,7 +85,6 @@
       entry.notes.push(n);
     }
 
-    const user = QuranNotes.user();
     const ayahCount = groups.reduce((t, g) => t + g.entries.length, 0);
     let html = `
       <div class="doc-head">
@@ -95,7 +94,6 @@
           ayah${ayahCount === 1 ? "" : "s"} across ${groups.length}
           surah${groups.length === 1 ? "" : "s"}
           · printed ${esc(fmtDate(new Date().toISOString()))}
-          ${user ? "· " + esc(user.email) : ""}
         </div>
       </div>`;
 
