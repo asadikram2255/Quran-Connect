@@ -4,24 +4,34 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-23 (Android app split into its own repo)
+**Last updated:** 2026-07-24 (milestone 5 web parity: renames, offline notes, mobile surah drawer,
+Root Words Directory, credits fix, root glosses rebuilt)
 
 ## What the project does
 
-Quran Connect (live at https://quran-connect-psi.vercel.app) is a Quran study web app with three modules,
-reachable from a landing page (`index.html`) with three module cards:
+Quran Connect (live at https://quran-connect-psi.vercel.app) is a Quran study web app with four modules,
+reachable from a landing page (`index.html`) with four module cards:
 
 1. **Explore Quran** (`explore/`) — pure reading module. All 114 surahs, multi-select translations (6)
    and tafseers (5), word & root badges per ayah (hidden behind a "Words & Roots" toggle). Clicking a
    word/root opens a modal with dictionary meanings (English + Urdu) and every ayah containing it.
-   Each ayah has a "Pairs →" button deep-linking to Explore Connections.
-2. **Explore Connections** (root app: `index.html` + `assets/app.js` + `assets/styles.css`) — deep-dive
-   into any ayah: meaning-based & root-word pairs between ayaat, paired Hadith, tafseer, Words & Roots
-   modal. Default landing shows a mood/topics browser (`body.view-mood`); search opens the two-panel
-   research view (`body.view-research`). Supports `/?ayah=SN:AN` deep links.
+   Each ayah has a "Pairs →" button deep-linking to Explore Ayaah Connections. On narrow screens the
+   surah sidebar is a slide-in drawer opened by a "☰ Surahs" button (`_wireMobileSidebar` in js/app.js).
+2. **Explore Ayaah Connections** (root app: `index.html` + `assets/app.js` + `assets/styles.css`) —
+   deep-dive into any ayah: meaning-based & root-word pairs between ayaat, paired Hadith, tafseer,
+   Words & Roots modal. Default landing shows a mood/topics browser (`body.view-mood`, headline "Ideas
+   and Topics"); search opens the two-panel research view (`body.view-research`). Supports `/?ayah=SN:AN`
+   and `/?root=<spaced letters>` deep links (the latter opens the root modal, used by the directory).
 3. **Search Quran** (`search/`) — Google-like search grounded ONLY in the Quran (hadith removed
    entirely). BM25 + Arabic root matching + semantic rerank via serverless API. Also has a multi-turn
    **chat mode** ("Ask") grounded in retrieved ayaat with citation validation (`api/chat.js`).
+4. **Root Words Directory** (`roots/`) — every root analyzequran finds, in one searchable list
+   (search by letters or English meaning, sort by frequency or alphabetically). Data is the prebuilt
+   `data/root_directory.json`; each row deep-links to Explore Ayaah Connections' root modal via
+   `../?root=<letters>`. Mirrors the Android app's native directory.
+
+Two more surfaces (not module cards): the **Prophet Stories** nav button (formerly "Prophet Module")
+and per-ayah **study notes** (see below).
 
 ## Authoritative root data (IMPORTANT)
 
@@ -47,11 +57,13 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 - `data/root_dictionary.json` + `assets/root-dictionary.js` — the extracted *text* of the same
   articles. Built by `scripts/build_root_dictionary.py` from the DOCX. **No page loads this any
   more** (the Arabic in it is corrupt — see below); kept as a build input and for search/analysis.
-- `assets/{notes.js,notes-ui.js,notes-config.js}` + `notes/` + `supabase/notes_schema.sql` — per-ayah
-  study notes. `notes.js` is the store (localStorage, many notes per ayah, tombstoned deletes) plus
-  an optional Supabase account layer talked to over plain REST; `notes-ui.js` is the "Add Notes"
-  button, the note editor and the account box; `notes/` is the printable "My Notes" page.
-- `index.html`, `assets/{app.js,styles.css,motion.js}` — landing + Explore Connections (root app).
+- `assets/{notes.js,notes-ui.js}` + `notes/` — per-ayah study notes, **fully local, no accounts**.
+  `notes.js` is the store (localStorage `quran-notes-v1`, many notes per ayah, tombstoned deletes) with
+  a platform-independent versioned import/export (`{format:"quran-connect-notes",version:1,…}`, merge by
+  id, last-write-wins on `updated`, the same JSON the Android app reads); `notes-ui.js` is the "Add
+  Notes" button, the note editor, and a **Backup** box (Export / Import); `notes/` is the printable "My
+  Notes" page. (Supabase, the account UI, and `notes-config.js` were removed in milestone 5.)
+- `index.html`, `assets/{app.js,styles.css,motion.js}` — landing + Explore Ayaah Connections (root app).
   `DATA_VERSION` const in app.js busts data-file caches; bump when data under `data/` changes.
 - `explore/` — Explore Quran module (`index.html`, `css/style.css`, `js/app.js`,
   `data/wbw/` word-by-word en+ur glosses from quran.com, `data/{word_glosses,root_glosses,root_counts}.json`).
@@ -93,6 +105,44 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## Last changes (newest first)
 
+- **2026-07-24** **Milestone 5 — the web app now matches the Android app.** Six pieces, all deployed:
+  - **Renames** everywhere: "Explore Connections" → **Explore Ayaah Connections**, "Prophet Module" →
+    **Prophet Stories**, "How are you feeling today?" / "What Am I Feeling?" → **Ideas and Topics**.
+    ("Quran Connect" and "Explore Quran" unchanged.)
+  - **Notes are fully local now — no accounts, no Supabase.** `assets/notes.js` was rewritten to a
+    localStorage-only store with a platform-independent versioned import/export
+    (`{format:"quran-connect-notes",version:1,notes:[{id,sn,an,body,created,updated,deleted}]}`, merge
+    by id, last-write-wins on `updated`, tombstones, accepts legacy `{v:1,…}`, rejects a newer version
+    — byte-for-byte the format the Android app reads). `notes-ui.js`'s account box became a **Backup**
+    box (Export / Import a `.json`). `assets/notes-config.js` and `supabase/notes_schema.sql` were
+    deleted. Notes still work offline exactly as before; the phone and the laptop exchange notes by
+    exporting and importing the file.
+  - **Explore Quran got a surah drawer on narrow screens.** Below 860px `explore/css/style.css` used to
+    hide `.sidebar` outright, stranding a phone on whatever surah it opened; it now slides in from a new
+    "☰ Surahs" button over a backdrop (`_wireMobileSidebar` in `explore/js/app.js`; picking a surah,
+    Escape, or a backdrop tap closes it). Desktop unchanged.
+  - **New Root Words Directory** (`roots/`), a fourth landing card. A searchable list of every root
+    analyzequran finds (search by letters — normalised, marks optional — or by English meaning; sort by
+    frequency or A–Z), each row deep-linking to Explore Ayaah Connections' root modal via a new
+    **`/?root=<spaced letters>`** handler in `assets/app.js` (opens the same modal a root badge does:
+    the book's page plus every ayah the root occurs in — no second ayah renderer). Data is the prebuilt
+    `data/root_directory.json` (206 KB, 1,664 rows), built by **`scripts/build_root_directory.mjs`**, a
+    port of the Android `tools/build_root_directory.py` (same schema, same gloss aggregation).
+  - **Credits fixed** on the landing page: all 5 tafsir sources now named (Maududi/Tafhim was missing),
+    **Fatuhat al-Quran** credited as the source of every root meaning, plus word-by-word (quran.com),
+    analyzequran, and the typefaces; contributor / "Built by" names removed (also from the taglines in
+    `index.html` and `assets/app.js`). MyMemory and the two Reference Works were kept — unlike Android,
+    the web genuinely uses them (`search/js/{search,concepts}.js`).
+  - **`explore/data/root_glosses.json` regenerated** correctly. It had been aggregated 2026-07-09,
+    before the roots were rebuilt from analyzequran on 2026-07-10, so 46 entries were misfiled (و ع د,
+    "promise", glossed "Allah"). New **`scripts/build_root_glosses.mjs`** re-aggregates offline against
+    `data/meta/ayah_roots_analyzequran.json` (skipping 20:94, one more root than words); `fetch_wbw.mjs`
+    no longer does it. 1,663 roots (ل ح ي occurs only in the skipped 20:94; its count still comes from
+    `root_counts.json`). No page loads this file yet — it is the data source for a future richer view.
+  **Cross-repo still owed (Android milestone 5, not started):** the Android `webapp-overlay/assets/`
+  copy of `notes.js`/`notes-ui.js` needs the same `import`/Backup changes on its next sync, and its
+  `notes-config.js` overlay reference is now orphaned.
+
 - **2026-07-23** **The Android app now lives in its own repository —
   `../quran-connect-android`.** This repo stays the web version and the source of truth for the
   data pipeline (`scripts/`, `raw/`); **nothing here was modified for Android.** The app copies
@@ -104,23 +154,8 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   (version 1.1.0, all six modules plus notes and a Root Words Directory), with **no `INTERNET`
   permission** and **no Supabase** (notes are a device SQLite database, exported in a versioned
   JSON format both platforms read).
-  **Changes still owed to this repo (milestone 5, not started):** rename "Explore Connections" →
-  **Explore Ayaah Connections**, "Prophet Module" → **Prophet Stories** and "How are you feeling
-  today?" → **Ideas and Topics** everywhere; strip Supabase and the account UI from
-  `assets/notes.js`, delete `assets/notes-config.js`, and switch to local storage plus
-  import/export in that same format; add a **Root Words Directory**; **give Explore Quran a surah
-  picker on narrow screens** — `explore/css/style.css` hides `.sidebar` below 860px and puts
-  nothing in its place, so on a phone there is no way to leave the surah you landed on (found
-  while testing the Android build, which works around it in its own overlay); fix the credits
-  block (it
-  names 4 tafsir sources though 5 ship — Maududi/Tafhim is missing — and **Fatuhat al-Quran**,
-  the source of every root meaning, is not credited at all); and **regenerate
-  `explore/data/root_glosses.json`, which is stale and still loaded by Explore Quran** — it was
-  aggregated 2026-07-09, the roots were rebuilt from analyzequran on 2026-07-10, and 46 of its
-  1,664 entries are now filed under the wrong root (و ع د, "promise", is glossed "Allah"). The
-  Android app's `tools/build_root_directory.py` shows the correct aggregation: `explore/data/wbw/`
-  against `data/meta/ayah_roots_analyzequran.json`, skipping 20:94, which carries one more root
-  than it has words.
+  **Milestone 5 (web parity with the Android app) is now done in this repo — see the 2026-07-24
+  entry above.**
 
 - **2026-07-22** **Per-ayah notes, with accounts and a printable notebook.** Every ayah card in
   Explore Quran carries an **Add Notes** button (it becomes "Notes · N" with a dot once notes

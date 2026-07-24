@@ -29,8 +29,13 @@ Quran-Connect/
 │   └── data/
 │       ├── wbw/wbw_sNNN.json    ← per-surah word-by-word {ar, en, ur, tr}
 │       ├── word_glosses.json    ← normalized word → {en:[…], ur:[…]}
-│       ├── root_glosses.json    ← root → {en:[…], ur:[…]}
+│       ├── root_glosses.json    ← root → {en:[…], ur:[…]} (built by build_root_glosses.mjs)
 │       └── root_counts.json     ← authoritative root occurrence counts (analyzequran.com)
+│
+├── roots/                       ← Root Words Directory module (self-contained)
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/app.js                ← searchable list; rows deep-link to ../?root=<letters>
 │
 ├── search/                      ← Search Quran module (self-contained)
 │   ├── index.html               ← Search UI entry point
@@ -56,6 +61,8 @@ Quran-Connect/
 │   └── chat.js                  ← Grounded Quran chat (Groq LLM, cites only supplied verses)
 │
 ├── data/                        ← Static pre-computed data served by Vercel
+│   ├── root_directory.json      ← one row per root for roots/ (build_root_directory.mjs)
+│   ├── book_index.json          ← root → [sheet, y] into the Fatuhat al-Quran page images
 │   ├── embeddings/              ← Binary float32 embeddings (ar_emb.bin, en_emb.bin, meta.json)
 │   ├── meta/                    ← manifest.json, shard maps, root tallies, pairing diagnostics
 │   ├── quran_text/              ← per-surah ayah shards (quran_sNNN.json)
@@ -72,6 +79,8 @@ Quran-Connect/
 │   ├── build_search_data.py     ← CSV → search/data/ JSON (accepts --input-dir / --output-dir)
 │   ├── export_embeddings.py     ← numpy cache → binary .bin (accepts --cache-dir / --output-dir)
 │   ├── fetch_*.{py,mjs,js}      ← Fetchers: tafsir, translations, word-by-word, analyzequran roots
+│   ├── build_root_glosses.mjs   ← root → glosses, re-aggregated against the current root map
+│   ├── build_root_directory.mjs ← collapses 5 files into data/root_directory.json (roots/ module)
 │   ├── build_wa_prefix_map.py   ← وَ-conjunction map (والارض→الارض) from wbw wasla orthography
 │   ├── verify_root_tally.mjs    ← Cross-check root counts against analyzequran dictionary
 │   └── test_normalize.json      ← Normalization test vectors (JS ↔ Python parity check)
