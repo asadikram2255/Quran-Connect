@@ -47,6 +47,12 @@ HEAD_MIN_SIZE = 14           # body text is 11-12pt, headwords 18-22pt
 LET = '[' + B.LETTERS + ']'
 SPACED = re.compile(r'^\s*(' + LET + r'(?: +' + LET + r'){1,4})\s*$')
 BAB_RE = re.compile(r'باب\s*ال?(\S+)')
+# The corrupt text layer sometimes glues a full stop (or another sentence mark)
+# onto a headword's last letter, so the isolated root prints clean but extracts
+# with a trailing punctuation glyph. SPACED is end-anchored and would reject it,
+# so these marks are trimmed off both ends before the match. U+06D4 Arabic full
+# stop, U+060C comma, U+061B semicolon, U+061F question mark, colon, dot.
+HEAD_TRIM = '۔،؛؟:.'
 
 
 def page_lines(page):
@@ -90,7 +96,7 @@ def scan(doc, known):
                 continue
             if ln['size'] < HEAD_MIN_SIZE:
                 continue
-            m = SPACED.match(txt)
+            m = SPACED.match(txt.strip(HEAD_TRIM))
             if not m:
                 # A headword that is not letter-spaced — the proper nouns and
                 # particles the app also keys on. Resolved after the scan.

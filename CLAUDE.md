@@ -4,9 +4,11 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-24 (book-viewer toolbar made phone-safe — Back + root heading always
-visible, zoom/nav controls wrap to a second row; Android-only accordion pairs + compact anchor +
-module explanations moved to About, shipped as APK 1.3.0)
+**Last updated:** 2026-07-24 (book index now finds the root ص ر ط — the corrupt PDF text layer had
+glued a full stop onto its headword, so `build_book_pages.py` skipped it and every module wrongly
+said the root was "not in the book"; `HEAD_TRIM` fix recovers it, `book_index.json` + `root_directory.json`
+rebuilt, manifest bumped to 7. Prior same-day: book-viewer toolbar made phone-safe; Android-only
+accordion pairs + compact anchor + module explanations moved to About, shipped as APK 1.3.0)
 
 ## What the project does
 
@@ -105,6 +107,23 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-24** **The book index now finds the root ص ر ط (ṣ-r-ṭ, "path" — as in ٱلصِّرَٰطَ
+  ٱلْمُسْتَقِيمَ, 1:6).** Its root modal in every module wrongly said "not in the book's dictionary",
+  though the book plainly has the article (printed page 240). Cause: the same PDF text-layer corruption
+  documented above — the isolated headword drew clean but *extracted* as `ص ر ط۔`, a full stop
+  (U+06D4) glued onto the final ط. `scripts/build_book_pages.py`'s `SPACED` headword pattern is
+  end-anchored (`…\s*$`), so the trailing punctuation made it reject the line and the root fell into
+  the "45 not located" bucket. Fix: a new `HEAD_TRIM` constant (`۔،؛؟:.`, defined so the Arabic marks
+  survive tool edits) is stripped from both ends of each line before the `SPACED` match —
+  `SPACED.match(txt.strip(HEAD_TRIM))`. This only ever *adds* matches (a clean headword has nothing to
+  trim), so it can't regress: rebuilding `data/book_index.json` added exactly `ص ر ط → [245, 0.5428]`
+  (printed p.240) and changed nothing else; app-root coverage 1619 → 1620. `data/root_directory.json`
+  rebuilt too (its one changed row, `ص ر ط`, gained `p: 240`). `data/meta/manifest.json` version
+  **6 → 7** so the service worker refetches the changed `/data` JSON (a `?v=` bump does nothing there).
+  **Synced to Android and shipped as APK 1.3.3** (the Android native `root_directory.json`, built by
+  its own `tools/build_root_directory.py` from the synced `book_index.json`, picked up the page the
+  same way); that APK also carries the new launcher icon (see the Android repo's CLAUDE.md).
 
 - **2026-07-24** **The book viewer's toolbar no longer breaks on a phone (shared web fix).** On a
   narrow screen `assets/book-viewer.js`'s `.bookv-bar` was a single non-wrapping flex row of eight
