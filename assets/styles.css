@@ -1081,6 +1081,8 @@ body.view-research .searchHint { display: none; }
   margin-top: 2px;
 }
 .creditGroupSource:hover { color: var(--accent); border-color: var(--accent); }
+/* Non-link source labels (a book title, a licence) — no underline, no hover. */
+span.creditGroupSource { border-bottom: none; }
 
 .creditInline {
   color: var(--text-muted);
@@ -1089,55 +1091,6 @@ body.view-research .searchHint { display: none; }
   transition: color .15s;
 }
 .creditInline:hover { color: var(--accent); }
-
-.creditsBuiltBy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.creditsBuiltByLabel {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  color: var(--text-muted);
-}
-
-.creditsAuthors {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.creditsAuthor {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-.creditsAuthorName {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.creditsAuthorRole {
-  font-size: 11.5px;
-  color: var(--text-muted);
-}
-
-.creditsAuthorSep {
-  font-size: 22px;
-  color: var(--border-strong);
-  user-select: none;
-  line-height: 1;
-}
 
 .hidden { display: none !important; }
 .small  { color: var(--text-muted); font-size: 12px; }

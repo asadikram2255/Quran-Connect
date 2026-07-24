@@ -1054,7 +1054,7 @@ function setHeaderTitle(title, sub) {
 function exitToMoodView() {
   document.body.classList.remove("view-research");
   document.body.classList.add("view-mood");
-  setHeaderTitle("Quran Connect", "Ease your journey of understanding the Qur'an — by Muhammad Asad Ikram");
+  setHeaderTitle("Quran Connect", "Ease your journey of understanding the Qur'an");
   showLanding(true);
   // Reset any active drill state so returning home feels clean
   state.selectedAyahId = null;
