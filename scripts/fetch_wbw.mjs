@@ -3,10 +3,15 @@
 //
 //   explore/data/wbw/wbw_s{NNN}.json   { "s:a": [{ar, en, ur, tr}, …] }  per-surah shards
 //   explore/data/word_glosses.json     { normWord: { en:[…], ur:[…] } }  distinct glosses per word
-//   explore/data/root_glosses.json     { root:     { en:[…], ur:[…] } }  distinct glosses per root
 //
-// Roots come from search/data/word_roots.json (normalized word → [roots]),
-// so normalization here must match normalizeArabic() in search/js/concepts.js.
+// It does NOT build root_glosses.json: that is scripts/build_root_glosses.mjs,
+// which aggregates per root against the authoritative per-word root assignment
+// (data/meta/ayah_roots_analyzequran.json). Doing it here through the normalized
+// word → root map is what filed 46 roots' glosses under the wrong root.
+//
+// The word → root map (search/data/word_roots.json) is still read, only to pick
+// which normalized spelling a word is keyed under; normalization here must match
+// normalizeArabic() in search/js/concepts.js.
 //
 // Usage: node scripts/fetch_wbw.mjs
 
@@ -106,7 +111,6 @@ async function main() {
   const wordRoots = JSON.parse(fs.readFileSync('search/data/word_roots.json', 'utf8'));
 
   const wordGlosses = {}; // normWord → {en:Map, ur:Map}
-  const rootGlosses = {}; // root     → {en:Map, ur:Map}
   let unmatchedWords = 0, totalWords = 0;
 
   for (let s = 1; s <= 114; s++) {
@@ -134,7 +138,7 @@ async function main() {
       console.log(`surah ${s}: fetched ${Object.keys(shard).length} ayaat`);
     }
 
-    // Aggregate glosses by normalized word and by root
+    // Aggregate glosses by normalized word.
     for (const words of Object.values(shard)) {
       for (const w of words) {
         totalWords++;
@@ -142,24 +146,16 @@ async function main() {
         const norm = variants.find(v => wordRoots[v]) || variants[0];
         addGloss(wordGlosses, norm, 'en', w.en);
         addGloss(wordGlosses, norm, 'ur', w.ur);
-        const roots = wordRoots[norm];
-        if (roots) {
-          for (const root of roots) {
-            addGloss(rootGlosses, root, 'en', w.en);
-            addGloss(rootGlosses, root, 'ur', w.ur);
-          }
-        } else {
-          unmatchedWords++;
-        }
+        if (!wordRoots[norm]) unmatchedWords++;
       }
     }
   }
 
   fs.writeFileSync(path.join(OUT_DIR, 'word_glosses.json'), JSON.stringify(finalizeGlosses(wordGlosses)));
-  fs.writeFileSync(path.join(OUT_DIR, 'root_glosses.json'), JSON.stringify(finalizeGlosses(rootGlosses)));
 
   console.log(`\nDone. ${totalWords} words total, ${Object.keys(wordGlosses).length} distinct normalized words,`);
-  console.log(`${Object.keys(rootGlosses).length} roots with glosses, ${unmatchedWords} words without a root mapping (${(100 * unmatchedWords / totalWords).toFixed(1)}%).`);
+  console.log(`${unmatchedWords} words without a root mapping (${(100 * unmatchedWords / totalWords).toFixed(1)}%).`);
+  console.log('Run  node scripts/build_root_glosses.mjs  to (re)build root_glosses.json.');
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
