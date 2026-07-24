@@ -1,7 +1,7 @@
 /**
  * ayah-export.js — shared CSV exporter for word/root occurrence modals.
  *
- * Used by all three modules (Explore Connections, Explore Quran, Search Quran).
+ * Used by all three modules (Explore Ayaah Connections, Explore Quran, Search Quran).
  * Exports a list of ayah refs ("s:a") as a CSV matching the user's
  * "Exported File Columns.xlsx" template:
  *

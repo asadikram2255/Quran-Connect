@@ -53,9 +53,9 @@
             <option value="ur_ahmedali">اردو — احمد علی</option>
           </optgroup>
         </select>
-        <button id="feelingsBtn" class="btn feelingsBtn" type="button">What Am I Feeling?</button>
+        <button id="feelingsBtn" class="btn feelingsBtn" type="button">Ideas and Topics</button>
         <nav class="headerNav" aria-label="Primary">
-          <button id="prophetsBtn" class="navBtn" type="button">Prophets</button>
+          <button id="prophetsBtn" class="navBtn" type="button">Prophet Stories</button>
           <button id="statsBtn"    class="navBtn" type="button">Statistics</button>
           <a id="printNotesBtn" class="navBtn navBtnLink" href="notes/?auto=1"
              title="Every note you have written, ayah by ayah — print it or save it as a PDF">Print Notes</a>
@@ -106,7 +106,7 @@
           <button data-mood-action="search" class="moduleCard" type="button">
             <div class="moduleCardInner">
               <div class="moduleCardBody">
-                <div class="moduleCardTitle">Explore Connections</div>
+                <div class="moduleCardTitle">Explore Ayaah Connections</div>
                 <div class="moduleCardDesc">Deep-dive into any ayah — see how it connects to the rest of the Qur'an and authentic Hadith.</div>
                 <ul class="moduleCardFeatures">
                   <li>Search by English concept, Arabic word, or Ayah ID</li>
@@ -158,9 +158,9 @@
         </div>
       </article>
 
-      <!-- ③ Mood / feelings section -->
+      <!-- ③ Ideas and Topics section -->
       <div class="moodHeroTop">
-        <h1 class="moodHeadline">How are you <em>feeling</em> today?</h1>
+        <h1 class="moodHeadline">Ideas and <em>Topics</em></h1>
       </div>
 
       <div id="moodCats"></div>
@@ -174,7 +174,7 @@
           <div class="landingTitle">Your Qur'an Companion</div>
           <div class="landingText">
             Understand the Qur'an more deeply by discovering how ayat connect to one another — through shared meaning, shared Arabic root words, and authentic Hadith.
-            Choose a translation in 2 English and 4 Urdu renditions, or let the <b>What Am I Feeling?</b> button guide you to verses by topic.
+            Choose a translation in 2 English and 4 Urdu renditions, or let <b>Ideas and Topics</b> guide you to verses by theme.
           </div>
         </div>
         <button id="startBtn" class="btn startBtn" type="button">Start Exploring</button>
@@ -189,7 +189,7 @@
             <li>Each Qur'an ayah is paired with <b>authentic Hadith</b> on the same theme.</li>
             <li>Read <b>Tafseer</b> from 5 classical scholars — Ibn Kathir, Maududi, Maarif ul Quran, Bayan ul Quran, and Ibn Kathir (Urdu) — directly on each ayah.</li>
             <li>Tap <b>Words &amp; Roots</b> to explore every root and token in an ayah.</li>
-            <li>Explore <b>What Am I Feeling?</b> to browse 142 curated topics and jump straight to relevant ayat.</li>
+            <li>Explore <b>Ideas and Topics</b> to browse 142 curated topics and jump straight to relevant ayat.</li>
             <li>Switch between <b>6 translations</b> — Sahih International, Yusuf Ali, and 4 Urdu scholars — any time.</li>
           </ul>
         </div>
@@ -202,7 +202,7 @@
             <li>Type your query and press <b>Search</b> or <b>Enter</b>.</li>
             <li>Click any result ayah to open its <b>Pairs</b> panel.</li>
             <li>Click a paired ayah or Hadith to dive deeper.</li>
-            <li>Or tap <b>What Am I Feeling?</b> to browse by topic directly.</li>
+            <li>Or tap <b>Ideas and Topics</b> to browse by topic directly.</li>
           </ol>
           <div class="landingNote">
             Connections are algorithm-generated to aid study. Always verify with trusted tafseer and scholars.
@@ -468,12 +468,12 @@
     </div>
   </div>
 
-  <!-- ── What Am I Feeling modal ──────────────────────────── -->
+  <!-- ── Ideas and Topics modal ──────────────────────────── -->
   <div id="feelingsModal" class="feelingsOverlay hidden" role="dialog" aria-modal="true">
     <div class="feelingsPanel">
       <div class="feelingsHeader">
         <div>
-          <div class="feelingsTitle">What Am I Feeling?</div>
+          <div class="feelingsTitle">Ideas and Topics</div>
           <div class="feelingsSub">Choose a topic to explore relevant Qur'an verses · <a href="https://myislam.org/quran-verses/" target="_blank" rel="noopener" class="feelingsCredit">Topics via myislam.org</a></div>
         </div>
         <button id="feelingsModalClose" class="wordModalClose" type="button" aria-label="Close">✕</button>
@@ -482,12 +482,12 @@
     </div>
   </div>
 
-  <!-- ── Prophets of Quran modal ─────────────────────────────── -->
+  <!-- ── Prophet Stories modal ─────────────────────────────── -->
   <div id="prophetsModal" class="prophetsOverlay hidden" role="dialog" aria-modal="true">
     <div class="prophetsPanel">
       <div class="prophetsHeader">
         <div>
-          <div class="prophetsTitle">Prophets of Quran</div>
+          <div class="prophetsTitle">Prophet Stories</div>
           <div class="prophetsSub">All 25 prophets mentioned in the Holy Qur'an — click a prophet to explore their ayaat</div>
         </div>
         <button id="prophetsModalClose" class="wordModalClose" type="button" aria-label="Close">✕</button>

@@ -510,7 +510,7 @@ const TOPIC_VERSES = {
 
 };
 
-// ── Prophets of Quran modal ────────────────────────────────
+// ── Prophet Stories modal ──────────────────────────────────
 
 // All 25 named Prophets in the Quran with comprehensive ayah lists
 // (direct name mentions + story passages + myislam.org topic pages, deduped)
@@ -1042,7 +1042,7 @@ function renderMoodHero() {
 function enterResearchView() {
   document.body.classList.remove("view-mood");
   document.body.classList.add("view-research");
-  setHeaderTitle("Explore Connections", "Deep-dive into any ayah — connections across the Qur'an and authentic Hadith");
+  setHeaderTitle("Explore Ayaah Connections", "Deep-dive into any ayah — connections across the Qur'an and authentic Hadith");
 }
 
 function setHeaderTitle(title, sub) {
