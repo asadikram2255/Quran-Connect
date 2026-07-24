@@ -5,7 +5,7 @@
 > the hand-off context between Claude windows.
 
 **Last updated:** 2026-07-24 (milestone 5 web parity: renames, offline notes, mobile surah drawer,
-Root Words Directory, credits fix, root glosses rebuilt)
+Root Words Directory, credits fix, root glosses rebuilt; Android APK 1.1.0 device-verified end-to-end)
 
 ## What the project does
 
@@ -104,6 +104,30 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-24** **Android APK 1.1.0 device-verified end-to-end** on a Redmi Note 10 (MIUI, Android 12),
+  **fully offline the whole time (airplane mode on)**. Verified: durood splash (the ﷺ invocation in
+  gold Nastaliq); Explore Quran reading + per-ayah controls; **Words & Roots → See Meanings** opening
+  the book page (root ر ح م → page 162, headword highlight band, crisp Urdu Nastaliq, restored Arabic
+  quotes); **offline notes** create / edit (an `· EDITED` marker proves `updated` is tracked) / delete /
+  "Saved on this device" (no accounts); the notes **export format is byte-identical** to the web
+  contract (`{format:"quran-connect-notes",version:1,source:{platform:"android",app:"1.1.0"},notes:[…]}`)
+  and the **round-trip works both ways** — the Android export imported into the deployed web app as
+  `{added:1}` then idempotently `{unchanged:1}` (UUID merge, no dupes), and a web export imported back
+  onto the phone landed on 2:255 with its timestamp intact; the **My Notes** hub (Export / Import /
+  Search notes); the nav drawer carrying **all three renames** (Explore Ayaah Connections, Prophet
+  Stories, Ideas and Topics) plus Root Words Directory / Statistics / My Notes / About; the **native
+  Root Words Directory** (1,664 rows, same data as web `root_directory.json` — ا ل ه 2851×/1879 ayaat/
+  p.19 first, الَّذِى flagged "not a root · not in the book"); the **per-ayah Share** native bottom
+  sheet (toggleable Arabic / Translation / My-notes with a live preview); Explore Ayaah Connections
+  (search modes, 113 results offline); Prophet Stories (25-prophet grid); Ideas and Topics.
+  **Gotcha (MIUI):** `adb shell input`/`am` event injection is refused with
+  `SecurityException: … requires INJECT_EVENTS permission` even with USB debugging authorised —
+  MIUI gates it behind a separate "USB debugging (Security settings)" toggle that won't persist without
+  a SIM + Mi account, so the walkthrough was driven by the user tapping while `adb exec-out screencap`
+  (which works regardless) captured each screen. Everything here is the **Android** repo's artifact;
+  **no web-repo files changed** this session apart from this note. Still owed there: the
+  `webapp-overlay/assets/{notes.js,notes-ui.js}` Import/Backup sync and the orphaned `notes-config.js`.
 
 - **2026-07-24** **Milestone 5 — the web app now matches the Android app.** Six pieces, all deployed:
   - **Renames** everywhere: "Explore Connections" → **Explore Ayaah Connections**, "Prophet Module" →
