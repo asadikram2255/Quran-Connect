@@ -4,9 +4,9 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-24 (Explore Quran jump-to-ayah + book-page pinch-to-zoom; then milestone 5
-web parity: renames, offline notes, mobile surah drawer, Root Words Directory, credits fix, root
-glosses rebuilt; Android APK 1.1.0 device-verified end-to-end)
+**Last updated:** 2026-07-24 (book-viewer toolbar made phone-safe — Back + root heading always
+visible, zoom/nav controls wrap to a second row; Android-only accordion pairs + compact anchor +
+module explanations moved to About, shipped as APK 1.3.0)
 
 ## What the project does
 
@@ -105,6 +105,21 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-24** **The book viewer's toolbar no longer breaks on a phone (shared web fix).** On a
+  narrow screen `assets/book-viewer.js`'s `.bookv-bar` was a single non-wrapping flex row of eight
+  fixed-width items, so the ✕ close was pushed off the right edge and the RTL root heading was crushed
+  — leaving no visible way back to the root modal underneath. The bar now wraps: the root heading and a
+  relabelled **"‹ Back"** button share the top row (`order:1`/`order:2`, `white-space:nowrap` on
+  `.bookv-root` so it can't stack), and the zoom −/％/＋ and ‹Prev·page·Next› controls are grouped in a
+  new `.bookv-tools` div that takes `flex-basis:100%` (`order:3`) to drop onto its own centred second
+  row below 640px. On desktop it stays one row. Verified in-browser at 375px: Back at top-right (x=299,
+  within the 375 viewport), heading at top-left, tools wrapped below — all on screen. Bumped
+  book-viewer.js `?v=2→3` in `index.html`, `explore/index.html`, `search/index.html` (it sits under
+  `/assets`, not `/data`, so the `?v=` bump is what busts its cache). **This was the only web-repo
+  change this session** — the pairs accordion, compact anchor and About-screen consolidation that went
+  with it are Android-only (overlay + native), shipped as **APK 1.3.0**; see the Android repo's
+  CLAUDE.md.
 
 - **2026-07-24** **Two reader fixes, both shared with the Android app (they reach it through
   `tools/sync_web_assets.py`).** (1) **Jump-to-ayah in Explore Quran.** The surah header now carries a

@@ -60,11 +60,14 @@
   background:var(--surface,var(--panel,#1b1030));
   border:1px solid var(--border,rgba(255,255,255,.14));
   box-shadow:0 24px 70px rgba(0,0,0,.5)}
-.bookv-bar{display:flex;align-items:center;gap:10px;flex:0 0 auto;
+.bookv-bar{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;
   padding:10px 12px;border-bottom:1px solid var(--border,rgba(255,255,255,.12))}
 .bookv-title{display:flex;align-items:baseline;gap:10px;min-width:0;flex:1 1 auto}
 .bookv-root{font-family:var(--font-ar-root,'Noto Naskh Arabic',serif);
-  font-size:1.35rem;line-height:1.2;color:var(--accent,#f5b75e)}
+  font-size:1.35rem;line-height:1.2;color:var(--accent,#f5b75e);white-space:nowrap}
+.bookv-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  justify-content:center;flex:0 0 auto}
+.bookv-close{flex:0 0 auto;font-weight:600}
 .bookv-src{font-size:.78rem;color:var(--text-sec,var(--text-muted,#9c8d7e));
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bookv-btn{flex:0 0 auto;font:inherit;font-size:.82rem;cursor:pointer;
@@ -98,6 +101,10 @@
   .bookv-overlay{padding:0}
   .bookv-panel{height:100%;width:100%;border-radius:0}
   .bookv-src{display:none}
+  .bookv-title{order:1;flex:1 1 auto}
+  .bookv-close{order:2}
+  .bookv-tools{order:3;flex-basis:100%;margin-top:2px}
+  .bookv-page{min-width:0}
 }
 .rootdict-book{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:0 0 14px}
@@ -126,16 +133,18 @@
             <span class="bookv-root" dir="rtl" lang="ar"></span>
             <span class="bookv-src">Fatuhat al-Quran</span>
           </div>
-          <button class="bookv-btn bookv-zout" type="button"
-                  aria-label="Zoom out">−</button>
-          <span class="bookv-zlabel">100%</span>
-          <button class="bookv-btn bookv-zin" type="button"
-                  aria-label="Zoom in">+</button>
-          <button class="bookv-btn bookv-prev" type="button">‹ Prev</button>
-          <span class="bookv-page"></span>
-          <button class="bookv-btn bookv-next" type="button">Next ›</button>
           <button class="bookv-btn bookv-close" type="button"
-                  aria-label="Close">✕</button>
+                  aria-label="Back">‹ Back</button>
+          <div class="bookv-tools">
+            <button class="bookv-btn bookv-zout" type="button"
+                    aria-label="Zoom out">−</button>
+            <span class="bookv-zlabel">100%</span>
+            <button class="bookv-btn bookv-zin" type="button"
+                    aria-label="Zoom in">+</button>
+            <button class="bookv-btn bookv-prev" type="button">‹ Prev</button>
+            <span class="bookv-page"></span>
+            <button class="bookv-btn bookv-next" type="button">Next ›</button>
+          </div>
         </div>
         <div class="bookv-scroll">
           <div class="bookv-stage">
