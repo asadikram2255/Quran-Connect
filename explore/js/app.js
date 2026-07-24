@@ -280,7 +280,14 @@ class ExploreApp {
     document.getElementById('surah-header').innerHTML = `
       <div class="sh-ar" lang="ar">${this._esc(meta.ar)}</div>
       <div class="sh-en">${meta.no}. ${this._esc(meta.en)}</div>
-      <div class="sh-meta">${this._esc(meta.roman)} · ${meta.verses} verses · ${this._esc(meta.place)}</div>`;
+      <div class="sh-meta">${this._esc(meta.roman)} · ${meta.verses} verses · ${this._esc(meta.place)}</div>
+      <form class="sh-jump" id="ayah-jump-form" autocomplete="off">
+        <label for="ayah-jump">Go to ayah</label>
+        <input type="number" id="ayah-jump" inputmode="numeric" min="1"
+               max="${meta.verses}" placeholder="1–${meta.verses}" aria-label="Ayah number">
+        <button type="submit">Go</button>
+      </form>`;
+    this._wireAyahJump(no, meta.verses);
 
     const listEl = document.getElementById('ayah-list');
     listEl.innerHTML = '';
@@ -297,12 +304,43 @@ class ExploreApp {
     document.getElementById('loading').hidden = true;
     this._rerenderAyaat();
 
-    if (jumpAyah) {
-      const el = document.getElementById(`ayah-${no}-${jumpAyah}`);
-      if (el) { el.scrollIntoView({ block: 'start' }); el.classList.add('flash'); }
-    } else {
-      scrollTo({ top: 0 });
-    }
+    if (jumpAyah) this._scrollToAyah(jumpAyah);
+    else scrollTo({ top: 0 });
+  }
+
+  /* Scroll the open surah to a given ayah number and flash it. Returns false
+     if that ayah isn't on the page (out of range). */
+  _scrollToAyah(a) {
+    const el = document.getElementById(`ayah-${this.currentSurah}-${a}`);
+    if (!el) return false;
+    // Instant, not smooth: a jump can span the whole surah (thousands of px),
+    // and animating that would crawl for seconds. The flash marks where we land.
+    el.scrollIntoView({ block: 'start' });
+    el.classList.remove('flash');
+    void el.offsetWidth;              // restart the animation if it's re-triggered
+    el.classList.add('flash');
+    return true;
+  }
+
+  /* "Go to ayah" input in the surah header. */
+  _wireAyahJump(no, verses) {
+    const form = document.getElementById('ayah-jump-form');
+    const input = document.getElementById('ayah-jump');
+    if (!form || !input) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const n = parseInt(input.value, 10);
+      if (!Number.isFinite(n) || n < 1 || n > verses) {
+        input.setAttribute('aria-invalid', 'true');
+        input.focus();
+        return;
+      }
+      input.removeAttribute('aria-invalid');
+      history.replaceState(null, '', `#${no}:${n}`);
+      this._scrollToAyah(n);
+      if (this._closeMobileSidebar) this._closeMobileSidebar();
+    });
+    input.addEventListener('input', () => input.removeAttribute('aria-invalid'));
   }
 
   _rerenderAyaat() {

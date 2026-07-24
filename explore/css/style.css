@@ -176,6 +176,25 @@ button { font-family: inherit; cursor: pointer; }
 .surah-header .sh-ar { font-family: var(--font-ar); font-size: 2.2rem; color: var(--accent); }
 .surah-header .sh-en { font-family: var(--font-display); font-size: 1.3rem; margin-top: 2px; }
 .surah-header .sh-meta { font-size: .8rem; color: var(--text-ter); margin-top: 4px; }
+.surah-header .sh-jump {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+  font-size: .8rem; color: var(--text-ter);
+}
+.surah-header .sh-jump label { font-weight: 600; }
+.surah-header .sh-jump input {
+  width: 5.5em; font: inherit; font-size: .85rem; text-align: center;
+  padding: 5px 8px; border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border);
+}
+.surah-header .sh-jump input:focus { outline: none; border-color: var(--accent); }
+.surah-header .sh-jump input[aria-invalid="true"] { border-color: #d9534f; }
+.surah-header .sh-jump button {
+  font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+  padding: 5px 14px; border-radius: 8px;
+  color: #1a1208; background: var(--accent); border: 1px solid transparent;
+}
+.surah-header .sh-jump button:hover { filter: brightness(1.08); }
 .loading { text-align: center; color: var(--text-ter); padding: 40px; }
 
 /* ── Ayah cards ─────────────────────────────────────────────────────────── */
@@ -185,7 +204,12 @@ button { font-family: inherit; cursor: pointer; }
   padding: 18px 22px; margin-bottom: 14px;
   scroll-margin-top: calc(var(--header-h) + 70px);
 }
-.ayah-card:target, .ayah-card.flash { border-color: var(--accent); }
+.ayah-card:target { border-color: var(--accent); }
+.ayah-card.flash { animation: ayah-flash 1.6s ease-out; }
+@keyframes ayah-flash {
+  0%   { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  100% { border-color: var(--border); box-shadow: var(--card-shad); }
+}
 /* Four controls have to fit on a phone, so the line wraps instead of
    squeezing the notes button off the card. */
 .ayah-topline { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }

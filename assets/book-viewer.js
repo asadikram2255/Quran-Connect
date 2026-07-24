@@ -24,6 +24,8 @@
   let base = "";                   // path back to the repo root
   let ui = null;                   // built on first open
   let current = 0;                 // page on screen
+  let scale = 1;                   // book-page zoom (1 = fit width)
+  const MIN_ZOOM = 1, MAX_ZOOM = 5;
 
   function load(basePath) {
     if (loading) return loading;
@@ -76,9 +78,13 @@
   color:var(--text-sec,var(--text-muted,#9c8d7e));
   font-variant-numeric:tabular-nums}
 .bookv-scroll{flex:1 1 auto;overflow:auto;background:#fff;
-  -webkit-overflow-scrolling:touch}
-.bookv-stage{position:relative;width:100%}
-.bookv-img{display:block;width:100%;height:auto}
+  -webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}
+.bookv-stage{position:relative;width:100%;transform-origin:top left}
+.bookv-img{display:block;width:100%;height:auto;
+  user-select:none;-webkit-user-drag:none}
+.bookv-zlabel{font-size:.78rem;min-width:3.2em;text-align:center;
+  color:var(--text-sec,var(--text-muted,#9c8d7e));
+  font-variant-numeric:tabular-nums}
 .bookv-mark{position:absolute;left:0;right:0;pointer-events:none;
   border-top:2px solid var(--accent,#f5b75e);
   border-bottom:2px solid var(--accent,#f5b75e);
@@ -120,6 +126,11 @@
             <span class="bookv-root" dir="rtl" lang="ar"></span>
             <span class="bookv-src">Fatuhat al-Quran</span>
           </div>
+          <button class="bookv-btn bookv-zout" type="button"
+                  aria-label="Zoom out">−</button>
+          <span class="bookv-zlabel">100%</span>
+          <button class="bookv-btn bookv-zin" type="button"
+                  aria-label="Zoom in">+</button>
           <button class="bookv-btn bookv-prev" type="button">‹ Prev</button>
           <span class="bookv-page"></span>
           <button class="bookv-btn bookv-next" type="button">Next ›</button>
@@ -133,19 +144,24 @@
           </div>
         </div>
         <div class="bookv-hint">Page of the book as printed — meanings,
-          examples and the ayaat quoted for this root.</div>
+          examples and the ayaat quoted for this root.
+          Pinch or double-tap to zoom.</div>
       </div>`;
     document.body.appendChild(overlay);
 
     ui = {
       overlay,
       root:   overlay.querySelector(".bookv-root"),
+      stage:  overlay.querySelector(".bookv-stage"),
       img:    overlay.querySelector(".bookv-img"),
       mark:   overlay.querySelector(".bookv-mark"),
       scroll: overlay.querySelector(".bookv-scroll"),
       label:  overlay.querySelector(".bookv-page"),
       prev:   overlay.querySelector(".bookv-prev"),
       next:   overlay.querySelector(".bookv-next"),
+      zin:    overlay.querySelector(".bookv-zin"),
+      zout:   overlay.querySelector(".bookv-zout"),
+      zlabel: overlay.querySelector(".bookv-zlabel"),
     };
     ui.prev.addEventListener("click", () => show(current - 1, null));
     ui.next.addEventListener("click", () => show(current + 1, null));
@@ -157,7 +173,81 @@
       else if (e.key === "ArrowLeft") show(current + 1, null);   // book is RTL
       else if (e.key === "ArrowRight") show(current - 1, null);
     });
+    wireZoom();
     return ui;
+  }
+
+  // ── Zoom (pinch, double-tap, buttons, ctrl+wheel) ────────────────────────
+  function centre() {
+    const r = ui.scroll.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  // Zoom to `next`, keeping the point under (cx,cy) — in client coords — fixed.
+  // The stage width drives layout, so the scroll container gets real scrollbars
+  // to pan across the enlarged page (a CSS transform would not).
+  function zoomTo(next, cx, cy) {
+    next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    const sc = ui.scroll, r = sc.getBoundingClientRect();
+    if (cx == null) { const c = centre(); cx = c.x; cy = c.y; }
+    const ratio = next / scale;
+    const contentX = sc.scrollLeft + (cx - r.left);
+    const contentY = sc.scrollTop + (cy - r.top);
+    scale = next;
+    ui.stage.style.width = (scale * 100) + "%";
+    sc.scrollLeft = contentX * ratio - (cx - r.left);
+    sc.scrollTop  = contentY * ratio - (cy - r.top);
+    ui.zlabel.textContent = Math.round(scale * 100) + "%";
+    ui.zout.disabled = scale <= MIN_ZOOM;
+    ui.zin.disabled  = scale >= MAX_ZOOM;
+  }
+
+  function resetZoom() {
+    scale = 1;
+    ui.stage.style.width = "100%";
+    ui.zlabel.textContent = "100%";
+    ui.zout.disabled = true;
+    ui.zin.disabled = false;
+  }
+
+  function wireZoom() {
+    ui.zin.addEventListener("click", () => zoomTo(scale + 0.5, null, null));
+    ui.zout.addEventListener("click", () => zoomTo(scale - 0.5, null, null));
+
+    ui.scroll.addEventListener("wheel", e => {
+      if (!e.ctrlKey) return;                 // let normal scroll through
+      e.preventDefault();
+      zoomTo(scale * (e.deltaY < 0 ? 1.12 : 0.89), e.clientX, e.clientY);
+    }, { passive: false });
+
+    let dist0 = 0, scale0 = 1, lastTap = 0;
+    const dist = t =>
+      Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const mid = t => ({ x: (t[0].clientX + t[1].clientX) / 2,
+                        y: (t[0].clientY + t[1].clientY) / 2 });
+
+    ui.scroll.addEventListener("touchstart", e => {
+      if (e.touches.length === 2) { dist0 = dist(e.touches); scale0 = scale; }
+    }, { passive: true });
+
+    ui.scroll.addEventListener("touchmove", e => {
+      if (e.touches.length === 2 && dist0 > 0) {
+        e.preventDefault();                   // we drive the zoom, not the page
+        const m = mid(e.touches);
+        zoomTo(scale0 * (dist(e.touches) / dist0), m.x, m.y);
+      }
+    }, { passive: false });
+
+    ui.scroll.addEventListener("touchend", e => {
+      if (e.touches.length < 2) dist0 = 0;
+      if (e.touches.length === 0 && e.changedTouches.length === 1) {
+        const now = Date.now(), t = e.changedTouches[0];
+        if (now - lastTap < 300) {            // double-tap toggles zoom
+          zoomTo(scale > 1 ? 1 : 2.5, t.clientX, t.clientY);
+          lastTap = 0;
+        } else { lastTap = now; }
+      }
+    });
   }
 
   // `y` is where the root's headword sits, 0-1 down the page; null when we are
@@ -167,6 +257,7 @@
     page = Math.min(Math.max(page, index.first), index.last);
     current = page;
 
+    resetZoom();
     ui.img.src = pageUrl(page);
     ui.mark.classList.remove("on");
     ui.mark.style.top = ((y ?? 0) * 100) + "%";
