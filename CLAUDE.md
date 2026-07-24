@@ -4,8 +4,9 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-24 (milestone 5 web parity: renames, offline notes, mobile surah drawer,
-Root Words Directory, credits fix, root glosses rebuilt; Android APK 1.1.0 device-verified end-to-end)
+**Last updated:** 2026-07-24 (Explore Quran jump-to-ayah + book-page pinch-to-zoom; then milestone 5
+web parity: renames, offline notes, mobile surah drawer, Root Words Directory, credits fix, root
+glosses rebuilt; Android APK 1.1.0 device-verified end-to-end)
 
 ## What the project does
 
@@ -104,6 +105,23 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-24** **Two reader fixes, both shared with the Android app (they reach it through
+  `tools/sync_web_assets.py`).** (1) **Jump-to-ayah in Explore Quran.** The surah header now carries a
+  "Go to ayah" number field (`.sh-jump`, wired by `_wireAyahJump` in `explore/js/app.js`, bounded
+  1–`meta.verses`); submitting scrolls the card into view **instantly** (`_scrollToAyah`, `block:
+  'start'` — a jump can span the whole surah, so `behavior:'smooth'` would crawl) and flashes it via a
+  new `@keyframes ayah-flash` (the old `.flash` rule was a static border). It also updates the hash to
+  `#SN:AN` and closes the mobile surah drawer. (2) **Pinch-to-zoom on the book page.** `assets/book-viewer.js`
+  gained width-based zoom (a CSS transform makes no scrollable overflow; scaling `.bookv-stage` width
+  does): −/＋ toolbar buttons + a % label, ctrl+wheel, two-finger pinch (`touchstart/move/end` with
+  dist/mid helpers) and double-tap toggling 1×↔2.5×, clamped 1–5×, focal-point-preserving via
+  scrollLeft/Top; `resetZoom()` on every `show()`. Bumped: `explore/index.html` css `?v=7`,
+  book-viewer.js `?v=2`, app.js `?v=14`; `index.html`/`search/index.html` book-viewer.js `?v=2`.
+  Committed `500d5f2`, deployed to Vercel prod and pushed to GitHub (Pages had been serving stale
+  pages until the push). **Android side:** synced in, plus native fixes — see the Android repo's
+  CLAUDE.md (WebView opaque bg + hardware layer for scroll; drawer opens only from ☰; notes
+  import/export wired through the device DB) — shipped as **APK 1.2.0**.
 
 - **2026-07-24** **Android APK 1.1.0 device-verified end-to-end** on a Redmi Note 10 (MIUI, Android 12),
   **fully offline the whole time (airplane mode on)**. Verified: durood splash (the ﷺ invocation in
