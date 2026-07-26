@@ -86,7 +86,7 @@ class ExploreApp {
     const [surahs, quran, wordRoots, trIndex, tafsirIndex] = await Promise.all([
       this._json('../search/data/surah.json'),
       this._json('../search/data/quran.json?v=3'),
-      this._json('../search/data/word_roots.json?v=2'),
+      this._json('../search/data/word_roots.json?v=3'),
       this._json('../data/translations/index.json'),
       this._json('../data/meta/tafsir_index.json'),
     ]);
@@ -384,12 +384,12 @@ class ExploreApp {
 
       // Badges (hidden initially)
       if (words.length) {
-        const rootSet = new Map(); // root → true (ordered)
-        for (const w of words) {
-          const variants = normVariants(w.ar);
-          const norm = variants.find(v => this.wordRoots[v]) || variants[0];
-          for (const r of (this.wordRoots[norm] || [])) rootSet.set(r, true);
-        }
+        // Root badges come from the ayah's own verified root list (analyzequran,
+        // the same data the Connections module uses), NOT a per-word union of
+        // word_roots.json. That union leaked a collocating neighbour's root onto
+        // common words — e.g. الله → و ع د, في → س و م، م ث ل — putting a wrong
+        // root badge on ~54% of ayaat. The ayah's `roots` field is clean.
+        const ayahRoots = (ayah && ayah.roots) || [];
         html += `<div class="ayah-badges" ${this.badgesOn ? '' : 'hidden'}>
           <div class="badges-label">Words</div>
           <div class="badges-row">${
@@ -399,9 +399,9 @@ class ExploreApp {
                  <span class="wb-gloss">${this._esc(w.en)}</span>
                </button>`).join('')
           }</div>
-          ${rootSet.size ? `<div class="badges-label">Roots</div>
+          ${ayahRoots.length ? `<div class="badges-label">Roots</div>
           <div class="badges-row">${
-            [...rootSet.keys()].map(r =>
+            ayahRoots.map(r =>
               `<button class="root-badge" type="button" data-root="${this._esc(r)}">
                  <span class="rb-tag">root</span>
                  <span class="rb-ar" lang="ar">${this._esc(stripDiacritics(r))}</span>
