@@ -4,12 +4,18 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-24 (root→book audit finished across all 1,664 roots — a hand-verified
-alias map (`scripts/book_root_aliases.json`) maps 35 more roots the book files under a different
-weak letter / shorter or augmented root / related root / proper-noun sub-entry to their page;
-1,655/1,664 now open a page, only 9 genuinely absent; `book_index.json` + both `root_directory.json`
-rebuilt, manifest bumped to 8, synced to Android and shipped as signed APK 1.3.4. Prior same-day:
-ص ر ط `HEAD_TRIM` recovery (manifest 7, APK 1.3.3); phone-safe book-viewer toolbar, APK 1.3.0)
+**Last updated:** 2026-07-26 (Explore Quran showed **wrong root badges** — `search/data/word_roots.json`
+had leaked a *collocating neighbour's* root onto common words (الله→و ع د, في→س و م/م ث ل, من→و ج ه,
+امنوا→ٱلَّذِى, الصالحات→ع م ل …), so ~54% of ayaat / starting at Al-Fatihah 1:1 showed an irrelevant root.
+**Two-part fix:** (1) `explore/js/app.js` root-badge row now renders each ayah's verified `roots` field
+(the analyzequran list already in `quran.json`) instead of a per-word `word_roots` union — `app.js?v=15`
+in `explore/index.html`; (2) `word_roots.json` regenerated from position-aligned per-word roots
+(`data/meta/ayah_roots_analyzequran.json` zipped with the wbw words, 6,235/6,236 ayaat align; keys via the
+app's exact `normalizeArabic`/`normVariants` + wa-stripped variants; non-wbw particle keys cleaned by
+letter-overlap so في/و were dropped) — `word_roots.json?v=3`, 23,751 keys. Verified live: 1:1 →
+[س م و، ا ل ه، ر ح م]. **Committed here** (`Use ayah.roots for root badges`) and copied verbatim to the
+Android repo, shipped as signed APK 1.3.6 (v2 key, cert 7921ec06). **The website must be redeployed** to
+pick this up. Prior: 2026-07-24 root→book audit + alias map, APK 1.3.4; ص ر ط recovery, APK 1.3.3)
 
 ## What the project does
 
@@ -108,6 +114,36 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-26 — Wrong root badges in Explore Quran fixed (shipped Android APK 1.3.6).** Inspecting
+  Al-Fatihah 1:1 showed root badge **و ع د** ("promise") on بِسْمِ ٱللَّهِ… — irrelevant.
+  `search/data/word_roots.json` (word → roots, read ONLY by Explore Quran's per-word badge/modal code)
+  had **leaked a collocating neighbour's root onto common words**: الله→[ا ل ه, **و ع د**] (from
+  "وَعَدَ اللهُ"), في→[**س و م, م ث ل**], من→[م ن ن, **و ج ه**], امنوا→[ا م ن, **ٱلَّذِى**],
+  الصالحات→[ص ل ح, **ع م ل**], الصلاة→**ق و م**, الزكاة→**ا ت ي**, وعد→**ك ف ر** … 19 words / 21 bad
+  pairs. As these are the highest-frequency words, **3,383/6,236 ayaat (54%)** showed ≥1 wrong badge.
+  The other three modules were unaffected — they use the correct per-ayah `roots` field from
+  `quran.json` (via `build_search_data.py`'s `roots_lookup`), which aggregates the same CSV *by ayah*
+  and dedups, hiding the misaligned per-word rows. **Fix, two parts:**
+  1. **Badge row uses the ayah's own roots.** In `explore/js/app.js` the root-badge row was
+     `∪ word_roots[normVariants(word)]`; it now renders `ayah.roots` (already on every `quran.json`
+     record, identical to what Connections shows). Removes the word-union for badges entirely.
+  2. **`word_roots.json` regenerated correctly.** Root cause: it was built (in `build_search_data.py`)
+     from `Root Words.csv` rows, some of which pair a word with a neighbour's root. Rebuilt instead
+     from `data/meta/ayah_roots_analyzequran.json` (roots listed in **word order**) zipped with the
+     wbw words — **6,235/6,236 ayaat align 1:1** (only 20:94, the analyzequran +1 correction, differs);
+     each word gets exactly its position-aligned root(s), union across occurrences. Keys use the app's
+     exact `normalizeArabic`/`normVariants` (mark ranges U+0610–061A, U+064B–065F, U+06D6–06ED, U+0640;
+     dagger-alef 0670 kept) plus `stripWaPrefix` variants so every reader lookup resolves. Non-wbw keys
+     (particles analyzequran leaves rootless) carried over from the old file but cleaned by a
+     letter-overlap rule (drop a root sharing ≤1 letter with its word) — في and و ended up rootless and
+     were dropped. Result: **23,751 keys**, الله→[ا ل ه], من→[م ن ن], all 21 spurious pairs gone, no
+     legitimate word lost a key. Verified live in-browser (served tree, real `normVariants`).
+  Cache-bust: `explore/index.html` `app.js?v=14→15`, `app.js` `word_roots.json?v=2→3`. **Both files
+  committed here and copied verbatim to the Android repo** (targeted copy, not a full re-sync).
+  **TODO: redeploy the website** (Vercel) so live users get the fix. **If `word_roots.json` is ever
+  rebuilt from the CSV again the leak returns — regenerate from `ayah_roots_analyzequran.json` instead,
+  or fix `build_search_data.py`'s word-level source.**
 
 - **2026-07-24** **Root→book audit finished across the whole 1,664-root list** (the task the ص ر ط
   fix below opened). ص ر ط was one symptom of a general gap: 44 app roots had no book page. Reading
