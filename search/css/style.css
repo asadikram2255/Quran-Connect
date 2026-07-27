@@ -75,9 +75,15 @@ button { cursor: pointer; font-family: inherit; }
 /* ═══════════════════════════════════════════════════════════════════════════
    HEADER
 ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Header ───────────────────────────────────────────────
+   Shared shape with the other modules (Explore Quran, Read Mushaf, Root
+   Words): a full-bleed sticky bar with a plain "← Quran Connect" back-link,
+   an icon + h1 title, and the actions on the right. */
 .header {
   position: sticky; top: 0; z-index: 100;
   height: var(--header-h);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 18px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   backdrop-filter: saturate(180%) blur(12px);
@@ -87,45 +93,25 @@ button { cursor: pointer; font-family: inherit; }
 [data-theme="dark"] .header {
   background: rgba(14, 8, 22, .85);
 }
-.header .container {
-  display: flex; align-items: center; justify-content: space-between;
-  height: 100%;
+.back-link {
+  color: var(--text-sec); text-decoration: none; font-size: 14px;
+  font-weight: 500; white-space: nowrap;
 }
-/* ── Back-nav (header left group) ───────────────────────── */
-.header-left {
-  display: flex; align-items: center; gap: 16px;
+.back-link:hover { color: var(--accent); }
+.header-title { display: flex; align-items: center; gap: 9px; margin: 0 auto 0 8px; }
+.header-icon { font-size: 20px; color: var(--accent); }
+.header-title h1 {
+  font-family: var(--font-display); font-size: 20px; font-weight: 600; margin: 0;
+  color: var(--text);
 }
-.back-home-link {
-  display: flex; align-items: center; gap: 5px;
-  font-size: .85rem; font-weight: 500;
-  color: var(--text-sec);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 5px 10px;
-  transition: color var(--trans), border-color var(--trans), background var(--trans);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.back-home-link:hover {
-  color: var(--text); border-color: var(--text-sec);
-  background: var(--surface); text-decoration: none;
-}
-.back-home-link svg { flex-shrink: 0; }
-
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand-icon { font-size: 1.35rem; color: var(--accent); }
-.brand-name {
-  font-family: var(--font-display);
-  font-size: 1.1rem; font-weight: 600;
-  letter-spacing: -.2px; color: var(--text);
-}
-.theme-btn {
-  background: none; border: 1px solid var(--border);
-  border-radius: 8px; padding: 6px 12px; font-size: 1rem;
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.theme-toggle {
+  width: 34px; height: 34px; cursor: pointer; font-size: 16px;
+  background: none; border: 1px solid var(--border); border-radius: 50%;
   color: var(--text-sec);
   transition: border-color var(--trans), color var(--trans), background var(--trans);
 }
-.theme-btn:hover {
+.theme-toggle:hover {
   color: var(--text); border-color: var(--text-sec);
   background: var(--surface);
 }

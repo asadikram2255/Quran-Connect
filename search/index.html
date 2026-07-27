@@ -15,26 +15,19 @@
       document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 
   <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <header class="header">
-    <div class="container">
-      <div class="header-left">
-        <a href="../" class="back-home-link" title="Back to Quran Connect">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          <span>Quran Connect</span>
-        </a>
-        <div class="brand">
-          <span class="brand-icon">☾</span>
-          <span class="brand-name">Keyword Search</span>
-        </div>
-      </div>
-      <button id="theme-toggle" class="theme-btn" title="Toggle dark / light mode">◐</button>
+    <a class="back-link" href="../">← Quran Connect</a>
+    <div class="header-title">
+      <span class="header-icon">☾</span>
+      <h1>Search Quran</h1>
+    </div>
+    <div class="header-actions">
+      <button id="theme-toggle" class="theme-toggle" title="Toggle dark / light mode" aria-label="Toggle dark or light mode">◐</button>
     </div>
   </header>
 
