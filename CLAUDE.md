@@ -4,7 +4,20 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-27 (big feature session from the Zekr dataset: **29 more translations**
+**Last updated:** 2026-07-27 (UI consistency pass — **Search Quran's header rebuilt to the shared
+module pattern**. It was the only module using a divergent header (an SVG-chevron "Quran Connect" link
++ a separate `☾ Keyword Search` brand block, name mismatched against the landing card's "Search Quran"
+and the hero's "Search the Quran"). Now it matches Explore Quran / Read Mushaf / Root Words exactly:
+a full-bleed sticky bar with a plain `← Quran Connect` back-link, `☾ Search Quran` (icon + h1), and a
+circular theme toggle on the right — verified in-browser at 393px (one row) and live on Vercel prod
+(`search/css/style.css?v=4`). Only `search/index.html` + `search/css/style.css` changed; committed and
+deployed. Also this session: **Explore Quran now remembers the selected translations and tafsirs across
+reads** (fonts/reciter already did) — persisted to `explore-translations`/`explore-tafsir` in
+localStorage and validated against the loaded index on boot (a removed source is dropped; en_sahih is
+the floor for translations), `explore/js/app.js?v=17`. **Android shipped in the same session as APK
+1.4.1** (see the Android repo's CLAUDE.md): Read Mushaf no longer double-draws a header on the phone,
+the bottom bar was rebalanced to the four distinct destinations, the drawer was grouped, and it carries
+the same translation/tafsir persistence. Prior 2026-07-27: big feature session from the Zekr dataset: **29 more translations**
 (10 English + 19 Urdu → **35 total**, Explore Quran), **per-ayah audio** (8 reciters, everyayah.com,
 **web only** — gated off on Android), **4 more selectable Quran fonts** (self-hosted woff2, both
 platforms), **complete per-sura metadata** (Makki/Madani + mushaf page, both platforms), and a new
@@ -131,6 +144,40 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-27 — UI consistency + persistence pass (web + Android APK 1.4.1).** Two threads.
+  **(1) Web — Search Quran header normalized.** Search Quran was the only module drawing a *divergent*
+  header: a `.header-left` with an SVG-chevron "Quran Connect" link plus a separate `☾ Keyword Search`
+  `.brand` block, and its name disagreed three ways (landing card "Search Quran", hero "Search the
+  Quran", header "Keyword Search"). Rebuilt to the exact shared pattern the other four modules use — a
+  full-bleed sticky bar (`display:flex; height:var(--header-h)`) with a plain `← Quran Connect`
+  `.back-link`, a `.header-title` (`☾` `.header-icon` + `<h1>Search Quran</h1>`), and a circular
+  `.theme-toggle` in `.header-actions`; dropped `.header .container`/`.header-left`/`.back-home-link`/
+  `.brand`/`.theme-btn`. Only `search/index.html` + `search/css/style.css` changed (`style.css?v=4`).
+  Verified in-browser at 393px (one row) and live on Vercel prod. Committed `e879e27`, deployed.
+  **(2) Both platforms — translations & tafsirs now persist across reads.** Explore Quran already
+  remembered fonts/reciter but reset the translation and tafsir selection to `['en_sahih']`/`[]` every
+  visit. Now `_toggleTranslation`/`_toggleTafsir` write `explore-translations`/`explore-tafsir` to
+  localStorage (JSON arrays); the constructor restores them via a new `_loadIds(key, fallback)` helper
+  (corrupt/non-array → fallback), and `init()` **validates against the loaded index** after fetch —
+  any id whose source no longer exists is dropped, and if translations empties, `en_sahih` is restored
+  as a floor. `_renderControlPanels` now ticks the tafsir checkboxes from `selectedTafsir` (was
+  hardcoded `false`) and seeds both count badges from the restored selection. `explore/js/app.js?v=17`.
+  Verified in-browser: toggled a 2nd translation + a tafsir → localStorage written → reload restored 2
+  checked / 1 checked, counts 2/1, Yusuf-Ali text + tafsir rendered, no console errors. **No `/data`
+  file changed, so no manifest bump** — the `?v=17` bump busts app.js.
+  **Android (APK 1.4.1, versionCode 12 — same session):** (a) Read Mushaf's WebView no longer
+  double-draws a header — the sync now appends `../assets/android.css` to `mushaf/index.html` (new
+  PATCHES entry) as the other readers already had, and android.css pins the mushaf `.toolbar` at
+  `top:0` (it reserved room for the now-hidden `var(--header-h)` header). (b) Bottom bar reduced from
+  six items to the app's **four distinct destinations** (Explore Quran · Read Mushaf · Connections ·
+  Root Words); Prophet Stories + Ideas and Topics — which are Connections *modes*, not destinations —
+  moved to the drawer. (c) New `immersive` flag on `Destination` hides the bottom bar on the two
+  full-screen readers (Explore Quran, Read Mushaf) so the ayah text gets the whole height; the ☰ drawer
+  is still one tap away. (d) Drawer grouped into **Read / Explore / Library / App** sections
+  (`DrawerSection` enum + `drawerSections` grouping) and made vertically scrollable. (e) Same
+  translation/tafsir persistence via the synced `app.js?v=17` (sync anchor bumped 16→17). Rebuilt +
+  V2-signed with the unchanged v2 release key (SHA-1 `d81d0f12…`), so 1.4.0→1.4.1 upgrades cleanly.
 
 - **2026-07-27 — Big feature session from the Zekr dataset (`D:\Users\asadi\Documents\GitHub\Zekr`,
   user-supplied, "no copyright issue"): translations, audio, fonts, metadata, and a new Read Mushaf

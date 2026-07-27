@@ -108,8 +108,10 @@ class ExploreApp {
     this.translations = { index: [], loaded: {} }; // id → {"s:a": text}
     this.tafsir = { index: {}, loaded: {} };       // "src:NNN" → shard
     this.glosses = { word: null, root: null };
-    this.selectedTranslations = ['en_sahih'];
-    this.selectedTafsir = [];
+    // Translation/tafsir choices persist across reads (validated against the
+    // loaded index in init, so a removed source can't strand the picker).
+    this.selectedTranslations = this._loadIds('explore-translations', ['en_sahih']);
+    this.selectedTafsir = this._loadIds('explore-tafsir', []);
     this.currentSurah = 1;
     this.badgesOn = false;
     this.modalLang = 'en';
@@ -126,6 +128,18 @@ class ExploreApp {
     this.continuous = localStorage.getItem('explore-audio-continuous') === '1';
     this.audio = null;         // lazily created <audio>
     this.playingRef = null;    // "s:a" currently playing, or null
+  }
+
+  // A persisted list of selected ids, or the fallback if none/corrupt.
+  _loadIds(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback.slice();
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : fallback.slice();
+    } catch (e) {
+      return fallback.slice();
+    }
   }
 
   async init() {
@@ -148,6 +162,15 @@ class ExploreApp {
     this.wordRoots = wordRoots;
     this.translations.index = trIndex.filter(t => t.status === 'ok');
     this.tafsir.index = tafsirIndex.sources || {};
+
+    // Drop any persisted id whose source no longer exists, so a stale choice
+    // can't leave a phantom count or a broken fetch. Keep en_sahih as a floor
+    // for translations so the reader always shows at least one.
+    const trIds = new Set(this.translations.index.map(t => t.id));
+    this.selectedTranslations = this.selectedTranslations.filter(id => trIds.has(id));
+    if (!this.selectedTranslations.length && trIds.has('en_sahih')) this.selectedTranslations = ['en_sahih'];
+    const tafIds = new Set(Object.keys(this.tafsir.index));
+    this.selectedTafsir = this.selectedTafsir.filter(id => tafIds.has(id));
 
     this._applyFonts();
     this._renderSurahList();
@@ -247,8 +270,11 @@ class ExploreApp {
     tfPanel.innerHTML = '';
     for (const [id, src] of Object.entries(this.tafsir.index)) {
       tfPanel.appendChild(this._panelOption(id, src.label, `${src.author} · ${src.lang}`,
-        false, i => this._toggleTafsir(i)));
+        this.selectedTafsir.includes(id), i => this._toggleTafsir(i)));
     }
+    // Reflect the restored (persisted) selection in the count badges.
+    document.getElementById('translations-count').textContent = this.selectedTranslations.length;
+    document.getElementById('tafsir-count').textContent = this.selectedTafsir.length;
   }
 
   _panelOption(id, name, sub, checked, onToggle) {
@@ -289,6 +315,7 @@ class ExploreApp {
     if (i >= 0) this.selectedTranslations.splice(i, 1);
     else this.selectedTranslations.push(id);
     document.getElementById('translations-count').textContent = this.selectedTranslations.length;
+    localStorage.setItem('explore-translations', JSON.stringify(this.selectedTranslations));
     await this._ensureTranslations();
     this._rerenderAyaat();
   }
@@ -298,6 +325,7 @@ class ExploreApp {
     if (i >= 0) this.selectedTafsir.splice(i, 1);
     else this.selectedTafsir.push(id);
     document.getElementById('tafsir-count').textContent = this.selectedTafsir.length;
+    localStorage.setItem('explore-tafsir', JSON.stringify(this.selectedTafsir));
     await this._ensureTafsir(this.currentSurah);
     this._rerenderAyaat();
   }
