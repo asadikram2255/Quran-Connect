@@ -4,7 +4,8 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-26 (Explore Quran showed **wrong root badges** — `search/data/word_roots.json`
+**Last updated:** 2026-07-27 (deployed the pending work to Vercel prod — see below. Prior 2026-07-26:
+Explore Quran showed **wrong root badges** — `search/data/word_roots.json`
 had leaked a *collocating neighbour's* root onto common words (الله→و ع د, في→س و م/م ث ل, من→و ج ه,
 امنوا→ٱلَّذِى, الصالحات→ع م ل …), so ~54% of ayaat / starting at Al-Fatihah 1:1 showed an irrelevant root.
 **Two-part fix:** (1) `explore/js/app.js` root-badge row now renders each ayah's verified `roots` field
@@ -14,8 +15,10 @@ in `explore/index.html`; (2) `word_roots.json` regenerated from position-aligned
 app's exact `normalizeArabic`/`normVariants` + wa-stripped variants; non-wbw particle keys cleaned by
 letter-overlap so في/و were dropped) — `word_roots.json?v=3`, 23,751 keys. Verified live: 1:1 →
 [س م و، ا ل ه، ر ح م]. **Committed here** (`Use ayah.roots for root badges`) and copied verbatim to the
-Android repo, shipped as signed APK 1.3.6 (v2 key, cert 7921ec06). **The website must be redeployed** to
-pick this up. Prior: 2026-07-24 root→book audit + alias map, APK 1.3.4; ص ر ط recovery, APK 1.3.3)
+Android repo, shipped as signed APK 1.3.6 (v2 key, cert 7921ec06). **Deployed to Vercel prod 2026-07-27**
+(`npx vercel --prod`, aliased to quran-connect-psi.vercel.app; verified live: manifest v8, `app.js?v=15`,
+`word_roots.json?v=3` with الله→[ا ل ه], في dropped) — this deploy also carried the earlier undeployed
+root→book audit and ص ر ط fix. Prior: 2026-07-24 root→book audit + alias map, APK 1.3.4; ص ر ط recovery, APK 1.3.3)
 
 ## What the project does
 
@@ -141,9 +144,10 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
      legitimate word lost a key. Verified live in-browser (served tree, real `normVariants`).
   Cache-bust: `explore/index.html` `app.js?v=14→15`, `app.js` `word_roots.json?v=2→3`. **Both files
   committed here and copied verbatim to the Android repo** (targeted copy, not a full re-sync).
-  **TODO: redeploy the website** (Vercel) so live users get the fix. **If `word_roots.json` is ever
-  rebuilt from the CSV again the leak returns — regenerate from `ayah_roots_analyzequran.json` instead,
-  or fix `build_search_data.py`'s word-level source.**
+  **Deployed to Vercel prod 2026-07-27** (`npx vercel --prod`) — live users now get the fix; the same
+  deploy also shipped the earlier undeployed root→book audit and ص ر ط recovery. **If `word_roots.json`
+  is ever rebuilt from the CSV again the leak returns — regenerate from `ayah_roots_analyzequran.json`
+  instead, or fix `build_search_data.py`'s word-level source.**
 
 - **2026-07-24** **Root→book audit finished across the whole 1,664-root list** (the task the ص ر ط
   fix below opened). ص ر ط was one symptom of a general gap: 44 app roots had no book page. Reading
