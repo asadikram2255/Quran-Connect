@@ -4,7 +4,17 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-27 (UI consistency pass — **Search Quran's header rebuilt to the shared
+**Last updated:** 2026-07-27 (UI consistency pass, cont. — **Explore Ayaah Connections now opens with a
+prominent top-left `← Quran Connect` back link**, like every other module. The root `index.html` is both
+the landing (mood view) and Connections (research view) and shares one header; a `#backHome` button always
+existed but sat on the far RIGHT, buried among 8 controls (translation select, Ideas and Topics, Prophet
+Stories, Statistics, Print Notes, About, theme, status) — so users reported "no back button" in
+Connections. It was moved into a new `.headerLead` cluster at the header's LEFT, beside the title, and
+relabelled `← Home` → `← Quran Connect` to match the other four modules verbatim. Hidden in mood view
+(`body.view-mood .backHome{display:none}`, unchanged), so the landing is untouched; in research view it
+returns to the landing via `exitToMoodView`. Verified in-browser at 1280px (back at x=24, title at x=140)
+and 375px (back at x=16, no overflow), and that clicking it restores mood view. Only `index.html` +
+`assets/styles.css` changed (`styles.css?v=34→35`). Prior this session: **Search Quran's header rebuilt to the shared
 module pattern**. It was the only module using a divergent header (an SVG-chevron "Quran Connect" link
 + a separate `☾ Keyword Search` brand block, name mismatched against the landing card's "Search Quran"
 and the hero's "Search the Quran"). Now it matches Explore Quran / Read Mushaf / Root Words exactly:

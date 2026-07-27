@@ -3097,7 +3097,16 @@ span.creditGroupSource { border-bottom: none; }
 .navBtnLink { display: inline-block; text-decoration: none; }
 .navBtnLink::after { content: none; }
 
-/* "Back to home" pill (shown in research mode only) */
+/* Header left cluster: back link (research mode) sits beside the title, so the
+   Connections view opens with the same top-left back affordance every module has. */
+.headerLead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* "Back to Quran Connect" pill (shown in research mode only) */
 .backHome {
   display: inline-flex;
   align-items: center;

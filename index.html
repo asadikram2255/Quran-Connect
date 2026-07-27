@@ -27,7 +27,7 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="assets/styles.css?v=34" />
+  <link rel="stylesheet" href="assets/styles.css?v=35" />
   <!-- Preload critical data files so they're in cache when JS fetches them -->
   <link rel="preload" href="data/meta/manifest.json" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="data/meta/shard_maps_bundle.json" as="fetch" crossorigin="anonymous" />
@@ -37,9 +37,15 @@
   <div class="app">
 
     <div class="header">
-      <div>
-        <div class="h1">Quran Connect</div>
-        <div class="sub">Ease your journey of understanding the Qur'an</div>
+      <div class="headerLead">
+        <button id="backHome" class="backHome" type="button" aria-label="Back to Quran Connect home">
+          <span aria-hidden="true">←</span>
+          <span>Quran Connect</span>
+        </button>
+        <div>
+          <div class="h1">Quran Connect</div>
+          <div class="sub">Ease your journey of understanding the Qur'an</div>
+        </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <select id="transSel" class="transSel" title="Select translation">
@@ -60,10 +66,6 @@
           <a id="printNotesBtn" class="navBtn navBtnLink" href="notes/?auto=1"
              title="Every note you have written, ayah by ayah — print it or save it as a PDF">Print Notes</a>
         </nav>
-        <button id="backHome" class="backHome" type="button" aria-label="Back to home">
-          <span aria-hidden="true">←</span>
-          <span>Home</span>
-        </button>
         <button id="aboutBtn" class="navBtn navBtnQuiet" type="button" aria-label="About">About</button>
         <button id="themeToggle" class="themeToggle" type="button" title="Toggle dark / light mode" aria-label="Toggle dark or light mode">◐</button>
         <div id="statusBadge" class="badge warn">Loading…</div>
