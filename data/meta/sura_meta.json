@@ -1,0 +1,1142 @@
+[
+ {
+  "index": 1,
+  "ayaCount": 7,
+  "name": "الفاتحة",
+  "en": "The Opening",
+  "tname": "Al-Faatiha",
+  "tnameFull": "Al-Fātiḥaħ",
+  "revelation": "makki",
+  "page": 1
+ },
+ {
+  "index": 2,
+  "ayaCount": 286,
+  "name": "البقرة",
+  "en": "The Cow",
+  "tname": "Al-Baqara",
+  "tnameFull": "Al-Baqaraħ",
+  "revelation": "madani",
+  "page": 2
+ },
+ {
+  "index": 3,
+  "ayaCount": 200,
+  "name": "آل‌عمران",
+  "en": "The Family of Imraan",
+  "tname": "Aali Imraan",
+  "tnameFull": "'Āli `Imrān",
+  "revelation": "madani",
+  "page": 50
+ },
+ {
+  "index": 4,
+  "ayaCount": 176,
+  "name": "النساء",
+  "en": "The Women",
+  "tname": "An-Nisaa",
+  "tnameFull": "An-Nisā'",
+  "revelation": "madani",
+  "page": 77
+ },
+ {
+  "index": 5,
+  "ayaCount": 120,
+  "name": "المائدة",
+  "en": "The Table",
+  "tname": "Al-Maaida",
+  "tnameFull": "Al-Mā'idaħ",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 6,
+  "ayaCount": 165,
+  "name": "الأنعام",
+  "en": "The Cattle",
+  "tname": "Al-An'aam",
+  "tnameFull": "Al-'An`ām",
+  "revelation": "makki",
+  "page": 128
+ },
+ {
+  "index": 7,
+  "ayaCount": 206,
+  "name": "الأعراف",
+  "en": "The Heights",
+  "tname": "Al-A'raaf",
+  "tnameFull": "Al-'A`rāf",
+  "revelation": "makki",
+  "page": 151
+ },
+ {
+  "index": 8,
+  "ayaCount": 75,
+  "name": "الأنفال",
+  "en": "The Spoils of War",
+  "tname": "Al-Anfaal",
+  "tnameFull": "Al-'Anfāl",
+  "revelation": "madani",
+  "page": 177
+ },
+ {
+  "index": 9,
+  "ayaCount": 129,
+  "name": "التوبة",
+  "en": "The Repentance",
+  "tname": "At-Tawba",
+  "tnameFull": "At-Tawbaħ",
+  "revelation": "madani",
+  "page": 187
+ },
+ {
+  "index": 10,
+  "ayaCount": 109,
+  "name": "يونس",
+  "en": "Jonas",
+  "tname": "Yunus",
+  "tnameFull": "Yūnus",
+  "revelation": "makki",
+  "page": 208
+ },
+ {
+  "index": 11,
+  "ayaCount": 123,
+  "name": "هود",
+  "en": "Hud",
+  "tname": "Hud",
+  "tnameFull": "Hūd",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 12,
+  "ayaCount": 111,
+  "name": "يوسف",
+  "en": "Joseph",
+  "tname": "Yusuf",
+  "tnameFull": "Yūsuf",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 13,
+  "ayaCount": 43,
+  "name": "الرعد",
+  "en": "The Thunder",
+  "tname": "Ar-Ra'd",
+  "tnameFull": "Ar-Ra`d",
+  "revelation": "madani",
+  "page": 249
+ },
+ {
+  "index": 14,
+  "ayaCount": 52,
+  "name": "ابراهيم",
+  "en": "Abraham",
+  "tname": "Ibrahim",
+  "tnameFull": "'Ibrāhīm",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 15,
+  "ayaCount": 99,
+  "name": "الحجر",
+  "en": "The Rock",
+  "tname": "Al-Hijr",
+  "tnameFull": "Al-Ḥijr",
+  "revelation": "makki",
+  "page": 262
+ },
+ {
+  "index": 16,
+  "ayaCount": 128,
+  "name": "النحل",
+  "en": "The Bee",
+  "tname": "An-Nahl",
+  "tnameFull": "An-Naḥl",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 17,
+  "ayaCount": 111,
+  "name": "الإسراء",
+  "en": "The Night Journey",
+  "tname": "Al-Israa",
+  "tnameFull": "Al-'Isrā'",
+  "revelation": "makki",
+  "page": 282
+ },
+ {
+  "index": 18,
+  "ayaCount": 110,
+  "name": "الكهف",
+  "en": "The Cave",
+  "tname": "Al-Kahf",
+  "tnameFull": "Al-Kahf",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 19,
+  "ayaCount": 98,
+  "name": "مريم",
+  "en": "Mary",
+  "tname": "Maryam",
+  "tnameFull": "Maryam",
+  "revelation": "makki",
+  "page": 305
+ },
+ {
+  "index": 20,
+  "ayaCount": 135,
+  "name": "طه",
+  "en": "Taahaa",
+  "tname": "Taahaa",
+  "tnameFull": "Ṭā-Hā",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 21,
+  "ayaCount": 112,
+  "name": "الأنبياء",
+  "en": "The Prophets",
+  "tname": "Al-Anbiyaa",
+  "tnameFull": "Al-'Aɱbiyā'",
+  "revelation": "makki",
+  "page": 322
+ },
+ {
+  "index": 22,
+  "ayaCount": 78,
+  "name": "الحج",
+  "en": "The Pilgrimage",
+  "tname": "Al-Hajj",
+  "tnameFull": "Al-Ḥajj",
+  "revelation": "madani",
+  "page": 332
+ },
+ {
+  "index": 23,
+  "ayaCount": 118,
+  "name": "المؤمنون",
+  "en": "The Believers",
+  "tname": "Al-Muminoon",
+  "tnameFull": "Al-Mu'minūn",
+  "revelation": "makki",
+  "page": 342
+ },
+ {
+  "index": 24,
+  "ayaCount": 64,
+  "name": "النور",
+  "en": "The Light",
+  "tname": "An-Noor",
+  "tnameFull": "An-Nūr",
+  "revelation": "madani",
+  "page": 350
+ },
+ {
+  "index": 25,
+  "ayaCount": 77,
+  "name": "الفرقان",
+  "en": "The Criterion",
+  "tname": "Al-Furqaan",
+  "tnameFull": "Al-Furqān",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 26,
+  "ayaCount": 227,
+  "name": "الشعراء",
+  "en": "The Poets",
+  "tname": "Ash-Shu'araa",
+  "tnameFull": "Ash-Shu`arā'",
+  "revelation": "makki",
+  "page": 367
+ },
+ {
+  "index": 27,
+  "ayaCount": 93,
+  "name": "النمل",
+  "en": "The Ant",
+  "tname": "An-Naml",
+  "tnameFull": "An-Naml",
+  "revelation": "makki",
+  "page": 377
+ },
+ {
+  "index": 28,
+  "ayaCount": 88,
+  "name": "القصص",
+  "en": "The Stories",
+  "tname": "Al-Qasas",
+  "tnameFull": "Al-Qaṣaṣ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 29,
+  "ayaCount": 69,
+  "name": "العنكبوت",
+  "en": "The Spider",
+  "tname": "Al-Ankaboot",
+  "tnameFull": "Al-`Ankabūt",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 30,
+  "ayaCount": 60,
+  "name": "الروم",
+  "en": "The Romans",
+  "tname": "Ar-Room",
+  "tnameFull": "Ar-Rūm",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 31,
+  "ayaCount": 34,
+  "name": "لقمان",
+  "en": "Luqman",
+  "tname": "Luqman",
+  "tnameFull": "Luqmān",
+  "revelation": "makki",
+  "page": 411
+ },
+ {
+  "index": 32,
+  "ayaCount": 30,
+  "name": "السجدة",
+  "en": "The Prostration",
+  "tname": "As-Sajda",
+  "tnameFull": "As-Sajdaħ",
+  "revelation": "makki",
+  "page": 415
+ },
+ {
+  "index": 33,
+  "ayaCount": 73,
+  "name": "الأحزاب",
+  "en": "The Clans",
+  "tname": "Al-Ahzaab",
+  "tnameFull": "Al-'Aḥzāb",
+  "revelation": "madani",
+  "page": 418
+ },
+ {
+  "index": 34,
+  "ayaCount": 54,
+  "name": "سبإ",
+  "en": "Sheba",
+  "tname": "Saba",
+  "tnameFull": "Saba'",
+  "revelation": "makki",
+  "page": 428
+ },
+ {
+  "index": 35,
+  "ayaCount": 45,
+  "name": "فاطر",
+  "en": "The Originator",
+  "tname": "Faatir",
+  "tnameFull": "Fāṭir",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 36,
+  "ayaCount": 83,
+  "name": "يس",
+  "en": "Yaseen",
+  "tname": "Yaseen",
+  "tnameFull": "Yā-Sīn",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 37,
+  "ayaCount": 182,
+  "name": "الصافات",
+  "en": "Those drawn up in Ranks",
+  "tname": "As-Saaffaat",
+  "tnameFull": "Aṣ-Ṣāffāt",
+  "revelation": "makki",
+  "page": 446
+ },
+ {
+  "index": 38,
+  "ayaCount": 88,
+  "name": "ص",
+  "en": "The letter Saad",
+  "tname": "Saad",
+  "tnameFull": "Ṣād",
+  "revelation": "makki",
+  "page": 453
+ },
+ {
+  "index": 39,
+  "ayaCount": 75,
+  "name": "الزمر",
+  "en": "The Groups",
+  "tname": "Az-Zumar",
+  "tnameFull": "Az-Zumar",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 40,
+  "ayaCount": 85,
+  "name": "غافر",
+  "en": "The Forgiver",
+  "tname": "Ghaafir",
+  "tnameFull": "Ghāfir",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 41,
+  "ayaCount": 54,
+  "name": "فصلت",
+  "en": "Explained in detail",
+  "tname": "Fussilat",
+  "tnameFull": "Fuṣṣilat",
+  "revelation": "makki",
+  "page": 477
+ },
+ {
+  "index": 42,
+  "ayaCount": 53,
+  "name": "الشورى",
+  "en": "Consultation",
+  "tname": "Ash-Shura",
+  "tnameFull": "Ash-Shūraá",
+  "revelation": "makki",
+  "page": 483
+ },
+ {
+  "index": 43,
+  "ayaCount": 89,
+  "name": "الزخرف",
+  "en": "Ornaments of gold",
+  "tname": "Az-Zukhruf",
+  "tnameFull": "Az-Zukhruf",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 44,
+  "ayaCount": 59,
+  "name": "الدخان",
+  "en": "The Smoke",
+  "tname": "Ad-Dukhaan",
+  "tnameFull": "Ad-Dukhān",
+  "revelation": "makki",
+  "page": 496
+ },
+ {
+  "index": 45,
+  "ayaCount": 37,
+  "name": "الجاثية",
+  "en": "Crouching",
+  "tname": "Al-Jaathiya",
+  "tnameFull": "Al-Jāthiyaħ",
+  "revelation": "makki",
+  "page": 499
+ },
+ {
+  "index": 46,
+  "ayaCount": 35,
+  "name": "الأحقاف",
+  "en": "The Dunes",
+  "tname": "Al-Ahqaf",
+  "tnameFull": "Al-'Aḥqāf",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 47,
+  "ayaCount": 38,
+  "name": "محمد",
+  "en": "Muhammad",
+  "tname": "Muhammad",
+  "tnameFull": "Muḥammad",
+  "revelation": "madani",
+  "page": 507
+ },
+ {
+  "index": 48,
+  "ayaCount": 29,
+  "name": "الفتح",
+  "en": "The Victory",
+  "tname": "Al-Fath",
+  "tnameFull": "Al-Fatḥ",
+  "revelation": "madani",
+  "page": 511
+ },
+ {
+  "index": 49,
+  "ayaCount": 18,
+  "name": "الحجرات",
+  "en": "The Inner Apartments",
+  "tname": "Al-Hujuraat",
+  "tnameFull": "Al-Ḥujurāt",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 50,
+  "ayaCount": 45,
+  "name": "ق",
+  "en": "The letter Qaaf",
+  "tname": "Qaaf",
+  "tnameFull": "Qāf",
+  "revelation": "makki",
+  "page": 518
+ },
+ {
+  "index": 51,
+  "ayaCount": 60,
+  "name": "الذاريات",
+  "en": "The Winnowing Winds",
+  "tname": "Adh-Dhaariyat",
+  "tnameFull": "Adh-Dhāriyāt",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 52,
+  "ayaCount": 49,
+  "name": "الطور",
+  "en": "The Mount",
+  "tname": "At-Tur",
+  "tnameFull": "Aṭ-Ṭūr",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 53,
+  "ayaCount": 62,
+  "name": "النجم",
+  "en": "The Star",
+  "tname": "An-Najm",
+  "tnameFull": "An-Najm",
+  "revelation": "makki",
+  "page": 526
+ },
+ {
+  "index": 54,
+  "ayaCount": 55,
+  "name": "القمر",
+  "en": "The Moon",
+  "tname": "Al-Qamar",
+  "tnameFull": "Al-Qamar",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 55,
+  "ayaCount": 78,
+  "name": "الرحمن",
+  "en": "The Beneficent",
+  "tname": "Ar-Rahmaan",
+  "tnameFull": "Ar-Raḥmān",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 56,
+  "ayaCount": 96,
+  "name": "الواقعة",
+  "en": "The Inevitable",
+  "tname": "Al-Waaqia",
+  "tnameFull": "Al-Wāqi`aħ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 57,
+  "ayaCount": 29,
+  "name": "الحديد",
+  "en": "The Iron",
+  "tname": "Al-Hadid",
+  "tnameFull": "Al-Ḥadīd",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 58,
+  "ayaCount": 22,
+  "name": "المجادلة",
+  "en": "The Pleading Woman",
+  "tname": "Al-Mujaadila",
+  "tnameFull": "Al-Mujādalaħ",
+  "revelation": "madani",
+  "page": 542
+ },
+ {
+  "index": 59,
+  "ayaCount": 24,
+  "name": "الحشر",
+  "en": "The Exile",
+  "tname": "Al-Hashr",
+  "tnameFull": "Al-Ḥashr",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 60,
+  "ayaCount": 13,
+  "name": "الممتحنة",
+  "en": "She that is to be examined",
+  "tname": "Al-Mumtahana",
+  "tnameFull": "Al-Mumtaḥanaħ",
+  "revelation": "madani",
+  "page": 549
+ },
+ {
+  "index": 61,
+  "ayaCount": 14,
+  "name": "الصف",
+  "en": "The Ranks",
+  "tname": "As-Saff",
+  "tnameFull": "Aṣ-Ṣaff",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 62,
+  "ayaCount": 11,
+  "name": "الجمعة",
+  "en": "Friday",
+  "tname": "Al-Jumu'a",
+  "tnameFull": "Al-Jumu`aħ",
+  "revelation": "madani",
+  "page": 553
+ },
+ {
+  "index": 63,
+  "ayaCount": 11,
+  "name": "المنافقون",
+  "en": "The Hypocrites",
+  "tname": "Al-Munaafiqoon",
+  "tnameFull": "Al-Munāfiqūn",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 64,
+  "ayaCount": 18,
+  "name": "التغابن",
+  "en": "Mutual Disillusion",
+  "tname": "At-Taghaabun",
+  "tnameFull": "At-Taghābun",
+  "revelation": "madani",
+  "page": 556
+ },
+ {
+  "index": 65,
+  "ayaCount": 12,
+  "name": "الطلاق",
+  "en": "Divorce",
+  "tname": "At-Talaaq",
+  "tnameFull": "Aṭ-Ṭalāq",
+  "revelation": "madani",
+  "page": 558
+ },
+ {
+  "index": 66,
+  "ayaCount": 12,
+  "name": "التحريم",
+  "en": "The Prohibition",
+  "tname": "At-Tahrim",
+  "tnameFull": "At-Taḥrīm",
+  "revelation": "madani",
+  "page": 560
+ },
+ {
+  "index": 67,
+  "ayaCount": 30,
+  "name": "الملك",
+  "en": "The Sovereignty",
+  "tname": "Al-Mulk",
+  "tnameFull": "Al-Mulk",
+  "revelation": "makki",
+  "page": 562
+ },
+ {
+  "index": 68,
+  "ayaCount": 52,
+  "name": "القلم",
+  "en": "The Pen",
+  "tname": "Al-Qalam",
+  "tnameFull": "Al-Qalam",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 69,
+  "ayaCount": 52,
+  "name": "الحاقة",
+  "en": "The Reality",
+  "tname": "Al-Haaqqa",
+  "tnameFull": "Al-Ḥāqqaħ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 70,
+  "ayaCount": 44,
+  "name": "المعارج",
+  "en": "The Ascending Stairways",
+  "tname": "Al-Ma'aarij",
+  "tnameFull": "Al-Ma`ārij",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 71,
+  "ayaCount": 28,
+  "name": "نوح",
+  "en": "Nooh",
+  "tname": "Nooh",
+  "tnameFull": "Nūḥ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 72,
+  "ayaCount": 28,
+  "name": "الجن",
+  "en": "the Jinn",
+  "tname": "Al-Jinn",
+  "tnameFull": "Al-Jinn",
+  "revelation": "makki",
+  "page": 572
+ },
+ {
+  "index": 73,
+  "ayaCount": 20,
+  "name": "المزمل",
+  "en": "The Enshrouded One",
+  "tname": "Al-Muzzammil",
+  "tnameFull": "Al-Muzzammil",
+  "revelation": "makki",
+  "page": 574
+ },
+ {
+  "index": 74,
+  "ayaCount": 56,
+  "name": "المدثر",
+  "en": "The Cloaked One",
+  "tname": "Al-Muddaththir",
+  "tnameFull": "Al-Muddaththir",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 75,
+  "ayaCount": 40,
+  "name": "القيامة",
+  "en": "The Resurrection",
+  "tname": "Al-Qiyaama",
+  "tnameFull": "Al-Qiyāmaħ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 76,
+  "ayaCount": 31,
+  "name": "الانسان",
+  "en": "Man",
+  "tname": "Al-Insaan",
+  "tnameFull": "Al-'Insān",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 77,
+  "ayaCount": 50,
+  "name": "المرسلات",
+  "en": "The Emissaries",
+  "tname": "Al-Mursalaat",
+  "tnameFull": "Al-Mursalāt",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 78,
+  "ayaCount": 40,
+  "name": "النبإ",
+  "en": "The Announcement",
+  "tname": "An-Naba",
+  "tnameFull": "An-Naba'",
+  "revelation": "makki",
+  "page": 582
+ },
+ {
+  "index": 79,
+  "ayaCount": 46,
+  "name": "النازعات",
+  "en": "Those who drag forth",
+  "tname": "An-Naazi'aat",
+  "tnameFull": "An-Nāzi`āt",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 80,
+  "ayaCount": 42,
+  "name": "عبس",
+  "en": "He frowned",
+  "tname": "Abasa",
+  "tnameFull": "`Abasa",
+  "revelation": "makki",
+  "page": 585
+ },
+ {
+  "index": 81,
+  "ayaCount": 29,
+  "name": "التكوير",
+  "en": "The Overthrowing",
+  "tname": "At-Takwir",
+  "tnameFull": "At-Takwīr",
+  "revelation": "makki",
+  "page": 586
+ },
+ {
+  "index": 82,
+  "ayaCount": 19,
+  "name": "الإنفطار",
+  "en": "The Cleaving",
+  "tname": "Al-Infitaar",
+  "tnameFull": "Al-'Infiṭār",
+  "revelation": "makki",
+  "page": 587
+ },
+ {
+  "index": 83,
+  "ayaCount": 36,
+  "name": "المطففين",
+  "en": "Defrauding",
+  "tname": "Al-Mutaffifin",
+  "tnameFull": "Al-Muṭaffifīn",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 84,
+  "ayaCount": 25,
+  "name": "الإنشقاق",
+  "en": "The Splitting Open",
+  "tname": "Al-Inshiqaaq",
+  "tnameFull": "Al-'Inshiqāq",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 85,
+  "ayaCount": 22,
+  "name": "البروج",
+  "en": "The Constellations",
+  "tname": "Al-Burooj",
+  "tnameFull": "Al-Burūj",
+  "revelation": "makki",
+  "page": 590
+ },
+ {
+  "index": 86,
+  "ayaCount": 17,
+  "name": "الطارق",
+  "en": "The Morning Star",
+  "tname": "At-Taariq",
+  "tnameFull": "Aṭ-Ṭāriq",
+  "revelation": "makki",
+  "page": 591
+ },
+ {
+  "index": 87,
+  "ayaCount": 19,
+  "name": "الأعلى",
+  "en": "The Most High",
+  "tname": "Al-A'laa",
+  "tnameFull": "Al-'A`laá",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 88,
+  "ayaCount": 26,
+  "name": "الغاشية",
+  "en": "The Overwhelming",
+  "tname": "Al-Ghaashiya",
+  "tnameFull": "Al-Ghāshiyaħ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 89,
+  "ayaCount": 30,
+  "name": "الفجر",
+  "en": "The Dawn",
+  "tname": "Al-Fajr",
+  "tnameFull": "Al-Fajr",
+  "revelation": "makki",
+  "page": 593
+ },
+ {
+  "index": 90,
+  "ayaCount": 20,
+  "name": "البلد",
+  "en": "The City",
+  "tname": "Al-Balad",
+  "tnameFull": "Al-Balad",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 91,
+  "ayaCount": 15,
+  "name": "الشمس",
+  "en": "The Sun",
+  "tname": "Ash-Shams",
+  "tnameFull": "Ash-Shams",
+  "revelation": "makki",
+  "page": 595
+ },
+ {
+  "index": 92,
+  "ayaCount": 21,
+  "name": "الليل",
+  "en": "The Night",
+  "tname": "Al-Lail",
+  "tnameFull": "Al-Layl",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 93,
+  "ayaCount": 11,
+  "name": "الضحى",
+  "en": "The Morning Hours",
+  "tname": "Ad-Dhuhaa",
+  "tnameFull": "Aḍ-Ḍuḥaá",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 94,
+  "ayaCount": 8,
+  "name": "الشرح",
+  "en": "The Consolation",
+  "tname": "Ash-Sharh",
+  "tnameFull": "Ash-Sharḥ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 95,
+  "ayaCount": 8,
+  "name": "التين",
+  "en": "The Fig",
+  "tname": "At-Tin",
+  "tnameFull": "At-Tīn",
+  "revelation": "makki",
+  "page": 597
+ },
+ {
+  "index": 96,
+  "ayaCount": 19,
+  "name": "العلق",
+  "en": "The Clot",
+  "tname": "Al-Alaq",
+  "tnameFull": "Al-`Alaq",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 97,
+  "ayaCount": 5,
+  "name": "القدر",
+  "en": "The Power, Fate",
+  "tname": "Al-Qadr",
+  "tnameFull": "Al-Qadr",
+  "revelation": "makki",
+  "page": 598
+ },
+ {
+  "index": 98,
+  "ayaCount": 8,
+  "name": "البينة",
+  "en": "The Evidence",
+  "tname": "Al-Bayyina",
+  "tnameFull": "Al-Bayyinaħ",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 99,
+  "ayaCount": 8,
+  "name": "الزلزلة",
+  "en": "The Earthquake",
+  "tname": "Az-Zalzala",
+  "tnameFull": "Az-Zalzalaħ",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 100,
+  "ayaCount": 11,
+  "name": "العاديات",
+  "en": "The Chargers",
+  "tname": "Al-Aadiyaat ",
+  "tnameFull": "Al-`Ādiyāt",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 101,
+  "ayaCount": 11,
+  "name": "القارعة",
+  "en": "The Calamity",
+  "tname": "Al-Qaari'a",
+  "tnameFull": "Al-Qāri`aħ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 102,
+  "ayaCount": 8,
+  "name": "التكاثر",
+  "en": "Competition",
+  "tname": "At-Takaathur",
+  "tnameFull": "At-Takāthur",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 103,
+  "ayaCount": 3,
+  "name": "العصر",
+  "en": "The Declining Day, Epoch",
+  "tname": "Al-Asr",
+  "tnameFull": "Al-`Aṣr",
+  "revelation": "makki",
+  "page": 601
+ },
+ {
+  "index": 104,
+  "ayaCount": 9,
+  "name": "الهمزة",
+  "en": "The Traducer",
+  "tname": "Al-Humaza",
+  "tnameFull": "Al-Humazaħ",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 105,
+  "ayaCount": 5,
+  "name": "الفيل",
+  "en": "The Elephant",
+  "tname": "Al-Fil",
+  "tnameFull": "Al-Fīl",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 106,
+  "ayaCount": 4,
+  "name": "قريش",
+  "en": "Quraysh",
+  "tname": "Quraish",
+  "tnameFull": "Quraysh",
+  "revelation": "makki",
+  "page": 602
+ },
+ {
+  "index": 107,
+  "ayaCount": 7,
+  "name": "الماعون",
+  "en": "Almsgiving",
+  "tname": "Al-Maa'un",
+  "tnameFull": "Al-Mā`ūn",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 108,
+  "ayaCount": 3,
+  "name": "الكوثر",
+  "en": "Abundance",
+  "tname": "Al-Kawthar",
+  "tnameFull": "Al-Kawthar",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 109,
+  "ayaCount": 6,
+  "name": "الكافرون",
+  "en": "The Disbelievers",
+  "tname": "Al-Kaafiroon",
+  "tnameFull": "Al-Kāfirūn",
+  "revelation": "makki",
+  "page": 603
+ },
+ {
+  "index": 110,
+  "ayaCount": 3,
+  "name": "النصر",
+  "en": "Divine Support",
+  "tname": "An-Nasr",
+  "tnameFull": "An-Naṣr",
+  "revelation": "madani",
+  "page": null
+ },
+ {
+  "index": 111,
+  "ayaCount": 5,
+  "name": "المسد",
+  "en": "The Palm Fibre",
+  "tname": "Al-Masad",
+  "tnameFull": "Al-Masad",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 112,
+  "ayaCount": 4,
+  "name": "الإخلاص",
+  "en": "Sincerity",
+  "tname": "Al-Ikhlaas",
+  "tnameFull": "Al-'Ikhlāṣ",
+  "revelation": "makki",
+  "page": 604
+ },
+ {
+  "index": 113,
+  "ayaCount": 5,
+  "name": "الفلق",
+  "en": "The Dawn",
+  "tname": "Al-Falaq",
+  "tnameFull": "Al-Falaq",
+  "revelation": "makki",
+  "page": null
+ },
+ {
+  "index": 114,
+  "ayaCount": 6,
+  "name": "الناس",
+  "en": "Mankind",
+  "tname": "An-Naas",
+  "tnameFull": "An-Nās",
+  "revelation": "makki",
+  "page": null
+ }
+]

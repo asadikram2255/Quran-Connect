@@ -58,5 +58,295 @@
     "ayat": 6236,
     "status": "ok",
     "path": "data/translations/ur_ahmedali.json"
+  },
+  {
+    "id": "en_ahmedhulusi",
+    "edition": "en.ahmedhulusi",
+    "lang": "en",
+    "name": "Ahmed Hulusi — Decoding the Quran",
+    "author": "Decoding the Quran",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_ahmedhulusi.json"
+  },
+  {
+    "id": "en_ahmedraza",
+    "edition": "en.ahmedraza",
+    "lang": "en",
+    "name": "Ahmed Raza Khan (English)",
+    "author": "Ahmed Raza Khan",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_ahmedraza.json"
+  },
+  {
+    "id": "en_drshabbir",
+    "edition": "en.drshabbir",
+    "lang": "en",
+    "name": "Dr. Shabbir Ahmed",
+    "author": "Dr Shabbir Ahmed",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_drshabbir.json"
+  },
+  {
+    "id": "en_gaparwez",
+    "edition": "en.gaparwez",
+    "lang": "en",
+    "name": "Ghulam Ahmed Parwez",
+    "author": "Ghulam Ahmed Parwez",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_gaparwez.json"
+  },
+  {
+    "id": "en_maududi",
+    "edition": "en.maududi",
+    "lang": "en",
+    "name": "Maududi — Tafhim (English)",
+    "author": "Abul Ala Maududi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_maududi.json"
+  },
+  {
+    "id": "en_pickthall",
+    "edition": "en.pickthall",
+    "lang": "en",
+    "name": "Pickthall",
+    "author": "Mohammed Marmaduke William Pickthall",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_pickthall.json"
+  },
+  {
+    "id": "en_qaribullah",
+    "edition": "en.qaribullah",
+    "lang": "en",
+    "name": "Qaribullah & Darwish",
+    "author": "Hasan al-Fatih Qaribullah and Ahmad Darwish",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_qaribullah.json"
+  },
+  {
+    "id": "en_taqiusmani",
+    "edition": "en.taqiusmani",
+    "lang": "en",
+    "name": "Mufti Taqi Usmani",
+    "author": "Mufti Taqi Usmani",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_taqiusmani.json"
+  },
+  {
+    "id": "en_transliteration",
+    "edition": "en.transliteration",
+    "lang": "en",
+    "name": "Transliteration (Roman)",
+    "author": "English Transliteration",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_transliteration.json"
+  },
+  {
+    "id": "en_wahiduddin",
+    "edition": "en.wahiduddin",
+    "lang": "en",
+    "name": "Wahiduddin Khan",
+    "author": "Wahiduddin Khan",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/en_wahiduddin.json"
+  },
+  {
+    "id": "ur_abdulqadir",
+    "edition": "ur.abdulqadir",
+    "lang": "ur",
+    "name": "Shah Abdul Qadir",
+    "author": "Shah Abdul Qadir",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_abdulqadir.json"
+  },
+  {
+    "id": "ur_bhutvi",
+    "edition": "ur.bhutvi",
+    "lang": "ur",
+    "name": "Abdus Salam Bhutvi",
+    "author": "Abdus Salam Bhutvi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_bhutvi.json"
+  },
+  {
+    "id": "ur_daryabadi",
+    "edition": "ur.daryabadi",
+    "lang": "ur",
+    "name": "Abdul Majid Daryabadi",
+    "author": "Abdul Majid Daryabndi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_daryabadi.json"
+  },
+  {
+    "id": "ur_fazli",
+    "edition": "ur.fazli",
+    "lang": "ur",
+    "name": "Fazal Shah (Fazli)",
+    "author": "Fazal Shah Sahib",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_fazli.json"
+  },
+  {
+    "id": "ur_gaparwez",
+    "edition": "ur.gaparwez",
+    "lang": "ur",
+    "name": "G. A. Parwez",
+    "author": "G.A Parwez",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_gaparwez.json"
+  },
+  {
+    "id": "ur_ghamdi",
+    "edition": "ur.ghamdi",
+    "lang": "ur",
+    "name": "Javed Ahmed Ghamidi",
+    "author": "Javed Ahmed Ghamidi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_ghamdi.json"
+  },
+  {
+    "id": "ur_ilmf",
+    "edition": "ur.ilmf",
+    "lang": "ur",
+    "name": "Ilm Foundation",
+    "author": "Ilm Foundation",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_ilmf.json"
+  },
+  {
+    "id": "ur_islahi",
+    "edition": "ur.islahi",
+    "lang": "ur",
+    "name": "Amin Ahsan Islahi",
+    "author": "Ameen A. Islahi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_islahi.json"
+  },
+  {
+    "id": "ur_israr",
+    "edition": "ur.israr",
+    "lang": "ur",
+    "name": "Dr. Israr Ahmad",
+    "author": "Dr. Israr Ahmad",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_israr.json"
+  },
+  {
+    "id": "ur_jalalayn",
+    "edition": "ur.jalalayn",
+    "lang": "ur",
+    "name": "Tafsir al-Jalalayn (Urdu)",
+    "author": "Jalal ad-Din al-Mahalli",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_jalalayn.json"
+  },
+  {
+    "id": "ur_jawadi",
+    "edition": "ur.jawadi",
+    "lang": "ur",
+    "name": "Zeeshan Haider Jawadi",
+    "author": "Syed Zeeshan Haider Jawadi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_jawadi.json"
+  },
+  {
+    "id": "ur_kanzuliman",
+    "edition": "ur.kanzuliman",
+    "lang": "ur",
+    "name": "Kanz-ul-Iman — Ahmed Raza Khan",
+    "author": "Ahmed Raza Khan",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_kanzuliman.json"
+  },
+  {
+    "id": "ur_madani",
+    "edition": "ur.madani",
+    "lang": "ur",
+    "name": "Madani",
+    "author": "ٰAshaq Madani",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_madani.json"
+  },
+  {
+    "id": "ur_mahmood",
+    "edition": "ur.mahmood",
+    "lang": "ur",
+    "name": "Mahmudul Hasan",
+    "author": "محمود الحسن",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_mahmood.json"
+  },
+  {
+    "id": "ur_najafi",
+    "edition": "ur.najafi",
+    "lang": "ur",
+    "name": "Najafi",
+    "author": "Ayatollah Muhammad Hussain Najafi",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_najafi.json"
+  },
+  {
+    "id": "ur_noorulquran",
+    "edition": "ur.noorulquran",
+    "lang": "ur",
+    "name": "Noor-ul-Quran",
+    "author": "Noor-ul-Quran",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_noorulquran.json"
+  },
+  {
+    "id": "ur_qadri",
+    "edition": "ur.qadri",
+    "lang": "ur",
+    "name": "Tahir-ul-Qadri (Irfan-ul-Quran)",
+    "author": "Tahir ul Qadri",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_qadri.json"
+  },
+  {
+    "id": "ur_riffat",
+    "edition": "ur.riffat",
+    "lang": "ur",
+    "name": "Riffat",
+    "author": "Riffat Ijaz",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_riffat.json"
+  },
+  {
+    "id": "ur_taqi",
+    "edition": "ur.taqi",
+    "lang": "ur",
+    "name": "Mufti Taqi Usmani (Urdu)",
+    "author": "Mufti Taqi Usmani",
+    "ayat": 6236,
+    "status": "ok",
+    "path": "data/translations/ur_taqi.json"
   }
 ]

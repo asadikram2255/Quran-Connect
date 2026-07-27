@@ -4,7 +4,13 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-27 (deployed the pending work to Vercel prod — see below. Prior 2026-07-26:
+**Last updated:** 2026-07-27 (big feature session from the Zekr dataset: **29 more translations**
+(10 English + 19 Urdu → **35 total**, Explore Quran), **per-ayah audio** (8 reciters, everyayah.com,
+**web only** — gated off on Android), **4 more selectable Quran fonts** (self-hosted woff2, both
+platforms), **complete per-sura metadata** (Makki/Madani + mushaf page, both platforms), and a new
+**Read Mushaf** module — 604-page Madani-layout reader, both platforms. Asbab/"why revealed" was
+**dropped** (no authentic dataset). Web committed + deployed to Vercel prod; Android shipped as APK
+1.4.0. See the top Last-changes entry. Prior 2026-07-27: deployed pending root work to Vercel prod. Prior 2026-07-26:
 Explore Quran showed **wrong root badges** — `search/data/word_roots.json`
 had leaked a *collocating neighbour's* root onto common words (الله→و ع د, في→س و م/م ث ل, من→و ج ه,
 امنوا→ٱلَّذِى, الصالحات→ع م ل …), so ~54% of ayaat / starting at Al-Fatihah 1:1 showed an irrelevant root.
@@ -22,23 +28,31 @@ root→book audit and ص ر ط fix. Prior: 2026-07-24 root→book audit + alias 
 
 ## What the project does
 
-Quran Connect (live at https://quran-connect-psi.vercel.app) is a Quran study web app with four modules,
-reachable from a landing page (`index.html`) with four module cards:
+Quran Connect (live at https://quran-connect-psi.vercel.app) is a Quran study web app with five modules,
+reachable from a landing page (`index.html`) with five module cards:
 
-1. **Explore Quran** (`explore/`) — pure reading module. All 114 surahs, multi-select translations (6)
-   and tafseers (5), word & root badges per ayah (hidden behind a "Words & Roots" toggle). Clicking a
-   word/root opens a modal with dictionary meanings (English + Urdu) and every ayah containing it.
-   Each ayah has a "Pairs →" button deep-linking to Explore Ayaah Connections. On narrow screens the
-   surah sidebar is a slide-in drawer opened by a "☰ Surahs" button (`_wireMobileSidebar` in js/app.js).
-2. **Explore Ayaah Connections** (root app: `index.html` + `assets/app.js` + `assets/styles.css`) —
+1. **Explore Quran** (`explore/`) — pure reading module. All 114 surahs, multi-select translations
+   (**35** — see below) and tafseers (5), word & root badges per ayah (hidden behind a "Words & Roots"
+   toggle). Clicking a word/root opens a modal with dictionary meanings (English + Urdu) and every ayah
+   containing it. Each ayah has a "Pairs →" button and (**web only**) a "▶ Play" button; a **Fonts**
+   picker (4 Arabic + 3 Urdu families) and a **Reciter** picker (8 reciters + continuous auto-advance)
+   sit in the controls. Surah list/header show a Makki/Madani chip and the mushaf page. Each ayah shows
+   its revelation metadata. On narrow screens the surah sidebar is a slide-in drawer opened by a
+   "☰ Surahs" button (`_wireMobileSidebar` in js/app.js).
+2. **Read Mushaf** (`mushaf/`) — the newest module. Reads the Qur'an page by page in the **standard
+   604-page Madani mushaf layout**: exact page boundaries from Tanzil's `uthmani.page.xml`, full Uthmani
+   text with ayah-end rosettes, ornamental sura header bands + bismillah, and jump-to page / sura / juz.
+   Data is `data/mushaf/pages.json` (built by `scripts/build_mushaf.py`). This is a *text* pagination
+   faithful to the page boundaries — not a glyph-for-glyph scan (no page-based mushaf font).
+3. **Explore Ayaah Connections** (root app: `index.html` + `assets/app.js` + `assets/styles.css`) —
    deep-dive into any ayah: meaning-based & root-word pairs between ayaat, paired Hadith, tafseer,
    Words & Roots modal. Default landing shows a mood/topics browser (`body.view-mood`, headline "Ideas
    and Topics"); search opens the two-panel research view (`body.view-research`). Supports `/?ayah=SN:AN`
    and `/?root=<spaced letters>` deep links (the latter opens the root modal, used by the directory).
-3. **Search Quran** (`search/`) — Google-like search grounded ONLY in the Quran (hadith removed
+4. **Search Quran** (`search/`) — Google-like search grounded ONLY in the Quran (hadith removed
    entirely). BM25 + Arabic root matching + semantic rerank via serverless API. Also has a multi-turn
    **chat mode** ("Ask") grounded in retrieved ayaat with citation validation (`api/chat.js`).
-4. **Root Words Directory** (`roots/`) — every root analyzequran finds, in one searchable list
+5. **Root Words Directory** (`roots/`) — every root analyzequran finds, in one searchable list
    (search by letters or English meaning, sort by frequency or alphabetically). Data is the prebuilt
    `data/root_directory.json`; each row deep-links to Explore Ayaah Connections' root modal via
    `../?root=<letters>`. Mirrors the Android app's native directory.
@@ -117,6 +131,60 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-27 — Big feature session from the Zekr dataset (`D:\Users\asadi\Documents\GitHub\Zekr`,
+  user-supplied, "no copyright issue"): translations, audio, fonts, metadata, and a new Read Mushaf
+  module. Shipped web (Vercel prod) + Android APK 1.4.0.** The user asked for six things "both
+  platforms" and answered clarifiers: Asbab/"why revealed" → **drop if no dataset** (dropped — no
+  authentic source); Mushaf → **build if a complete readable dataset exists** (built as a 604-page
+  text pagination); Fonts → **bundle all**.
+  1. **All translations (both platforms).** `scripts/build_zekr_translations.py` converts Zekr
+     `.trans.zip` packs (each a 6236-line UTF-8 txt in canonical 1:1→114:6 order + a
+     `translation.properties`) into `data/translations/<id>.json` keyed `"sn:an"` and registers them in
+     `data/translations/index.json`. **29 added (10 English, 19 Urdu) → 35 total.** The converter
+     hard-asserts `len==6236` (that equality is the position-alignment guarantee — a split would give
+     >6236, a merge <6236); interior blank lines are kept as empty strings (legit untranslated ayaat).
+     Transliteration packs have their HTML tags stripped + entities unescaped (the reader escapes text).
+     Explore Quran's multi-select panel already handled an arbitrary count, so no reader change was
+     needed. **Android gets these free** via the WebView reader (sync copies `data/translations`).
+  2. **Per-ayah audio — WEB ONLY (8 reciters).** `explore/js/app.js` gained a `RECITERS` list
+     (everyayah.com per-ayah MP3, filename `%03d%03d.mp3`), a **Reciter** picker + "continuous
+     auto-advance" checkbox, and a "▶ Play" button on every ayah card. **Gated off on Android**
+     (`this.isAndroid = !!(window.QuranAndroid && window.QuranAndroid.share)`; `_renderAudioPanel`
+     returns early and the play button is omitted) because the app ships with **no INTERNET
+     permission**. Verified live: 1:1 → `Alafasy_128kbps/001001.mp3`, currentTime advancing.
+  3. **4 more selectable Quran fonts (both platforms).** `assets/quran-fonts.css` self-hosts, as WOFF2
+     in `assets/fonts/`, four faces the base six don't include — **Al Mushaf** & **Noore Huda** (Arabic),
+     **Jameel Noori Nastaleeq** & **Alvi Nastaleeq** (Urdu) — so the same stylesheet works on web and in
+     the app with nothing for the sync to patch. Explore Quran's new **Fonts** picker (two radio groups)
+     points `--font-ar` / `--font-ur` at a family and persists to `explore-font-ar/-ur`. These faces come
+     from the user's Zekr collection; **their licensing is the user's to determine** (noted in the CSS).
+  4. **Complete per-sura metadata (both platforms).** `scripts/build_sura_meta.py` →
+     `data/meta/sura_meta.json` (114 records: Arabic/English/transliterated name, ayah count,
+     **Makki/Madani**, and first **mushaf page**) from Zekr's `quran-properties*.xml` + `uthmani.page.xml`
+     (86 makki / 28 madani). Explore Quran shows a revelation chip + mushaf page in the surah list/header.
+  5. **New Read Mushaf module (both platforms).** `mushaf/` (`index.html` + `css/style.css` +
+     `js/app.js`) reads the Qur'an page by page over the **standard 604-page Madani layout**.
+     `scripts/build_mushaf.py` → `data/mushaf/pages.json` (1.5 MB): page boundaries from Tanzil's
+     `uthmani.page.xml` (604 pages + a fake 605th end marker), Uthmani text from the already-canonical
+     `search/data/quran.json`, each ayah assigned to the page whose start..next-start range contains it
+     (whole ayaat per page). Verified the boundaries match a real mushaf: p2 = Al-Baqarah 2:1–2:5,
+     p50 = Aali Imran 3:1, p582 = juz 30, p604 = 112:1→114:6 with three bismillahs. Sura bands +
+     bismillah (skipped for Al-Fatihah, whose bismillah is ayah 1, and At-Tawbah, which has none),
+     ayah-end rosettes with Arabic-Indic numbers, jump-to page/sura/juz, its own Arabic-font picker,
+     shared theme + RTL arrow keys (← next). New landing card (2nd, after Explore Quran). **It is a
+     *text* pagination faithful to the page boundaries — NOT a glyph-for-glyph scan** (there is no
+     page-based mushaf font in the dataset); flagged as such on delivery. **If pages.json is ever
+     rebuilt, use `build_mushaf.py` — it depends on quran.json staying 6236 ids in canonical order.**
+  Cache-bust: `data/meta/manifest.json` **8 → 9** (busts every new/changed `/data` file — mushaf,
+  sura_meta, translations — through the service worker); `explore/index.html` `css/style.css?v=7→8`,
+  `js/app.js?v=15→16`. **Android:** `tools/sync_web_assets.py` gained `mushaf/*`, `data/mushaf`,
+  `assets/quran-fonts.css`, `assets/fonts` in TREES, a mushaf Google-Fonts→bundled patch, and its
+  explore patch anchors were bumped to v8/v16 (a stale anchor is a hard sync error). New `ReadMushaf`
+  destination (`Destinations.kt`, drawer only) + string; routing is data-driven so the WebView renders
+  it with no further wiring. APK **versionCode 11 / versionName 1.4.0**. **Do not forget:** the four
+  new WOFF2 fonts merge *under* the overlay's TTFs (different filenames — both survive); if the sync
+  ever rmtree's mid-run this could regress.
 
 - **2026-07-26 — Wrong root badges in Explore Quran fixed (shipped Android APK 1.3.6).** Inspecting
   Al-Fatihah 1:1 showed root badge **و ع د** ("promise") on بِسْمِ ٱللَّهِ… — irrelevant.

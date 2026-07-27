@@ -120,6 +120,14 @@ button { font-family: inherit; cursor: pointer; }
 .surah-names { flex: 1; min-width: 0; }
 .surah-name-en { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .surah-meta { font-size: .68rem; color: var(--text-ter); }
+.rev-chip {
+  display: inline-block; font-size: .62rem; font-weight: 600; letter-spacing: .03em;
+  padding: 1px 6px; border-radius: 999px; vertical-align: middle;
+  text-transform: uppercase; line-height: 1.5;
+}
+.rev-makki  { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.rev-madani { background: color-mix(in srgb, #3a9d6e 20%, transparent); color: #3a9d6e; }
+.sh-meta .rev-chip { font-size: .68rem; }
 .surah-ar { font-family: var(--font-ar); font-size: 1rem; color: var(--text-ter); }
 .surah-item.active .surah-ar { color: var(--accent); }
 
@@ -231,6 +239,23 @@ button { font-family: inherit; cursor: pointer; }
   transition: background var(--trans), border-color var(--trans);
 }
 .ayah-pairs-btn:hover { background: var(--accent-mid); border-color: var(--accent); }
+.ayah-audio-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 12px;
+  font-size: .7rem; font-weight: 600; color: var(--text-ter);
+  transition: background var(--trans), border-color var(--trans), color var(--trans);
+}
+.ayah-audio-btn:hover, .ayah-audio-btn.on { border-color: var(--accent); color: var(--accent); }
+.ayah-audio-btn.on { background: var(--accent-dim); }
+.ayah-card.playing { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* Font / reciter panels reuse .panel-option, grouped under small headings. */
+.font-group + .font-group { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.font-group-title {
+  font-size: .66rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-ter); padding: 2px 4px 4px;
+}
+.cont-option { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
 
 .ayah-arabic {
   font-family: var(--font-ar); font-size: 1.75rem; line-height: 2.3;

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Read Mushaf — Quran Connect</title>
+  <meta name="description" content="Read the Qur'an page by page in the standard 604-page Madani mushaf layout, full Uthmani script.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%F0%9F%95%8B%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/quran-fonts.css?v=1">
+  <script>
+    // Apply saved theme before first paint (shared key across all modules; default dark)
+    (function () {
+      try {
+        var t = localStorage.getItem("theme") || localStorage.getItem("explore-theme");
+        if (t !== "light") document.documentElement.setAttribute("data-theme", "dark");
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+  <header class="header">
+    <a class="back-link" href="../">← Quran Connect</a>
+    <div class="header-title">
+      <span class="header-icon">🕋</span>
+      <h1>Read Mushaf</h1>
+    </div>
+    <div class="header-actions">
+      <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <div class="toolbar" id="toolbar">
+    <div class="tool-group">
+      <label class="tool-label" for="sura-select">Surah</label>
+      <select id="sura-select" class="tool-select"></select>
+    </div>
+    <div class="tool-group">
+      <label class="tool-label" for="juz-select">Juz</label>
+      <select id="juz-select" class="tool-select"></select>
+    </div>
+    <div class="tool-group">
+      <label class="tool-label" for="page-input">Page</label>
+      <input id="page-input" class="tool-page" type="number" min="1" max="604" inputmode="numeric">
+      <span class="tool-of">/ 604</span>
+    </div>
+    <div class="tool-group">
+      <label class="tool-label" for="font-select">Font</label>
+      <select id="font-select" class="tool-select"></select>
+    </div>
+  </div>
+
+  <main class="reader" id="reader">
+    <button class="nav-arrow nav-next" id="nav-next" type="button" title="Next page" aria-label="Next page">‹</button>
+
+    <div class="page-wrap" id="page-wrap">
+      <div class="mushaf-page" id="mushaf-page" dir="rtl" lang="ar"></div>
+      <div class="page-footer">
+        <span class="page-juz" id="page-juz"></span>
+        <span class="page-num" id="page-num"></span>
+        <span class="page-sura" id="page-sura-foot"></span>
+      </div>
+    </div>
+
+    <button class="nav-arrow nav-prev" id="nav-prev" type="button" title="Previous page" aria-label="Previous page">›</button>
+  </main>
+
+  <div class="loading" id="loading">Loading mushaf…</div>
+
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>

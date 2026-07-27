@@ -1,0 +1,48 @@
+/**
+ * quran-fonts.css — extra selectable script fonts, self-hosted.
+ *
+ * Unlike the six base families (Google Fonts on the web, bundled TTFs in the
+ * app), these four are not on Google Fonts, so they are self-hosted as WOFF2
+ * from assets/fonts/ and this same stylesheet works on both platforms — no
+ * network, nothing for the Android sync to patch. They load only when the font
+ * picker actually selects one (a CSS variable points --font-ar / --font-ur at
+ * the family), so the multi-MB Nastaliq faces are never fetched otherwise.
+ *
+ *   Arabic (Quran text):  Al Mushaf (Uthmani), Noore Huda (IndoPak)
+ *   Urdu (translations):  Jameel Noori Nastaleeq, Alvi Nastaleeq
+ *
+ * These faces ship from the user's Zekr collection; their licensing is the
+ * user's to determine.
+ */
+
+@font-face {
+  font-family: "Al Mushaf";
+  src: url("fonts/AlMushaf.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noore Huda";
+  src: url("fonts/NooreHuda.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Jameel Noori Nastaleeq";
+  src: url("fonts/JameelNooriNastaleeq.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alvi Nastaleeq";
+  src: url("fonts/AlviNastaleeq.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

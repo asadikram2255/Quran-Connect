@@ -59,6 +59,42 @@ function stripDiacritics(text) {
     .replace(/ٱ/g, 'ا');      // alef wasla → plain alef
 }
 
+/* ── Selectable fonts ──────────────────────────────────────────────────────
+   Each option is a CSS font stack applied by pointing --font-ar / --font-ur at
+   it (see _applyFonts). id '' means "leave the stylesheet default". The extra
+   faces are declared in assets/quran-fonts.css and self-host on both web and
+   the offline app. */
+
+const AR_FONTS = [
+  { id: '',          label: 'Amiri Quran (default)',   stack: '' },
+  { id: 'almushaf',  label: 'Al Mushaf (Uthmani)',     stack: '"Al Mushaf", "Amiri Quran", serif' },
+  { id: 'noorehuda', label: 'Noore Huda (IndoPak)',    stack: '"Noore Huda", "Amiri Quran", serif' },
+  { id: 'naskh',     label: 'Noto Naskh Arabic',       stack: '"Noto Naskh Arabic", "Amiri", serif' },
+];
+
+const UR_FONTS = [
+  { id: '',       label: 'Noto Nastaliq Urdu (default)',  stack: '' },
+  { id: 'jameel', label: 'Jameel Noori Nastaleeq',        stack: '"Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", serif' },
+  { id: 'alvi',   label: 'Alvi Nastaleeq',                stack: '"Alvi Nastaleeq", "Noto Nastaliq Urdu", serif' },
+];
+
+/* ── Recitation (web only) ──────────────────────────────────────────────────
+   Per-ayah MP3s streamed from everyayah.com; the file name is the 3-digit sura
+   and 3-digit ayah. Base URLs (spaces pre-encoded) are the ones the Zekr audio
+   descriptors ship. The app has no network, so this whole feature is switched
+   off there (see this.isAndroid). */
+
+const RECITERS = [
+  { id: 'afasy',      name: 'Mishary Al-Afasy',        base: 'https://everyayah.com/data/Alafasy_128kbps/' },
+  { id: 'abdulbasit', name: 'Abdul Basit (Murattal)',  base: 'https://everyayah.com/data/AbdulSamad_64kbps_QuranExplorer.Com/' },
+  { id: 'sudais',     name: 'Abdurrahman As-Sudais',   base: 'https://everyayah.com/data/Abdurrahmaan_As-Sudais_192kbps/' },
+  { id: 'shuraim',    name: 'Saood Ash-Shuraim',       base: 'https://everyayah.com/data/Saood%20bin%20Ibraaheem%20Ash-Shuraym_128kbps/' },
+  { id: 'shatri',     name: 'Abu Bakr Ash-Shatri',     base: 'https://everyayah.com/data/Abu%20Bakr%20Ash-Shaatree_128kbps/' },
+  { id: 'muaiqly',    name: 'Maher Al-Muaiqly',        base: 'https://everyayah.com/data/MaherAlMuaiqly128kbps/' },
+  { id: 'ghamdi',     name: 'Saad Al-Ghamdi',          base: 'https://everyayah.com/data/Ghamadi_40kbps/' },
+  { id: 'minshawi',   name: 'Muhammad Al-Minshawi',    base: 'https://everyayah.com/data/Menshawi_16kbps/' },
+];
+
 /* ── App ─────────────────────────────────────────────────────────────────── */
 
 class ExploreApp {
@@ -77,29 +113,48 @@ class ExploreApp {
     this.currentSurah = 1;
     this.badgesOn = false;
     this.modalLang = 'en';
+
+    // Font choices (persisted). '' = stylesheet default.
+    this.fonts = {
+      ar: localStorage.getItem('explore-font-ar') || '',
+      ur: localStorage.getItem('explore-font-ur') || '',
+    };
+
+    // Recitation. Disabled entirely in the offline app (no network there).
+    this.isAndroid = !!(window.QuranAndroid && window.QuranAndroid.share);
+    this.reciter = localStorage.getItem('explore-reciter') || 'afasy';
+    this.continuous = localStorage.getItem('explore-audio-continuous') === '1';
+    this.audio = null;         // lazily created <audio>
+    this.playingRef = null;    // "s:a" currently playing, or null
   }
 
   async init() {
     this._initTheme();
     const acc = document.getElementById('notes-account');
     if (acc && window.NotesUI) acc.appendChild(NotesUI.backupChip());
-    const [surahs, quran, wordRoots, trIndex, tafsirIndex] = await Promise.all([
+    const [surahs, quran, wordRoots, trIndex, tafsirIndex, suraMeta] = await Promise.all([
       this._json('../search/data/surah.json'),
       this._json('../search/data/quran.json?v=3'),
       this._json('../search/data/word_roots.json?v=3'),
       this._json('../data/translations/index.json'),
       this._json('../data/meta/tafsir_index.json'),
+      this._json('../data/meta/sura_meta.json?v=1'),
     ]);
     this.surahs = surahs;
+    this.suraMeta = {};
+    for (const m of suraMeta) this.suraMeta[m.index] = m;
     this.quran = quran;
     for (const a of quran) this.quranByRef[`${a.sn}:${a.an}`] = a;
     this.wordRoots = wordRoots;
     this.translations.index = trIndex.filter(t => t.status === 'ok');
     this.tafsir.index = tafsirIndex.sources || {};
 
+    this._applyFonts();
     this._renderSurahList();
     this._wireMobileSidebar();
     this._renderControlPanels();
+    this._renderFontPanel();
+    this._renderAudioPanel();
     this._bindControls();
     this._bindModal();
 
@@ -139,11 +194,13 @@ class ExploreApp {
       btn.className = 'surah-item';
       btn.type = 'button';
       btn.dataset.no = s.no;
+      const m = this.suraMeta[s.no];
+      const rev = m ? (m.revelation === 'madani' ? 'Madani' : 'Makki') : this._esc(s.place);
       btn.innerHTML = `
         <span class="surah-num">${s.no}</span>
         <span class="surah-names">
           <span class="surah-name-en">${this._esc(s.en)}</span>
-          <span class="surah-meta">${s.verses} verses · ${this._esc(s.place)}</span>
+          <span class="surah-meta"><span class="rev-chip rev-${m ? m.revelation : 'makki'}">${rev}</span> ${s.verses} verses</span>
         </span>
         <span class="surah-ar" lang="ar">${this._esc(s.ar)}</span>`;
       btn.addEventListener('click', () => this.openSurah(s.no));
@@ -205,7 +262,7 @@ class ExploreApp {
   }
 
   _bindControls() {
-    for (const kind of ['translations', 'tafsir']) {
+    for (const kind of ['translations', 'tafsir', 'fonts', 'audio']) {
       const btn = document.getElementById(`${kind}-btn`);
       const panel = document.getElementById(`${kind}-panel`);
       btn.addEventListener('click', e => {
@@ -267,9 +324,139 @@ class ExploreApp {
     }));
   }
 
+  /* ── Fonts ─────────────────────────────────────────────────────────────── */
+
+  _applyFonts() {
+    const root = document.documentElement.style;
+    const ar = AR_FONTS.find(f => f.id === this.fonts.ar);
+    const ur = UR_FONTS.find(f => f.id === this.fonts.ur);
+    if (ar && ar.stack) root.setProperty('--font-ar', ar.stack);
+    else root.removeProperty('--font-ar');
+    if (ur && ur.stack) root.setProperty('--font-ur', ur.stack);
+    else root.removeProperty('--font-ur');
+  }
+
+  _renderFontPanel() {
+    const panel = document.getElementById('fonts-panel');
+    if (!panel) return;
+    const group = (title, list, current, kind) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'font-group';
+      wrap.innerHTML = `<div class="font-group-title">${title}</div>`;
+      for (const opt of list) {
+        const label = document.createElement('label');
+        label.className = 'panel-option';
+        label.innerHTML = `
+          <input type="radio" name="font-${kind}" ${opt.id === current ? 'checked' : ''}>
+          <span><span class="opt-name" style="${opt.stack ? `font-family:${opt.stack}` : ''}">${this._esc(opt.label)}</span></span>`;
+        label.querySelector('input').addEventListener('change', () => this._setFont(kind, opt.id));
+        wrap.appendChild(label);
+      }
+      return wrap;
+    };
+    panel.innerHTML = '';
+    panel.appendChild(group('Arabic (Quran text)', AR_FONTS, this.fonts.ar, 'ar'));
+    panel.appendChild(group('Urdu (translations)', UR_FONTS, this.fonts.ur, 'ur'));
+  }
+
+  _setFont(kind, id) {
+    this.fonts[kind] = id;
+    localStorage.setItem(`explore-font-${kind}`, id);
+    this._applyFonts();
+  }
+
+  /* ── Recitation (web only) ─────────────────────────────────────────────── */
+
+  _renderAudioPanel() {
+    const group = document.getElementById('audio-btn')?.closest('.control-group');
+    if (!group) return;
+    if (this.isAndroid) { group.hidden = true; return; }   // no network in the app
+
+    const panel = document.getElementById('audio-panel');
+    panel.innerHTML = '<div class="font-group-title">Reciter</div>';
+    for (const r of RECITERS) {
+      const label = document.createElement('label');
+      label.className = 'panel-option';
+      label.innerHTML = `
+        <input type="radio" name="reciter" ${r.id === this.reciter ? 'checked' : ''}>
+        <span><span class="opt-name">${this._esc(r.name)}</span></span>`;
+      label.querySelector('input').addEventListener('change', () => {
+        this.reciter = r.id;
+        localStorage.setItem('explore-reciter', r.id);
+      });
+      panel.appendChild(label);
+    }
+    const cont = document.createElement('label');
+    cont.className = 'panel-option cont-option';
+    cont.innerHTML = `
+      <input type="checkbox" ${this.continuous ? 'checked' : ''}>
+      <span><span class="opt-name">Continuous — auto-play next ayah</span></span>`;
+    cont.querySelector('input').addEventListener('change', e => {
+      this.continuous = e.target.checked;
+      localStorage.setItem('explore-audio-continuous', this.continuous ? '1' : '0');
+    });
+    panel.appendChild(cont);
+  }
+
+  _audioUrl(sn, an) {
+    const r = RECITERS.find(x => x.id === this.reciter) || RECITERS[0];
+    const p = n => String(n).padStart(3, '0');
+    return `${r.base}${p(sn)}${p(an)}.mp3`;
+  }
+
+  _playAyah(sn, an) {
+    const ref = `${sn}:${an}`;
+    if (this.playingRef === ref && this.audio && !this.audio.paused) {
+      this._stopAudio();
+      return;
+    }
+    if (!this.audio) {
+      this.audio = new Audio();
+      this.audio.addEventListener('ended', () => this._onAudioEnded());
+      this.audio.addEventListener('error', () => this._markPlaying(null, 'error'));
+    }
+    this.audio.src = this._audioUrl(sn, an);
+    this.audio.play().catch(() => this._markPlaying(null, 'error'));
+    this._markPlaying(ref, 'playing');
+  }
+
+  _stopAudio() {
+    if (this.audio) { this.audio.pause(); this.audio.currentTime = 0; }
+    this._markPlaying(null);
+  }
+
+  _onAudioEnded() {
+    const prev = this.playingRef;
+    this._markPlaying(null);
+    if (!this.continuous || !prev) return;
+    const [sn, an] = prev.split(':').map(Number);
+    const meta = this.surahs.find(s => s.no === sn);
+    if (meta && an < meta.verses) {
+      this._playAyah(sn, an + 1);
+      this._scrollToAyah(an + 1);
+    }
+  }
+
+  // Reflect play state on the cards: highlight the active one and set every
+  // play button's glyph/label.
+  _markPlaying(ref, state) {
+    this.playingRef = ref;
+    document.querySelectorAll('.ayah-card').forEach(card => {
+      const btn = card.querySelector('.ayah-audio-btn');
+      const on = card.id === (ref ? `ayah-${ref.replace(':', '-')}` : '');
+      card.classList.toggle('playing', on);
+      if (btn) {
+        btn.classList.toggle('on', on);
+        btn.textContent = on ? '⏸ Playing' : '▶ Play';
+        btn.title = on ? 'Stop recitation' : 'Play recitation';
+      }
+    });
+  }
+
   /* ── Reader ────────────────────────────────────────────────────────────── */
 
   async openSurah(no, jumpAyah = null) {
+    if (this.audio) this._stopAudio();       // don't keep reciting the old surah
     this.currentSurah = no;
     history.replaceState(null, '', `#${no}${jumpAyah ? ':' + jumpAyah : ''}`);
     if (this._closeMobileSidebar) this._closeMobileSidebar();
@@ -277,10 +464,13 @@ class ExploreApp {
       el.classList.toggle('active', +el.dataset.no === no));
 
     const meta = this.surahs.find(s => s.no === no);
+    const sm = this.suraMeta[no];
+    const revText = sm ? (sm.revelation === 'madani' ? 'Madani' : 'Makki') : this._esc(meta.place);
+    const pageText = sm && sm.page ? ` · Mushaf p.${sm.page}` : '';
     document.getElementById('surah-header').innerHTML = `
       <div class="sh-ar" lang="ar">${this._esc(meta.ar)}</div>
-      <div class="sh-en">${meta.no}. ${this._esc(meta.en)}</div>
-      <div class="sh-meta">${this._esc(meta.roman)} · ${meta.verses} verses · ${this._esc(meta.place)}</div>
+      <div class="sh-en">${meta.no}. ${this._esc(meta.en)}${sm ? ' — ' + this._esc(sm.en) : ''}</div>
+      <div class="sh-meta"><span class="rev-chip rev-${sm ? sm.revelation : 'makki'}">${revText}</span> ${this._esc(sm ? sm.tname : meta.roman)} · ${meta.verses} verses${pageText}</div>
       <form class="sh-jump" id="ayah-jump-form" autocomplete="off">
         <label for="ayah-jump">Go to ayah</label>
         <input type="number" id="ayah-jump" inputmode="numeric" min="1"
@@ -362,6 +552,7 @@ class ExploreApp {
       let html = `
         <div class="ayah-topline">
           <span class="ayah-ref">${ref}</span>
+          ${this.isAndroid ? '' : `<button class="ayah-audio-btn" type="button" data-ref="${ref}" title="Play recitation">▶ Play</button>`}
           <a class="ayah-pairs-btn" href="../?ayah=${ref}" title="Explore this ayah's connections — meaning & root-word pairs">Pairs →</a>
           <button class="ayah-badges-btn" type="button" data-ref="${ref}">words &amp; roots</button>
         </div>
@@ -441,6 +632,8 @@ class ExploreApp {
         }));
       card.querySelectorAll('.root-badge').forEach(btn =>
         btn.addEventListener('click', () => this.openRootModal(btn.dataset.root)));
+      card.querySelector('.ayah-audio-btn')?.addEventListener('click', () =>
+        this._playAyah(no, a));
 
       // A study note belongs to the ayah, so its button sits on the same line
       // as the reference. The context is read at click time so the note editor

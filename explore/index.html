@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/quran-fonts.css?v=1">
   <script>
     // Apply saved theme before first paint (shared key across all modules; default dark)
     (function () {
@@ -18,7 +19,7 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 
@@ -58,6 +59,14 @@
         <div class="control-group">
           <button class="control-btn" id="tafsir-btn" type="button">Tafseer <span class="count-pill" id="tafsir-count">0</span></button>
           <div class="control-panel" id="tafsir-panel" hidden></div>
+        </div>
+        <div class="control-group">
+          <button class="control-btn" id="fonts-btn" type="button">Fonts</button>
+          <div class="control-panel" id="fonts-panel" hidden></div>
+        </div>
+        <div class="control-group">
+          <button class="control-btn" id="audio-btn" type="button">Reciter</button>
+          <div class="control-panel" id="audio-panel" hidden></div>
         </div>
         <label class="badges-toggle">
           <input type="checkbox" id="badges-toggle">
@@ -100,6 +109,6 @@
   <script src="../assets/book-viewer.js?v=3"></script>
   <script src="../assets/notes.js?v=2"></script>
   <script src="../assets/notes-ui.js?v=2"></script>
-  <script src="js/app.js?v=15"></script>
+  <script src="js/app.js?v=16"></script>
 </body>
 </html>

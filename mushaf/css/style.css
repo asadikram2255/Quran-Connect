@@ -1,0 +1,214 @@
+/* Read Mushaf — 604-page Madani layout reader. Shares the warm-parchment /
+   dark theme system used across the other modules (localStorage key "theme"). */
+
+:root {
+  --bg:           #fdf9f2;
+  --surface:      #f4ede0;
+  --surface2:     #ebe0cc;
+  --border:       #d9cbb5;
+  --text:         #1a1208;
+  --text-sec:     #6b5c44;
+  --text-ter:     #9c8b74;
+  --accent:       #b07d1a;
+  --accent-hov:   #8a5f0d;
+  --accent-dim:   color-mix(in srgb, #b07d1a 11%, transparent);
+  --card-shad:    0 1px 3px rgba(0,0,0,.06), 0 6px 20px rgba(0,0,0,.06);
+  --radius:       12px;
+  --font:         'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ar:      'Amiri Quran', 'Noto Naskh Arabic', 'Amiri', serif;
+  --trans:        .16s ease;
+  --header-h:     58px;
+}
+
+[data-theme="dark"] {
+  --bg:           #0e0816;
+  --surface:      #17102a;
+  --surface2:     #241640;
+  --border:       rgba(255, 240, 230, .12);
+  --text:         #faf7f2;
+  --text-sec:     #d6c9b8;
+  --text-ter:     #9c8d7e;
+  --accent:       #f5b75e;
+  --accent-hov:   #e0a042;
+  --accent-dim:   rgba(245, 183, 94, .14);
+  --card-shad:    0 1px 3px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.32);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.header {
+  height: var(--header-h);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 20;
+}
+.back-link {
+  color: var(--text-sec); text-decoration: none; font-size: 14px;
+  font-weight: 500; white-space: nowrap;
+}
+.back-link:hover { color: var(--accent); }
+.header-title { display: flex; align-items: center; gap: 9px; margin: 0 auto 0 8px; }
+.header-icon { font-size: 20px; }
+.header-title h1 {
+  font-family: var(--font-display); font-size: 20px; font-weight: 600; margin: 0;
+}
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.theme-toggle {
+  width: 34px; height: 34px; cursor: pointer; font-size: 16px;
+  background: none; border: 1px solid var(--border); border-radius: 50%;
+  color: var(--text-sec); transition: var(--trans);
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Toolbar ────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+  padding: 10px 18px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: var(--header-h); z-index: 15;
+}
+.tool-group { display: flex; align-items: center; gap: 7px; }
+.tool-label { font-size: 12px; font-weight: 600; color: var(--text-ter); text-transform: uppercase; letter-spacing: .04em; }
+.tool-select, .tool-page {
+  font-family: var(--font); font-size: 14px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px; cursor: pointer;
+  transition: var(--trans);
+}
+.tool-select:hover, .tool-page:hover { border-color: var(--accent); }
+.tool-select:focus, .tool-page:focus { outline: none; border-color: var(--accent); }
+.tool-page { width: 74px; text-align: center; cursor: text; }
+.tool-of { font-size: 13px; color: var(--text-ter); }
+
+/* ── Reader ─────────────────────────────────────────────────────────── */
+.reader {
+  display: flex; align-items: stretch; justify-content: center;
+  gap: 6px; padding: 26px 14px 60px;
+  min-height: calc(100vh - var(--header-h) - 52px);
+}
+.page-wrap {
+  width: 100%; max-width: 720px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shad);
+  padding: 30px 34px 16px;
+  display: flex; flex-direction: column;
+}
+
+/* the flowing Quran text */
+.mushaf-page {
+  flex: 1;
+  font-family: var(--font-ar);
+  font-size: clamp(22px, 3.4vw, 30px);
+  line-height: 2.35;
+  text-align: justify;
+  text-align-last: center;
+  color: var(--text);
+  word-spacing: .04em;
+}
+.mushaf-page .ayah { cursor: default; }
+.mushaf-page .ayah:hover { color: var(--accent-hov); }
+
+/* ayah-end rosette with Arabic-Indic number */
+.ayah-end {
+  display: inline-block;
+  font-family: var(--font-ar);
+  color: var(--accent);
+  margin: 0 .12em;
+  font-size: .8em;
+  position: relative;
+  white-space: nowrap;
+}
+.ayah-end .num {
+  display: inline-block;
+  min-width: 1.5em;
+  text-align: center;
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  padding: 0 .18em;
+  font-size: .82em;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+/* sura header band */
+.sura-band {
+  margin: 8px auto 18px;
+  padding: 12px 18px;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  background: var(--accent-dim);
+  text-align: center;
+}
+.sura-band .s-name {
+  font-family: var(--font-ar); font-size: 1.5em; color: var(--accent-hov);
+  line-height: 1.4;
+}
+.sura-band .s-meta {
+  font-family: var(--font); font-size: 12.5px; color: var(--text-sec);
+  margin-top: 3px; letter-spacing: .02em;
+}
+.sura-band .s-rev {
+  display: inline-block; margin-left: 6px; padding: 1px 8px;
+  border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+  background: var(--surface2); color: var(--text-sec);
+}
+
+/* bismillah line */
+.bismillah {
+  font-family: var(--font-ar);
+  text-align: center;
+  font-size: 1.05em;
+  color: var(--text);
+  margin: 6px 0 16px;
+}
+
+/* footer strip: juz · page · sura */
+.page-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 18px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-family: var(--font); font-size: 13px; color: var(--text-ter);
+}
+.page-num { font-weight: 700; color: var(--text-sec); }
+.page-sura { font-family: var(--font-ar); font-size: 16px; color: var(--text-sec); }
+
+/* ── Nav arrows ─────────────────────────────────────────────────────── */
+.nav-arrow {
+  flex: 0 0 auto; align-self: center;
+  width: 46px; height: 68px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-sec);
+  font-size: 30px; line-height: 1; transition: var(--trans);
+}
+.nav-arrow:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: var(--surface2); }
+.nav-arrow:disabled { opacity: .3; cursor: default; }
+
+.loading {
+  text-align: center; color: var(--text-ter); padding: 40px;
+  font-size: 15px;
+}
+.loading[hidden] { display: none; }
+
+@media (max-width: 640px) {
+  .nav-arrow { position: fixed; bottom: 16px; z-index: 18; box-shadow: var(--card-shad); }
+  .nav-next { left: 16px; }
+  .nav-prev { right: 16px; }
+  .reader { padding: 16px 10px 84px; }
+  .page-wrap { padding: 20px 18px 12px; }
+  .toolbar { gap: 8px 12px; }
+}
