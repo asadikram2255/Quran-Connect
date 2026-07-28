@@ -1,0 +1,241 @@
+/* Tadabbur — a swipeable, reel-style stream of the Qur'an.
+   Reflection in place of doomscrolling: same effortless vertical swipe,
+   but every card returns a random ayah with the reader's chosen translation.
+   Shares the app's warm-parchment / deep-night palette with the other modules. */
+
+:root {
+  --bg:           #fdf9f2;
+  --surface:      #f4ede0;
+  --surface2:     #ebe0cc;
+  --border:       #d9cbb5;
+  --text:         #1a1208;
+  --text-sec:     #6b5c44;
+  --text-ter:     #9c8b74;
+  --accent:       #b07d1a;
+  --accent-hov:   #8a5f0d;
+  --accent-dim:   color-mix(in srgb, #b07d1a 11%, transparent);
+  --radius:       16px;
+  --font:         'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ar:      'Amiri Quran', 'Noto Naskh Arabic', 'Amiri', serif;
+  --font-ur:      'Noto Nastaliq Urdu', 'Amiri', serif;
+  --trans:        .16s ease;
+  /* Two calm background washes the card gently drifts between, so the feed
+     feels alive without the frantic visual reward of a social reel. */
+  --wash:         radial-gradient(120% 90% at 50% 0%, #fbf3e4 0%, var(--bg) 60%);
+}
+
+[data-theme="dark"] {
+  --bg:           #0e0816;
+  --surface:      #1a0f2e;
+  --surface2:     #2b1551;
+  --border:       rgba(255, 240, 230, .12);
+  --text:         #faf7f2;
+  --text-sec:     #d6c9b8;
+  --text-ter:     #9c8d7e;
+  --accent:       #f5b75e;
+  --accent-hov:   #e0a042;
+  --accent-dim:   rgba(245, 183, 94, .16);
+  --wash:         radial-gradient(120% 90% at 50% 0%, #1a0f2e 0%, #0e0816 60%);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;                 /* the deck owns scrolling, not the page */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--trans), color var(--trans);
+}
+button { font-family: inherit; cursor: pointer; color: inherit; }
+
+/* ── Top bar ────────────────────────────────────────────────────────────── */
+.topbar {
+  position: fixed; inset: 0 0 auto 0; z-index: 30;
+  height: 54px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 16px;
+  background: linear-gradient(to bottom, var(--bg), color-mix(in srgb, var(--bg) 10%, transparent));
+  /* fades into the card so the bar never feels like a hard header */
+}
+.back-link {
+  color: var(--text-ter); text-decoration: none;
+  font-size: .85rem; font-weight: 600; white-space: nowrap;
+  transition: color var(--trans);
+}
+.back-link:hover { color: var(--accent); }
+.topbar-title { display: flex; align-items: center; gap: 7px; flex: 1; justify-content: center; }
+.topbar-icon { font-size: 1rem; }
+.topbar-title h1 {
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; letter-spacing: -.01em;
+}
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 60%, transparent);
+  color: var(--text-sec); font-size: 1rem; line-height: 1;
+  display: grid; place-items: center;
+  transition: border-color var(--trans), color var(--trans), background var(--trans);
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── The deck (reel) ───────────────────────────────────────────────────── */
+.deck {
+  position: fixed; inset: 0; z-index: 10;
+  overflow: hidden;
+  background: var(--wash);
+  touch-action: pan-y;              /* let us read vertical drags */
+}
+
+/* One ayah card — full screen, absolutely stacked so we can slide them */
+.card {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  will-change: transform;
+  background: var(--wash);
+}
+.card-inner {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 26px;
+  padding: 78px 26px 120px;         /* clears the top bar and the action rail */
+  text-align: center;
+}
+.card-inner::-webkit-scrollbar { width: 0; }
+
+/* Surah reference pill */
+.ref {
+  align-self: center;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 7px 15px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  font-size: .82rem; font-weight: 600; color: var(--text-sec);
+  letter-spacing: .01em;
+}
+.ref .ref-ar { font-family: var(--font-ar); font-size: 1rem; color: var(--text); }
+.ref .ref-dot { color: var(--text-ter); }
+
+/* The ayah itself */
+.ar {
+  font-family: var(--font-ar);
+  font-size: clamp(1.9rem, 6.4vw, 3.1rem);
+  line-height: 2.05;
+  color: var(--text);
+  direction: rtl;
+  font-weight: 400;
+  max-width: 22ch;
+  margin: 0 auto;
+}
+.tr {
+  font-size: clamp(1.02rem, 3.4vw, 1.28rem);
+  line-height: 1.72;
+  color: var(--text-sec);
+  max-width: 42ch;
+  margin: 0 auto;
+  font-weight: 400;
+}
+.tr.rtl { direction: rtl; font-family: var(--font-ur); line-height: 2.1; font-size: clamp(1.15rem, 4vw, 1.5rem); }
+.tr.empty { color: var(--text-ter); font-style: italic; }
+
+/* Hair divider between ayah and meaning */
+.card-inner .rule {
+  width: 46px; height: 2px; border: 0; align-self: center;
+  background: var(--accent); opacity: .5; border-radius: 2px;
+}
+
+/* ── Action rail (bottom-right, reel style) ────────────────────────────── */
+.actions {
+  position: absolute; right: 14px; bottom: 26px; z-index: 20;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.act {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border: 0; background: none; color: var(--text-sec);
+  transition: color var(--trans), transform var(--trans);
+}
+.act:hover { color: var(--accent); }
+.act:active { transform: scale(.9); }
+.act .act-ico {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.25rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  backdrop-filter: blur(6px);
+}
+.act .act-lbl { font-size: .62rem; font-weight: 600; letter-spacing: .02em; }
+.act.saved { color: var(--accent); }
+.act.saved .act-ico { border-color: var(--accent); background: var(--accent-dim); }
+
+/* ── First-time hint ───────────────────────────────────────────────────── */
+.hint {
+  position: fixed; left: 50%; bottom: 34px; z-index: 25;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--text-ter); font-size: .82rem; font-weight: 500;
+  pointer-events: none;
+  animation: hintFade 2.6s ease-in-out infinite;
+}
+.hint-arrow { font-size: 1.3rem; }
+@keyframes hintFade { 0%,100% { opacity: .35; transform: translate(-50%, 4px); } 50% { opacity: .9; transform: translate(-50%, -4px); } }
+
+/* ── Translation picker ────────────────────────────────────────────────── */
+.picker {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 82%, rgba(0,0,0,.5));
+  backdrop-filter: blur(8px);
+}
+.picker-card {
+  width: 100%; max-width: 400px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 30px 26px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  text-align: center;
+}
+.picker-brand { display: flex; align-items: center; justify-content: center; gap: 9px; margin-bottom: 14px; }
+.picker-icon { font-size: 1.5rem; }
+.picker-brand h2 { font-family: var(--font-display); font-size: 1.7rem; font-weight: 600; }
+.picker-lede { color: var(--text-sec); font-size: .92rem; line-height: 1.6; margin-bottom: 22px; }
+.picker-label {
+  display: block; text-align: left; font-size: .74rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--text-ter); margin-bottom: 7px;
+}
+.picker-select {
+  width: 100%; padding: 12px 14px; margin-bottom: 20px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg); color: var(--text); font-size: .95rem; font-family: inherit;
+}
+.picker-start {
+  width: 100%; padding: 13px; border: 0; border-radius: 999px;
+  background: var(--accent); color: #1a1208; font-size: 1rem; font-weight: 700;
+  transition: background var(--trans), transform var(--trans);
+}
+.picker-start:hover { background: var(--accent-hov); }
+.picker-start:active { transform: scale(.98); }
+.picker-note { margin-top: 14px; font-size: .78rem; color: var(--text-ter); }
+
+/* ── Toast ─────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: 92px; z-index: 70;
+  transform: translateX(-50%) translateY(10px);
+  padding: 11px 20px; border-radius: 999px;
+  background: var(--text); color: var(--bg);
+  font-size: .86rem; font-weight: 600;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.toast.show { opacity: .96; transform: translateX(-50%) translateY(0); }
+
+@media (min-width: 620px) {
+  .card-inner { padding-left: 40px; padding-right: 40px; }
+  .actions { right: 28px; bottom: 34px; }
+}

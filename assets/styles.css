@@ -3243,6 +3243,20 @@ body.view-mood .feelingsBtn { display: none; }
   margin-bottom: 6px;
   letter-spacing: -.25px;
 }
+.moduleCardBadge {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent-strong, #b07d1a);
+  background: var(--accent-soft, rgba(176,125,26,.12));
+  border: 1px solid var(--accent-strong, #b07d1a);
+  border-radius: 999px;
+  vertical-align: middle;
+}
 
 .moduleCardDesc {
   font-size: 13px;

@@ -4,7 +4,29 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-27 (UI consistency pass, cont. — **Explore Ayaah Connections now opens with a
+**Last updated:** 2026-07-28 (**New module — Tadabbur**, a reel-style, swipeable stream of the Qur'an
+built to answer doomscrolling: same effortless vertical swipe as Instagram/TikTok, but every swipe
+returns a *random* ayah (Arabic + the reader's chosen translation) to read and reflect on. Lives at
+`tadabbur/` (`index.html` + `css/style.css` + `js/app.js`), a new 5th? — actually 6th — landing card
+(inserted after Read Mushaf, before Search, with a "New" pill). First run asks the reader to pick ONE
+translation from all 35 (persisted `tadabbur-translation`); ⚙ changes it any time and re-renders the
+current ayah in place. Data is a slim `data/tadabbur/ayaat.json` (1.7 MB, 6236 records `{i,sn,an,s,sa,ar}`
+built from `search/data/quran.json`) — deliberately NOT the 6.6 MB quran.json, for a fast first paint;
+the translation text comes from the same `data/translations/<id>.json` the other modules use. Mechanics:
+a Fisher–Yates **shuffle bag** (no immediate repeats, reshuffles when drained), a `history[]`+`pos`
+model so swipe-down revisits and swipe-up re-advances through what you've seen. Cards are absolutely
+stacked and slid with a transform transition; **cleanup runs on a `setTimeout(440ms)` timer, NOT
+`transitionend`** — the latter is silently skipped when a transition is interrupted / its element is
+removed / the page isn't compositing, which had frozen the reel (`animating` stuck true) in the
+non-displayed preview pane. Per-card actions: Save/bookmark (heart, localStorage `tadabbur-saved`),
+Share (`navigator.share` → clipboard fallback), and Open (`../explore/#SN:AN`). Urdu editions get
+`.tr.rtl` (Noto Nastaliq Urdu, RTL). **Web-only so far** — user said "in my application"; Android would
+follow later via the sync + a native Destination (NOT started, confirm first). New file under `/data`, so
+**no manifest bump** (a brand-new path is never in any cache); module assets are fresh `?v=1`. Verified
+in-browser: picker lists 35, first card renders, ArrowDown advances through 7 distinct ayaat with no
+adjacent dup and leaves 1 card in the DOM, ArrowUp revisits history + ArrowDown re-advances, Save toggles
+♡↔♥ + writes LS, Open href `../explore/#6:66`, and switching to `ur_maududi` re-renders the current ayah
+as RTL Nastaliq. `index.html` `styles.css?v=35→36` (added `.moduleCardBadge`). Prior 2026-07-27: UI consistency pass — **Explore Ayaah Connections now opens with a
 prominent top-left `← Quran Connect` back link**, like every other module. The root `index.html` is both
 the landing (mood view) and Connections (research view) and shares one header; a `#backHome` button always
 existed but sat on the far RIGHT, buried among 8 controls (translation select, Ideas and Topics, Prophet
@@ -154,6 +176,49 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-28 — New module: Tadabbur (web only).** A reel-style, swipeable stream of the Qur'an built
+  to answer *doomscrolling* — the user wanted a module that reuses the muscle-memory of
+  Instagram/TikTok reels (effortless vertical swipe, "one more", variable reward of not knowing what's
+  next) but returns the Qur'an to read and reflect on. Every swipe shows a **random** ayah with the
+  reader's chosen translation. Named "Tadabbur" (the user picked it); card content = Arabic +
+  translation; swipe = vertical; actions = Save / Share / Open (all per the user's answers).
+  - **Files:** `tadabbur/{index.html, css/style.css, js/app.js}` + a slim `data/tadabbur/ayaat.json`
+    (1.7 MB, 6236 records `{i,sn,an,s,sa,ar}` = id, surah#, ayah#, transliterated + Arabic surah name,
+    Arabic text). **Built from `search/data/quran.json`** (stays 6236 canonical order):
+    `node -e "const q=require('./search/data/quran.json'); const out=q.map(r=>({i:r.id,sn:r.sn,an:r.an,s:r.snr,sa:r.sna,ar:r.ar})); require('fs').writeFileSync('data/tadabbur/ayaat.json', JSON.stringify(out));"`.
+    Deliberately NOT the 6.6 MB quran.json — a slim file gives the reel a fast first paint; the
+    translation text still comes from the shared `data/translations/<id>.json`.
+  - **Landing card:** new `<a href="tadabbur/">` module card in `index.html`, inserted after Read Mushaf
+    / before Search, carrying a **"New" pill** (`.moduleCardBadge`, new CSS in `assets/styles.css`).
+  - **First run** asks the reader to pick ONE translation from all 35 (grouped English / Urdu in the
+    picker); persisted to `tadabbur-translation`. The ⚙ button reopens the picker any time and
+    **re-renders the current ayah in place** (`rerenderCurrent`) with the new edition — Urdu editions
+    get `.tr.rtl` (Noto Nastaliq Urdu, RTL).
+  - **Randomness:** a Fisher–Yates **shuffle bag** (`refillBag`/`nextRandomIndex`) — no immediate
+    repeats, reshuffles when drained. A `history[]` + `pos` model means swipe-down (ArrowUp) revisits
+    the previous ayah and swipe-up (ArrowDown) re-advances forward through what you've already seen
+    before drawing a new random one.
+  - **Animation gotcha (important):** cards are absolutely stacked and slid with a transform transition;
+    cleanup runs on a **`setTimeout(440ms)` timer, NOT `transitionend`**. `transitionend` is silently
+    skipped when a transition is interrupted, its element is removed, or the page isn't compositing —
+    which froze the reel (`state.animating` stuck `true`, blocking all further nav) in the
+    non-displayed preview pane. The timer is robust to all three.
+  - **Actions per card:** Save/bookmark (heart ♡↔♥, localStorage `tadabbur-saved` array of "sn:an"),
+    Share (`navigator.share`, clipboard fallback → toast), Open (an `<a href="../explore/#SN:AN">`
+    into Explore Quran at that ayah). Gestures: touch swipe (rubber-band + `edgeAllows` edge-gating so
+    long ayaat scroll before they navigate), wheel, ArrowUp/Down/Space.
+  - **Cache/versioning:** `data/tadabbur/ayaat.json` is a brand-new `/data` path (never in any sw
+    cache), so **no `manifest.json` bump needed**; module assets are fresh `?v=1`; `index.html`
+    `styles.css?v=35→36` for the badge CSS.
+  - **Verified in-browser** (served tree, real gestures via keyboard/JS): picker lists 35 editions;
+    first card renders with Arabic + Sahih Intl; ArrowDown advances through 7 **distinct** ayaat, **no
+    adjacent duplicate**, leaving exactly 1 card in the DOM; ArrowUp revisits history and ArrowDown
+    re-advances to the same next card; Save toggles ♡↔♥ and writes localStorage; Open href
+    `../explore/#6:66`; switching to `ur_maududi` re-renders the current ayah as RTL Nastaliq Urdu.
+  - **Android:** not started. This was framed "in my application" (web); Tadabbur would later reach the
+    phone via `tools/sync_web_assets.py` (add `tadabbur/*` + `data/tadabbur` to TREES) plus a native
+    `Destination` — **confirm with the user before doing that work.**
 
 - **2026-07-27 — UI consistency + persistence pass (web + Android APK 1.4.1).** Two threads.
   **(1) Web — Search Quran header normalized.** Search Quran was the only module drawing a *divergent*

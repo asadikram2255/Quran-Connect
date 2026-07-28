@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Tadabbur — Reflect on the Qur'an</title>
+  <meta name="description" content="A calm, swipeable stream of the Qur'an. One random ayah at a time, with your chosen translation — reflection in place of doomscrolling.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E%E2%9C%A8%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/quran-fonts.css?v=1">
+  <script>
+    // Apply saved theme before first paint (shared key across all modules; default dark)
+    (function () {
+      try {
+        var t = localStorage.getItem("theme") || localStorage.getItem("explore-theme");
+        if (t !== "light") document.documentElement.setAttribute("data-theme", "dark");
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+  <!-- Slim, translucent top bar — kept out of the way so the ayah owns the screen -->
+  <header class="topbar">
+    <a class="back-link" href="../">← Quran Connect</a>
+    <div class="topbar-title">
+      <span class="topbar-icon" aria-hidden="true">✨</span>
+      <h1>Tadabbur</h1>
+    </div>
+    <div class="topbar-actions">
+      <button id="editionBtn" class="icon-btn" type="button" title="Change translation" aria-label="Change translation">⚙</button>
+      <button id="themeToggle" class="icon-btn" type="button" title="Toggle dark / light mode" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <!-- The reel: one full-screen card at a time -->
+  <main id="deck" class="deck" aria-live="polite" aria-label="Qur'an reflection stream"></main>
+
+  <!-- First-time swipe hint -->
+  <div id="hint" class="hint" hidden>
+    <span class="hint-arrow" aria-hidden="true">↑</span>
+    <span>Swipe up for the next ayah</span>
+  </div>
+
+  <!-- ── Translation picker (first run + settings) ─────────────────────── -->
+  <div id="picker" class="picker" hidden>
+    <div class="picker-card" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+      <div class="picker-brand">
+        <span class="picker-icon" aria-hidden="true">✨</span>
+        <h2 id="pickerTitle">Tadabbur</h2>
+      </div>
+      <p class="picker-lede">
+        A quiet stream of the Qur'an — one ayah at a time, chosen at random.
+        Swipe, read, reflect. Pick the translation you'd like to read alongside each ayah.
+      </p>
+      <label class="picker-label" for="editionSelect">Translation</label>
+      <select id="editionSelect" class="picker-select"></select>
+      <button id="pickerStart" class="picker-start" type="button">Begin</button>
+      <p class="picker-note">You can change this any time from the ⚙ button.</p>
+    </div>
+  </div>
+
+  <!-- Lightweight toast for share/save feedback -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>
