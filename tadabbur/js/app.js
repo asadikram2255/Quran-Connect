@@ -286,11 +286,23 @@
     var share = actionBtn("↗", "Share", "share");
     share.addEventListener("click", function () { shareAyah(ayah); });
 
-    var open = document.createElement("a");
-    open.className = "act";
-    open.href = "../explore/#" + ayah.sn + ":" + ayah.an;
-    open.title = "Open the full ayah in Explore Quran";
-    open.innerHTML = '<span class="act-ico">↔</span><span class="act-lbl">Open</span>';
+    var open;
+    if (window.QuranAndroid && window.QuranAndroid.openConnections) {
+      // Inside the Android app the reading surfaces are separate native
+      // destinations, so a WebView link would load the wrong page in this
+      // route's view; hand the jump to the native side, which opens the ayah's
+      // deep-dive (root pairs, tafseer, hadith) in Explore Ayaah Connections.
+      open = actionBtn("↔", "Open", "open");
+      open.addEventListener("click", function () {
+        window.QuranAndroid.openConnections(ayah.sn + ":" + ayah.an);
+      });
+    } else {
+      open = document.createElement("a");
+      open.className = "act";
+      open.href = "../explore/#" + ayah.sn + ":" + ayah.an;
+      open.title = "Open the full ayah in Explore Quran";
+      open.innerHTML = '<span class="act-ico">↔</span><span class="act-lbl">Open</span>';
+    }
 
     wrap.appendChild(save);
     wrap.appendChild(share);
@@ -318,6 +330,20 @@
   function shareAyah(ayah) {
     var key = ayah.sn + ":" + ayah.an;
     var text = state.trans && state.trans[key] ? state.trans[key] : "";
+    // Inside the Android app, hand off to the native share sheet the other
+    // modules use (Arabic / translation / notes toggles), rather than the
+    // web navigator.share which the WebView does not implement.
+    if (window.QuranAndroid && window.QuranAndroid.share) {
+      window.QuranAndroid.share(JSON.stringify({
+        sn: ayah.sn, an: ayah.an,
+        surahName: ayah.s,
+        arabic: ayah.ar,
+        translation: text,
+        translationName: state.editionMeta ? (state.editionMeta.name || "") : "",
+        notes: [],
+      }));
+      return;
+    }
     var body = ayah.ar + "\n\n" + (text ? text + "\n\n" : "") +
       "— " + ayah.s + " " + ayah.sn + ":" + ayah.an + " · Quran Connect";
     if (navigator.share) {
