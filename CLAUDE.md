@@ -20,8 +20,12 @@ stacked and slid with a transform transition; **cleanup runs on a `setTimeout(44
 removed / the page isn't compositing, which had frozen the reel (`animating` stuck true) in the
 non-displayed preview pane. Per-card actions: Save/bookmark (heart, localStorage `tadabbur-saved`),
 Share (`navigator.share` → clipboard fallback), and Open (`../explore/#SN:AN`). Urdu editions get
-`.tr.rtl` (Noto Nastaliq Urdu, RTL). **Web-only so far** — user said "in my application"; Android would
-follow later via the sync + a native Destination (NOT started, confirm first). New file under `/data`, so
+`.tr.rtl` (Noto Nastaliq Urdu, RTL). **Now also on Android — shipped as APK 1.4.3** after the user
+clarified the phone was the real target ("I just wanted it on the android application not the web one"):
+Share/Open became **bridge-aware** (`QuranAndroid.share`/`openConnections` when `window.QuranAndroid` is
+present, `app.js?v=1→2`, commit `cdd42f5`) and the module was synced into the app with a native Tadabbur
+destination + `android-tadabbur.css` overlay — see the Android repo's CLAUDE.md and the Last-changes
+entry below. New file under `/data`, so
 **no manifest bump** (a brand-new path is never in any cache); module assets are fresh `?v=1`. Verified
 in-browser: picker lists 35, first card renders, ArrowDown advances through 7 distinct ayaat with no
 adjacent dup and leaves 1 card in the DOM, ArrowUp revisits history + ArrowDown re-advances, Save toggles
@@ -216,9 +220,17 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
     adjacent duplicate**, leaving exactly 1 card in the DOM; ArrowUp revisits history and ArrowDown
     re-advances to the same next card; Save toggles ♡↔♥ and writes localStorage; Open href
     `../explore/#6:66`; switching to `ur_maududi` re-renders the current ayah as RTL Nastaliq Urdu.
-  - **Android:** not started. This was framed "in my application" (web); Tadabbur would later reach the
-    phone via `tools/sync_web_assets.py` (add `tadabbur/*` + `data/tadabbur` to TREES) plus a native
-    `Destination` — **confirm with the user before doing that work.**
+  - **Android — SHIPPED as APK 1.4.3** (code 14; see the Android repo's CLAUDE.md). The user clarified
+    the real target was the phone ("I just wanted it on the android application not the web one"), so the
+    web module became the WebView source for the app. Two web-repo changes made it app-ready, then it was
+    synced: (1) `data/tadabbur` + `tadabbur/{index.html,css,js}` added to the sync's TREES, with a native
+    `Tadabbur` Reading destination + landing card and an `android-tadabbur.css` overlay that collapses the
+    in-page `.topbar` (the native `TopAppBar` owns ☰/title/theme) while floating the ⚙ translation
+    switcher; (2) **Share and Open are now bridge-aware** (`tadabbur/js/app.js`, commit `cdd42f5`): when
+    `window.QuranAndroid` is present Share routes through `QuranAndroid.share({sn,an,surahName,arabic,
+    translation,translationName,notes})` and Open through `QuranAndroid.openConnections("sn:an")`; on the
+    web both keep the `navigator.share`/clipboard and `<a href="../explore/#SN:AN">` fallbacks — one
+    source of truth the sync copies verbatim (`app.js?v=1→2`). No `/data` change → still no manifest bump.
 
 - **2026-07-27 — UI consistency + persistence pass (web + Android APK 1.4.1).** Two threads.
   **(1) Web — Search Quran header normalized.** Search Quran was the only module drawing a *divergent*
