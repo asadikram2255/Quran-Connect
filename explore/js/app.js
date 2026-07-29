@@ -844,8 +844,31 @@ class ExploreApp {
 }
 
 const app = new ExploreApp();
+
+/* Native (Android) deep-link entry point. Tadabbur's "Open" hands an ayah id
+   here so the reader jumps straight to it — the same jump the web build gets
+   from the `#SN:AN` hash, but driven from the native side, which navigates to
+   this module's own WebView rather than following a link. Waits for init() to
+   have loaded the data before opening, so it is safe to call the moment the
+   page's script tag has run. */
+window.QuranExplore = {
+  open(id) {
+    const m = /^(\d{1,3}):(\d{1,3})$/.exec(String(id));
+    if (!m) return Promise.reject(new Error(`bad ayah id: ${id}`));
+    const sn = Math.min(114, Math.max(1, +m[1]));
+    const an = +m[2];
+    return new Promise((resolve, reject) => {
+      (function wait(tries) {
+        if (app._ready) { resolve(app._ready.then(() => app.openSurah(sn, an))); return; }
+        if (tries > 200) { reject(new Error('Explore Quran did not finish loading')); return; }
+        setTimeout(() => wait(tries + 1), 50);
+      })(0);
+    });
+  },
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-  app.init().catch(e => {
+  app._ready = app.init().catch(e => {
     document.getElementById('loading').hidden = false;
     document.getElementById('loading').textContent = `Failed to load data: ${e.message}`;
   });

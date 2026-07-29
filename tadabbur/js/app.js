@@ -287,14 +287,14 @@
     share.addEventListener("click", function () { shareAyah(ayah); });
 
     var open;
-    if (window.QuranAndroid && window.QuranAndroid.openConnections) {
+    if (window.QuranAndroid && window.QuranAndroid.openExplore) {
       // Inside the Android app the reading surfaces are separate native
       // destinations, so a WebView link would load the wrong page in this
-      // route's view; hand the jump to the native side, which opens the ayah's
-      // deep-dive (root pairs, tafseer, hadith) in Explore Ayaah Connections.
+      // route's view; hand the jump to the native side, which opens the full
+      // ayah in Explore Quran — the same place the web build's link points.
       open = actionBtn("↔", "Open", "open");
       open.addEventListener("click", function () {
-        window.QuranAndroid.openConnections(ayah.sn + ":" + ayah.an);
+        window.QuranAndroid.openExplore(ayah.sn + ":" + ayah.an);
       });
     } else {
       open = document.createElement("a");
