@@ -4,7 +4,17 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-28 (**New module — Tadabbur**, a reel-style, swipeable stream of the Qur'an
+**Last updated:** 2026-07-29 (**Tadabbur "Open" now targets Explore Quran, not Connections** — the web
+Tadabbur Open already linked to `../explore/#SN:AN`, but the *Android* bridge branch was calling
+`openConnections`. Fixed by adding a **`window.QuranExplore.open(id)`** deep-link entry point in
+`explore/js/app.js` (mirrors the reader's own `#SN:AN` hash jump: waits for the stored `app._ready =
+app.init()` promise, then `openSurah(sn, an)` → `_scrollToAyah` flash) and switching `tadabbur/js/app.js`
+Open to prefer `QuranAndroid.openExplore` over `openConnections`; the native side adds an `openExplore`
+bridge method that navigates the app's Explore Quran destination. `explore/index.html` `app.js?v=17→18`,
+`tadabbur/index.html` `js/app.js?v=2→3`; no `/data` change → no manifest bump. Verified in-browser:
+`QuranExplore.open('2:255')` resolves, sets `#2:255`, flashes the ayah. **Shipped in the Android app as
+APK 1.4.5** (code 16) alongside a native landing-grid polish (footer tile no longer clipped by the nav
+bar); see the Android repo's CLAUDE.md. Prior 2026-07-28: **New module — Tadabbur**, a reel-style, swipeable stream of the Qur'an
 built to answer doomscrolling: same effortless vertical swipe as Instagram/TikTok, but every swipe
 returns a *random* ayah (Arabic + the reader's chosen translation) to read and reflect on. Lives at
 `tadabbur/` (`index.html` + `css/style.css` + `js/app.js`), a new 5th? — actually 6th — landing card
@@ -180,6 +190,29 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-29 — Tadabbur "Open" now opens Explore Quran (not Explore Ayaah Connections).** The user
+  reported that in the Android app, tapping **Open** on a Tadabbur card landed in *Explore Ayaah
+  Connections* instead of *Explore Quran*. On the web the Open control was already correct (an
+  `<a href="../explore/#SN:AN">`), but the Android bridge branch was calling `QuranAndroid.openConnections`.
+  - **`explore/js/app.js` — new deep-link entry `window.QuranExplore.open(id)`.** Parses/clamps the
+    `"sn:an"` id, waits for a stored `app._ready` promise, then resolves with `app.openSurah(sn, an)`
+    (loads the surah and `_scrollToAyah`-flashes the ayah — the same jump the `#SN:AN` hash performs on a
+    fresh load). `DOMContentLoaded` now stores `app._ready = app.init().catch(…)` so the entry point can
+    await the reader being ready. This mirrors the existing `window.QuranConnections.open` contract the
+    native side already drives for the "Pairs →" jump.
+  - **`tadabbur/js/app.js` — Open prefers `QuranAndroid.openExplore`.** When the native bridge exposes
+    `openExplore`, the Open button calls `openExplore("sn:an")`; otherwise it stays the
+    `../explore/#SN:AN` link (unchanged web behaviour). One source of truth the sync copies verbatim.
+  - **Native (Android repo):** `AppBridge` gains an AYAH_ID-validated `openExplore` method and
+    `MainActivity` an `exploreAyah` state + `LaunchedEffect` that queues an `openExploreScript` (polls for
+    `window.QuranExplore`) into the Explore Quran WebView, then navigates there — the exact mirror of the
+    Connections jump. **Shipped as APK 1.4.5 (code 16)** together with a native landing-grid polish (the
+    bento footer tile was being clipped by the nav bar; tile heights trimmed + 28 dp bottom content-pad).
+  - **Cache-bust:** `explore/index.html` `app.js?v=17→18`, `tadabbur/index.html` `js/app.js?v=2→3`. No
+    `/data` file changed → **no `manifest.json` bump**. Verified in-browser (served tree):
+    `QuranExplore.open('2:255')` resolves, sets `location.hash` to `#2:255`, and the target ayah card
+    flashes into view. Sync `--check` showed only the 4 edited files differing, no PATCHES anchor drift.
 
 - **2026-07-28 — New module: Tadabbur (web only).** A reel-style, swipeable stream of the Qur'an built
   to answer *doomscrolling* — the user wanted a module that reuses the muscle-memory of
