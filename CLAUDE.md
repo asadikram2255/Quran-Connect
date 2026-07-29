@@ -32,7 +32,8 @@ root export via `QuranCsvExport.download` yields a valid `.xlsx` (PK sig, correc
 page); a word export still yields `text/csv`; the canvas webp→PNG conversion of a real book page produces
 a valid PNG. **Android — SHIPPED as APK 1.4.7** (versionCode 18): synced the changed web + overlay files,
 added the `saveXlsx` bridge + SAF launcher, bumped the two explore PATCHES anchors to v10/v20, rebuilt +
-V2-signed (SHA-1 d81d0f12…). Prior 2026-07-29: **CSV export fixed for the Android app + Urdu occurrence cards — shipped
+V2-signed (SHA-1 d81d0f12…). **Web committed (`69da682`) + pushed and DEPLOYED to Vercel prod** (aliased
+quran-connect-psi.vercel.app; live assets verified). Android committed (`b499167`), pushed. Prior 2026-07-29: **CSV export fixed for the Android app + Urdu occurrence cards — shipped
 APK 1.4.6.** Two reader improvements from user reports. **(1) "Export CSV" now works inside the app.**
 The word/root modal's Export CSV button (shared exporter `assets/ayah-export.js`, used by Explore Quran,
 Connections, Search) built a blob and clicked `<a download>` — which a **WebView silently drops**, so
@@ -293,8 +294,11 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   (`p162.webp`, 1191×1684) canvas-converts to a valid PNG. **Android — SHIPPED as APK 1.4.7** (versionCode
   18): synced the changed web + overlay files (sync `--check` clean, only the 9 edited files stale), added
   the `saveXlsx` bridge + SAF launcher, bumped the two explore PATCHES anchors 9/19 → 10/20, rebuilt +
-  V2-signed (SHA-1 `d81d0f12…`, verified), archived as `apk-releases/QuranConnect-1.4.7.apk`. **Web deploy
-  to Vercel still pending.**
+  V2-signed (SHA-1 `d81d0f12…`, verified), archived as `apk-releases/QuranConnect-1.4.7.apk`. **Web —
+  committed (`69da682`) + pushed and DEPLOYED to Vercel prod** (`npx vercel --prod`, aliased to
+  quran-connect-psi.vercel.app; verified live: `explore/index.html` serves `ayah-export.js?v=3`,
+  `book-viewer.js?v=4`, `css/style.css?v=10`, `js/app.js?v=20`, and the live `ayah-export.js` carries the
+  `saveXlsx` path). Android committed as `b499167`. Both repos clean + pushed to `origin/main`.
 
 - **2026-07-29 — CSV export works in the Android app + Urdu on the occurrence cards (web + APK 1.4.6).**
   Two user-reported reader gaps.
