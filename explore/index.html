@@ -19,7 +19,7 @@
       } catch (e) {}
     })();
   </script>
-  <link rel="stylesheet" href="css/style.css?v=9">
+  <link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 
@@ -52,22 +52,8 @@
       <div class="reader-controls" id="reader-controls">
         <button class="control-btn sidebar-toggle" id="sidebar-toggle" type="button"
                 aria-controls="sidebar" aria-expanded="false" title="Choose a surah">☰ Surahs</button>
-        <div class="control-group">
-          <button class="control-btn" id="translations-btn" type="button">Translations <span class="count-pill" id="translations-count">1</span></button>
-          <div class="control-panel" id="translations-panel" hidden></div>
-        </div>
-        <div class="control-group">
-          <button class="control-btn" id="tafsir-btn" type="button">Tafseer <span class="count-pill" id="tafsir-count">0</span></button>
-          <div class="control-panel" id="tafsir-panel" hidden></div>
-        </div>
-        <div class="control-group">
-          <button class="control-btn" id="fonts-btn" type="button">Fonts</button>
-          <div class="control-panel" id="fonts-panel" hidden></div>
-        </div>
-        <div class="control-group">
-          <button class="control-btn" id="audio-btn" type="button">Reciter</button>
-          <div class="control-panel" id="audio-panel" hidden></div>
-        </div>
+        <button class="control-btn" id="settings-btn" type="button"
+                aria-controls="settings-modal" aria-expanded="false" title="Reading settings">⚙ Settings</button>
         <label class="badges-toggle">
           <input type="checkbox" id="badges-toggle">
           <span>Words &amp; Roots</span>
@@ -78,6 +64,42 @@
       <div class="loading" id="loading" hidden>Loading…</div>
       <div class="ayah-list" id="ayah-list"></div>
     </main>
+  </div>
+
+  <!-- ── Settings modal ──────────────────────────────────────────────── -->
+  <div class="settings-overlay" id="settings-modal" hidden>
+    <div class="settings-card" role="dialog" aria-modal="true" aria-label="Reading settings">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button class="modal-close" id="settings-close" type="button">✕</button>
+      </div>
+      <div class="settings-body">
+        <section class="settings-section">
+          <h3>Translations <span class="count-pill" id="translations-count">1</span></h3>
+          <div class="settings-panel" id="translations-panel"></div>
+        </section>
+        <section class="settings-section">
+          <h3>Tafseer <span class="count-pill" id="tafsir-count">0</span></h3>
+          <div class="settings-panel" id="tafsir-panel"></div>
+        </section>
+        <section class="settings-section">
+          <h3>Fonts</h3>
+          <div class="settings-panel" id="fonts-panel"></div>
+        </section>
+        <section class="settings-section">
+          <h3>Word tiles</h3>
+          <p class="settings-note">Language shown under each Arabic word.</p>
+          <div class="wordlang-tabs" id="wordlang-tabs">
+            <button class="wordlang-tab" data-lang="en" type="button">English</button>
+            <button class="wordlang-tab" data-lang="ur" type="button">اردو</button>
+          </div>
+        </section>
+        <section class="settings-section" id="audio-section">
+          <h3>Reciter</h3>
+          <div class="settings-panel" id="audio-panel"></div>
+        </section>
+      </div>
+    </div>
   </div>
 
   <!-- ── Word / Root modal ───────────────────────────────────────────── -->
@@ -105,10 +127,10 @@
     </div>
   </div>
 
-  <script src="../assets/ayah-export.js?v=2"></script>
-  <script src="../assets/book-viewer.js?v=3"></script>
+  <script src="../assets/ayah-export.js?v=3"></script>
+  <script src="../assets/book-viewer.js?v=4"></script>
   <script src="../assets/notes.js?v=2"></script>
   <script src="../assets/notes-ui.js?v=2"></script>
-  <script src="js/app.js?v=19"></script>
+  <script src="js/app.js?v=20"></script>
 </body>
 </html>

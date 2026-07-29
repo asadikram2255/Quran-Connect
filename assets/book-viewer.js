@@ -332,5 +332,14 @@
     return wrap;
   }
 
-  window.BookViewer = { load, has, open, close, button, VERSION };
+  /** Where a root's article is, for callers that need the page rather than the
+   *  viewer — the CSV/XLSX exporter embeds this page image in a root's sheet.
+   *  Returns { page, printed, y, url } or null when the book lacks the root. */
+  function pageInfo(root) {
+    if (!has(root)) return null;
+    const [page, y] = index.roots[root];
+    return { page, printed: printedPage(page), y, url: pageUrl(page) };
+  }
+
+  window.BookViewer = { load, has, open, close, button, pageInfo, VERSION };
 })();

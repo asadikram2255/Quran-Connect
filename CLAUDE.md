@@ -4,7 +4,35 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-29 (**CSV export fixed for the Android app + Urdu occurrence cards — shipped
+**Last updated:** 2026-07-29 (**Six Android-reported fixes — shipped APK 1.4.7.** From a user report with
+screenshots. **(1) Word tiles selectable English/Urdu** (web + app): Explore Quran's per-word gloss badges
+rendered only `w.en`; a new `this.wordLang` (persisted `explore-word-lang`) now renders `w.ur` (RTL
+Nastaliq, `.wb-gloss-ur`) when Urdu, mirroring the occurrence-card toggle. **(2) Controls consolidated
+into a ⚙ Settings panel** (`#settings-modal`, a centered `.settings-overlay`): Translations, Tafseer,
+Fonts, and the new Word-tile language live inside it; "☰ Surahs", "Go to ayah", and "Words & Roots" stay
+as separate top buttons (per the user: "just those four" in settings). `_bindControls()` rewritten to open/
+close the modal + drive the wordlang tabs. **(3) One Surahs button** (Android): the app was drawing two —
+the reader's own milestone-5 drawer *and* the overlay's `installSurahPicker`; the overlay function + its
+`.surah-scrim`/`.is-open` CSS were removed (`webapp-overlay/assets/android-integration.js`, `android.css`)
+so only the reader's drawer remains. **(4) Landing captions fully visible** (Android): `strings.xml`
+blurbs shortened and bento tile heights raised (regular 112→140dp, footer 80→100dp, `maxLines=2`) in
+`LandingScreen.kt`. **(5) Root exports are now `.xlsx` with the dictionary meaning page embedded** (web +
+app): `assets/ayah-export.js` gained an offline OOXML writer (hand-built store-method ZIP + CRC32 + a
+`oneCellAnchor` image; `assets/book-viewer.js` gained `pageInfo(root)` returning the page image URL, which
+is fetched and canvas-converted webp→PNG since Excel can't render webp). A modal with a `book` (root) now
+exports `.xlsx`; word modals stay CSV. The three call sites (explore, search root-modal, connections
+`openWordModal`) pass `book`. Native: new **`QuranAndroid.saveXlsx(filename, base64)`** bridge (binary, so
+base64 over the string-only bridge) → `MainActivity` decodes + writes via a second SAF `CreateDocument`
+launcher. **(6) Font modal no longer half-off-screen** — fixed by the same (2) restructure (Fonts moved
+from an anchored `.control-panel` dropdown into the centered Settings modal). Cache-bust: `ayah-export.js
+?v=2→3`, `book-viewer.js?v=3→4` in all three module HTMLs; explore already at `css/style.css?v=10`, `js/
+app.js?v=20` from the settings work; **no `/data` change → no manifest bump**. Verified in-browser: the
+ZIP/OOXML output opens in openpyxl (sheet "Ayaat", numeric + inlineStr cells, 1 embedded image); a real
+root export via `QuranCsvExport.download` yields a valid `.xlsx` (PK sig, correct MIME, ~584 KB with the
+page); a word export still yields `text/csv`; the canvas webp→PNG conversion of a real book page produces
+a valid PNG. **Android — SHIPPED as APK 1.4.7** (versionCode 18): synced the changed web + overlay files,
+added the `saveXlsx` bridge + SAF launcher, bumped the two explore PATCHES anchors to v10/v20, rebuilt +
+V2-signed (SHA-1 d81d0f12…). Prior 2026-07-29: **CSV export fixed for the Android app + Urdu occurrence cards — shipped
 APK 1.4.6.** Two reader improvements from user reports. **(1) "Export CSV" now works inside the app.**
 The word/root modal's Export CSV button (shared exporter `assets/ayah-export.js`, used by Explore Quran,
 Connections, Search) built a blob and clicked `<a download>` — which a **WebView silently drops**, so
@@ -213,6 +241,60 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-29 — Six Android-reported reader fixes (web + APK 1.4.7).** From a user report with three
+  screenshots; standing instruction "ask questions, do not hallucinate" applied (Settings scope and the
+  xlsx-vs-CSV decision were both confirmed with the user in the prior window).
+  1. **Word tiles selectable English/Urdu** (issue 1, web + app). Explore Quran's per-word gloss badge
+     rendered only `w.en`. A new `this.wordLang` (constructor-loaded from `explore-word-lang`, default
+     `en`) makes the badge render `w.ur` when Urdu (class `wb-gloss-ur`, `lang="ur" dir="rtl"`, Nastaliq),
+     the same edition the occurrence cards already toggle. Toggled from the Settings panel (below).
+  2. **Controls consolidated into ⚙ Settings** (issue 2, web + app). The reader-controls row was a line of
+     separate popover buttons (Translations, Tafseer, Fonts…). Now Translations, Tafseer, Fonts and the
+     new Word-tile-language control live in one centered modal (`#settings-modal` → `.settings-overlay` →
+     `.settings-card`, five `.settings-section`s incl. `#audio-section` which stays hidden on Android). Per
+     the user's "just those four", the "☰ Surahs", "Go to ayah" and "Words & Roots" controls stay as
+     separate top buttons. `_bindControls()` rewritten to open/close the modal (button, ✕, backdrop click,
+     Escape) and drive the `#wordlang-tabs` `.wordlang-tab[data-lang]` pills → `this.wordLang` + repaint.
+     `explore/css/style.css` dropped `.control-group`/`.control-panel`, added the overlay/card/section/
+     wordlang styles.
+  3. **One Surahs button** (issue 3, Android). The app drew *two*: the reader's own milestone-5 slide-in
+     drawer (`#sidebar-toggle` "☰ Surahs", `.sidebar.open` + `#sidebar-backdrop`) **and** the overlay's
+     `installSurahPicker` (`.surah-open-btn` + `.surah-scrim`). Removed the overlay picker entirely —
+     `installSurahPicker()` and its `start()` call deleted from `webapp-overlay/assets/android-integration.js`,
+     and the `.is-open`/`.surah-scrim` slide-over rules in `android.css` replaced by a small
+     `@media (max-width:860px){ .sidebar{ top:0; height:100% } }` so the reader's own drawer sits flush
+     under the hidden web header. Web unaffected (its drawer was already the only one).
+  4. **Landing captions fully visible** (issue 4, Android). The bento tiles clipped their two-line blurb.
+     `strings.xml` blurbs shortened to one tight line each; `LandingScreen.kt` tile heights raised
+     (featured/regular 124/112 → 140dp, footer 80 → 100dp) with `maxLines = 2` on the description.
+  5. **Root exports are now `.xlsx` carrying the dictionary meaning page** (issue 5, web + app). Answer to
+     "the exported sheet should also have the actual meaning page from the dictionary in it" was **embed
+     the page image (.xlsx)**. `assets/ayah-export.js` gained a dependency-free, **offline** OOXML writer:
+     a store-method (no-deflate) ZIP with a CRC32 table, the minimal workbook parts, and a `oneCellAnchor`
+     drawing placing the page below the table (`EMU = px × 9525`). The page comes from a new
+     `BookViewer.pageInfo(root)` (returns `{page, printed, y, url}`); it is fetched and **canvas-converted
+     WebP→PNG** (`pngFromUrl`) because Excel cannot render WebP. `download()` branches on an `opts.book`:
+     present (a root) → `.xlsx` (native `saveXlsx` or blob), absent (a word) → CSV as before. `book` is
+     threaded from the three export call sites — `explore/js/app.js` (`st.book`), `search/js/root-modal.js`
+     (`root`), `assets/app.js` `openWordModal` (`kind === "root" ? word : undefined`). The button/label say
+     "Export" (not "Export CSV") since the format now varies. Native: **`AppBridge.saveXlsx(filename,
+     base64)`** (workbook is binary, so base64 over the string-only bridge → `Base64.decode`) →
+     `MainActivity.saveXlsx` holds the bytes and launches a second SAF `CreateDocument(
+     "…spreadsheetml.sheet")`, writing via `writeBytes`.
+  6. **Font modal no longer half off-screen** (issue 6, both). Was the anchored `.control-panel` Fonts
+     dropdown overflowing the pane; resolved by (2) — Fonts is now a section of the centered Settings modal.
+  **Cache-bust:** `ayah-export.js?v=2→3` and `book-viewer.js?v=3→4` in `index.html`, `explore/index.html`,
+  `search/index.html`; explore was already `css/style.css?v=10` / `js/app.js?v=20` from the settings work.
+  **No `/data` file changed → no `manifest.json` bump.** **Verified in-browser** (served tree): the ZIP/
+  OOXML output passes `unzip -t` and opens in openpyxl (sheet "Ayaat", numeric + inline-string cells, one
+  embedded image); `QuranCsvExport.download` with a real root (`ر ح م`) yields a valid `.xlsx` (PK sig,
+  correct MIME, ~584 KB including the page) while a word export stays `text/csv`; a real book page
+  (`p162.webp`, 1191×1684) canvas-converts to a valid PNG. **Android — SHIPPED as APK 1.4.7** (versionCode
+  18): synced the changed web + overlay files (sync `--check` clean, only the 9 edited files stale), added
+  the `saveXlsx` bridge + SAF launcher, bumped the two explore PATCHES anchors 9/19 → 10/20, rebuilt +
+  V2-signed (SHA-1 `d81d0f12…`, verified), archived as `apk-releases/QuranConnect-1.4.7.apk`. **Web deploy
+  to Vercel still pending.**
 
 - **2026-07-29 — CSV export works in the Android app + Urdu on the occurrence cards (web + APK 1.4.6).**
   Two user-reported reader gaps.

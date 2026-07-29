@@ -114,6 +114,8 @@ class ExploreApp {
     this.selectedTafsir = this._loadIds('explore-tafsir', []);
     this.currentSurah = 1;
     this.badgesOn = false;
+    // Language of the per-word gloss under each Arabic word tile (persisted).
+    this.wordLang = localStorage.getItem('explore-word-lang') === 'ur' ? 'ur' : 'en';
     this.modalLang = 'en';
     this.occUrdu = null;         // lazy Urdu translation for occurrence cards
 
@@ -289,22 +291,37 @@ class ExploreApp {
   }
 
   _bindControls() {
-    for (const kind of ['translations', 'tafsir', 'fonts', 'audio']) {
-      const btn = document.getElementById(`${kind}-btn`);
-      const panel = document.getElementById(`${kind}-panel`);
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const wasHidden = panel.hidden;
-        document.querySelectorAll('.control-panel').forEach(p => p.hidden = true);
-        panel.hidden = !wasHidden;
-        btn.classList.toggle('open', !panel.hidden);
-      });
-      panel.addEventListener('click', e => e.stopPropagation());
-    }
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.control-panel').forEach(p => p.hidden = true);
-      document.querySelectorAll('.control-btn').forEach(b => b.classList.remove('open'));
+    // Translations, Tafseer, Fonts, word-gloss language and Reciter all live in
+    // one Settings modal now (was four separate dropdown buttons that could
+    // overflow the viewport on a phone).
+    const modal = document.getElementById('settings-modal');
+    const openSettings = () => {
+      modal.hidden = false;
+      document.getElementById('settings-btn')?.classList.add('open');
+    };
+    const closeSettings = () => {
+      modal.hidden = true;
+      document.getElementById('settings-btn')?.classList.remove('open');
+    };
+    document.getElementById('settings-btn')?.addEventListener('click', openSettings);
+    document.getElementById('settings-close')?.addEventListener('click', closeSettings);
+    modal.addEventListener('click', e => { if (e.target === modal) closeSettings(); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !modal.hidden) closeSettings();
     });
+
+    // Word-gloss language tabs (English / اردو).
+    const tabs = document.querySelectorAll('#wordlang-tabs .wordlang-tab');
+    const syncTabs = () => tabs.forEach(t =>
+      t.classList.toggle('active', t.dataset.lang === this.wordLang));
+    syncTabs();
+    tabs.forEach(tab => tab.addEventListener('click', () => {
+      this.wordLang = tab.dataset.lang === 'ur' ? 'ur' : 'en';
+      localStorage.setItem('explore-word-lang', this.wordLang);
+      syncTabs();
+      this._rerenderAyaat();
+    }));
+
     document.getElementById('badges-toggle').addEventListener('change', e => {
       this.badgesOn = e.target.checked;
       document.querySelectorAll('.ayah-badges').forEach(el => el.hidden = !this.badgesOn);
@@ -397,9 +414,9 @@ class ExploreApp {
   /* ── Recitation (web only) ─────────────────────────────────────────────── */
 
   _renderAudioPanel() {
-    const group = document.getElementById('audio-btn')?.closest('.control-group');
-    if (!group) return;
-    if (this.isAndroid) { group.hidden = true; return; }   // no network in the app
+    const section = document.getElementById('audio-section');
+    if (!section) return;
+    if (this.isAndroid) { section.hidden = true; return; }   // no network in the app
 
     const panel = document.getElementById('audio-panel');
     panel.innerHTML = '<div class="font-group-title">Reciter</div>';
@@ -613,11 +630,14 @@ class ExploreApp {
         html += `<div class="ayah-badges" ${this.badgesOn ? '' : 'hidden'}>
           <div class="badges-label">Words</div>
           <div class="badges-row">${
-            words.map((w, i) =>
-              `<button class="word-badge" type="button" data-ref="${ref}" data-idx="${i}">
+            words.map((w, i) => {
+              const ur = this.wordLang === 'ur';
+              const gloss = ur ? (w.ur || w.en || '') : (w.en || '');
+              return `<button class="word-badge" type="button" data-ref="${ref}" data-idx="${i}">
                  <span class="wb-ar" lang="ar">${this._esc(stripDiacritics(stripWaPrefix(w.ar)))}</span>
-                 <span class="wb-gloss">${this._esc(w.en)}</span>
-               </button>`).join('')
+                 <span class="wb-gloss${ur ? ' wb-gloss-ur' : ''}"${ur ? ' lang="ur" dir="rtl"' : ''}>${this._esc(gloss)}</span>
+               </button>`;
+            }).join('')
           }</div>
           ${ayahRoots.length ? `<div class="badges-label">Roots</div>
           <div class="badges-row">${
@@ -783,6 +803,7 @@ class ExploreApp {
         refs: st.occurrences.map(a => `${a.sn}:${a.an}`),
         label: st.arabic,
         basePath: '../',
+        book: st.book,
       })));
     }
     this._renderOccurrences();

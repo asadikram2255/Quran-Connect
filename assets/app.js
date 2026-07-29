@@ -2008,6 +2008,7 @@ async function openWordModal(word, kind) {
       refs: ayahIds,
       label: stripDiacritics(word),
       basePath: "",
+      book: kind === "root" ? word : undefined,
     })));
   }
   els.wordModalBody.innerHTML    = `<div class="wordModalLoading">Loading ayaat…</div>`;

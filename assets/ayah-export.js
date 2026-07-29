@@ -80,15 +80,21 @@
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
-  async function buildCsv(refs, basePath, translation) {
+  const HEADER = ['Ser', 'Surah', 'Juzz', 'Ayat', 'Arabic Ayat Actual',
+    'Arabic Ayat Cleaned', 'Translation',
+    'List of Words', 'List of Root Words'];
+
+  // The shared row model both the CSV and the XLSX are built from: the header
+  // (with the chosen edition's name in the Translation column) plus one array
+  // per ayah. Cells are numbers or strings; the writers format from there.
+  async function buildRows(refs, basePath, translation) {
     const [byRef, tr] = await Promise.all([
       loadQuran(basePath || ''),
       loadTranslation(basePath || '', translation.id),
     ]);
-    const header = ['Ser', 'Surah', 'Juzz', 'Ayat', 'Arabic Ayat Actual',
-      'Arabic Ayat Cleaned', translation.name || 'Translation',
-      'List of Words', 'List of Root Words'];
-    const lines = [header.map(csvField).join(',')];
+    const header = HEADER.slice();
+    header[6] = translation.name || 'Translation';
+    const rows = [];
     let ser = 0;
     for (const ref of refs) {
       const a = byRef[ref];
@@ -96,25 +102,258 @@
       const cleaned = stripDiacriticsCsv(a.ar).replace(/\s+/g, ' ').trim();
       const words = cleaned.split(' ').filter(Boolean).join(', ');
       const roots = (a.roots || []).join(', ');
-      lines.push([
-        ++ser, a.sn, a.juz, a.an,
-        csvField(a.ar), csvField(cleaned),
-        csvField(tr[ref] || ''),
-        csvField(words), csvField(roots),
-      ].join(','));
+      rows.push([++ser, a.sn, a.juz, a.an, a.ar, cleaned,
+        tr[ref] || '', words, roots]);
     }
+    return { header, rows };
+  }
+
+  async function buildCsv(refs, basePath, translation) {
+    const { header, rows } = await buildRows(refs, basePath, translation);
+    const lines = [header.map(csvField).join(',')];
+    for (const r of rows) lines.push(r.map(csvField).join(','));
     return lines.join('\r\n');
   }
 
-  async function download({ refs, label, basePath, button, translation }) {
+  /* ── XLSX (root exports) ───────────────────────────────────────────────────
+     A root's export is a real .xlsx so the dictionary page it opens under
+     "See Meanings" can be embedded in the sheet. There is no library here (the
+     Android app has no network), so the file is hand-built: an .xlsx is just a
+     ZIP of XML parts plus the image, which the helpers below assemble. */
+
+  // CRC-32 (used by the ZIP central directory).
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  const utf8 = s => new TextEncoder().encode(s);
+
+  // A ZIP archive, all entries STOREd (no compression — valid for .xlsx and
+  // dependency-free). `files` is [{ name, data: Uint8Array }].
+  function zipStore(files) {
+    const enc = files.map(f => {
+      const name = utf8(f.name);
+      return { name, nameStr: f.name, data: f.data, crc: crc32(f.data) };
+    });
+    const chunks = [];
+    let offset = 0;
+    const central = [];
+    const u16 = n => [n & 0xFF, (n >>> 8) & 0xFF];
+    const u32 = n => [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF];
+
+    for (const f of enc) {
+      const local = [].concat(
+        u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+        u32(f.crc), u32(f.data.length), u32(f.data.length),
+        u16(f.name.length), u16(0));
+      const localHead = new Uint8Array(local);
+      chunks.push(localHead, f.name, f.data);
+      const localOffset = offset;
+      offset += localHead.length + f.name.length + f.data.length;
+
+      central.push(new Uint8Array([].concat(
+        u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+        u32(f.crc), u32(f.data.length), u32(f.data.length),
+        u16(f.name.length), u16(0), u16(0), u16(0), u16(0), u32(0),
+        u32(localOffset))));
+      central.push(f.name);
+    }
+    const centralStart = offset;
+    let centralSize = 0;
+    for (const c of central) centralSize += c.length;
+    const end = new Uint8Array([].concat(
+      u32(0x06054b50), u16(0), u16(0), u16(enc.length), u16(enc.length),
+      u32(centralSize), u32(centralStart), u16(0)));
+
+    const total = offset + centralSize + end.length;
+    const out = new Uint8Array(total);
+    let p = 0;
+    for (const c of chunks) { out.set(c, p); p += c.length; }
+    for (const c of central) { out.set(c, p); p += c.length; }
+    out.set(end, p);
+    return out;
+  }
+
+  const xmlEsc = s => String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Strip characters XML 1.0 forbids, so a stray control byte can't corrupt the file.
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
+  function colName(i) {
+    let s = '';
+    i += 1;
+    while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - m - 1) / 26; }
+    return s;
+  }
+
+  function sheetXml(header, rows, hasImage) {
+    const all = [header, ...rows];
+    let body = '';
+    all.forEach((row, r) => {
+      const rn = r + 1;
+      let cells = '';
+      row.forEach((val, c) => {
+        const ref = colName(c) + rn;
+        if (typeof val === 'number' && isFinite(val)) {
+          cells += `<c r="${ref}"><v>${val}</v></c>`;
+        } else {
+          cells += `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(val)}</t></is></c>`;
+        }
+      });
+      body += `<row r="${rn}">${cells}</row>`;
+    });
+    const drawing = hasImage ? '<drawing r:id="rId1"/>' : '';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetData>${body}</sheetData>${drawing}</worksheet>`;
+  }
+
+  const EMU_PER_PX = 9525;   // at 96 dpi
+
+  function drawingXml(anchorRow, cx, cy) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${anchorRow}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="${cx}" cy="${cy}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="1" name="Dictionary meaning"/><xdr:cNvPicPr/></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>`;
+  }
+
+  // Fetch a book page (WebP) and re-encode as PNG — Excel cannot render WebP,
+  // and the page is text on white, so PNG keeps it crisp. Returns
+  // { bytes, width, height } or null if anything about it fails.
+  async function pngFromUrl(url) {
+    try {
+      const img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      if (!blob) return null;
+      return { bytes: new Uint8Array(await blob.arrayBuffer()),
+        width: img.naturalWidth, height: img.naturalHeight };
+    } catch { return null; }
+  }
+
+  // Build the .xlsx bytes from the shared rows plus an optional page image.
+  function buildXlsxBytes(header, rows, image) {
+    const hasImage = !!image;
+    const parts = [];
+    parts.push({ name: '[Content_Types].xml', data: utf8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${hasImage ? '<Default Extension="png" ContentType="image/png"/>' : ''}<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>${hasImage ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : ''}</Types>`) });
+    parts.push({ name: '_rels/.rels', data: utf8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`) });
+    parts.push({ name: 'xl/workbook.xml', data: utf8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Ayaat" sheetId="1" r:id="rId1"/></sheets></workbook>`) });
+    parts.push({ name: 'xl/_rels/workbook.xml.rels', data: utf8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`) });
+
+    let anchorRow = 0, cx = 0, cy = 0;
+    if (hasImage) {
+      anchorRow = header.length + rows.length + 2;   // a blank row under the table
+      const displayW = Math.min(image.width, 1100);
+      const k = displayW / image.width;
+      cx = Math.round(image.width * k * EMU_PER_PX);
+      cy = Math.round(image.height * k * EMU_PER_PX);
+    }
+    parts.push({ name: 'xl/worksheets/sheet1.xml', data: utf8(sheetXml(header, rows, hasImage)) });
+
+    if (hasImage) {
+      parts.push({ name: 'xl/worksheets/_rels/sheet1.xml.rels', data: utf8(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`) });
+      parts.push({ name: 'xl/drawings/drawing1.xml', data: utf8(drawingXml(anchorRow, cx, cy)) });
+      parts.push({ name: 'xl/drawings/_rels/drawing1.xml.rels', data: utf8(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/></Relationships>`) });
+      parts.push({ name: 'xl/media/image1.png', data: image.bytes });
+    }
+    return zipStore(parts);
+  }
+
+  // base64 for handing binary to the native saveXlsx bridge (no network).
+  function base64FromBytes(bytes) {
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
+
+  // Build the whole .xlsx for a set of refs, embedding the book page for `book`
+  // (a root) when the dictionary has it.
+  async function buildXlsx(refs, basePath, translation, book) {
+    const { header, rows } = await buildRows(refs, basePath, translation);
+    let image = null;
+    if (book && window.BookViewer && typeof BookViewer.pageInfo === 'function') {
+      // The host module already kicked off BookViewer.load with the right base
+      // when the modal opened; awaiting the cached promise makes sure the index
+      // is ready before pageInfo reads it.
+      try { if (BookViewer.load) await BookViewer.load(); } catch {}
+      const info = BookViewer.pageInfo(book);
+      if (info) image = await pngFromUrl(info.url);
+    }
+    return buildXlsxBytes(header, rows, image);
+  }
+
+  const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+  function safeName(label) {
+    const safe = String(label || 'ayaat').replace(/[\\/:*?"<>|\s]+/g, '-').replace(/^-+|-+$/g, '');
+    return safe || 'export';
+  }
+
+  function downloadBlob(blob, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  // A root export is an .xlsx carrying the dictionary meaning page; a word export
+  // (or any modal with no root) stays a CSV. `book`, when set, is the root whose
+  // page is embedded.
+  async function download({ refs, label, basePath, button, translation, book }) {
     const restore = button ? button.textContent : null;
     if (button) { button.disabled = true; button.textContent = 'Exporting…'; }
     try {
+      if (book) {
+        const bytes = await buildXlsx(refs, basePath || '', translation, book);
+        const filename = 'quran-ayaat-' + safeName(label) + '-' + refs.length + '.xlsx';
+        // Inside the Android app a blob <a download> silently does nothing, so hand
+        // the bytes (base64, since the bridge takes only strings) to the native
+        // side, which writes them through the system "Save as" dialog.
+        if (window.QuranAndroid && typeof window.QuranAndroid.saveXlsx === 'function') {
+          window.QuranAndroid.saveXlsx(filename, base64FromBytes(bytes));
+          return;
+        }
+        downloadBlob(new Blob([bytes], { type: XLSX_MIME }), filename);
+        return;
+      }
       const csv = await buildCsv(refs, basePath, translation);
       // UTF-8 BOM so Excel renders Arabic/Urdu correctly
       const withBom = '\uFEFF' + csv;
-      const safe = String(label || 'ayaat').replace(/[\\/:*?"<>|\s]+/g, '-').replace(/^-+|-+$/g, '');
-      const filename = 'quran-ayaat-' + (safe || 'export') + '-' + refs.length + '.csv';
+      const filename = 'quran-ayaat-' + safeName(label) + '-' + refs.length + '.csv';
       // Inside the Android app a blob <a download> silently does nothing, so hand
       // the finished CSV to the native side, which writes it through the system
       // "Save as" dialog and shows its own confirmation.
@@ -122,14 +361,7 @@
         window.QuranAndroid.saveCsv(filename, withBom);
         return;
       }
-      const blob = new Blob([withBom], { type: 'text/csv;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      downloadBlob(new Blob([withBom], { type: 'text/csv;charset=utf-8' }), filename);
     } catch (e) {
       console.error('[ayah-export]', e);
       alert('Export failed: ' + e.message);
@@ -187,7 +419,7 @@
       const ok = document.createElement('button');
       ok.type = 'button';
       ok.className = 'csv-pick-btn csv-pick-ok';
-      ok.textContent = 'Export CSV';
+      ok.textContent = 'Export';
 
       function close(result) {
         overlay.remove();
@@ -218,8 +450,8 @@
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'csv-export-btn';
-    btn.textContent = 'Export CSV';
-    btn.title = 'Download all listed ayaat as a CSV file';
+    btn.textContent = 'Export';
+    btn.title = 'Download all listed ayaat as a spreadsheet';
     btn.addEventListener('click', async e => {
       e.stopPropagation();
       const opts = getExport();

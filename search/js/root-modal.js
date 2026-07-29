@@ -35,6 +35,7 @@ Object.assign(QuranApp.prototype, {
           .map(a => `${a.sn}:${a.an}`),
         label: root,
         basePath: '../',
+        book: root,
       })));
     }
 
