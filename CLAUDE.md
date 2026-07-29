@@ -4,7 +4,30 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-29 (**Tadabbur "Open" now targets Explore Quran, not Connections** — the web
+**Last updated:** 2026-07-29 (**CSV export fixed for the Android app + Urdu occurrence cards — shipped
+APK 1.4.6.** Two reader improvements from user reports. **(1) "Export CSV" now works inside the app.**
+The word/root modal's Export CSV button (shared exporter `assets/ayah-export.js`, used by Explore Quran,
+Connections, Search) built a blob and clicked `<a download>` — which a **WebView silently drops**, so
+nothing happened on the phone. Fix: `download()` now checks for the native bridge and, when present,
+hands the finished CSV text to **`QuranAndroid.saveCsv(filename, content)`** instead of the blob path;
+the web build keeps the blob download. The new bridge method (`AppBridge.kt`) routes to `MainActivity`,
+which writes the file through the **Storage Access Framework** (`ActivityResultContracts.CreateDocument
+("text/csv")` → system "Save as" picker → `contentResolver`, no storage permission on any API level) and
+toasts the result. Per the user's ask the export now **first asks which single translation to include**
+(`pickTranslation` modal, all 35 editions grouped English/Urdu, default en_sahih) and that edition
+becomes the sheet's **one Translation column**, replacing the two previously-hardcoded columns.
+**(2) Urdu on the occurrence cards.** Explore Quran's word-modal occurrence list showed only the English
+translation; it now shows Urdu too (ur_junagarhi, RTL Nastaliq), toggled by the **same English/اردو
+switch that already governs the meanings block** — the occurrence render was split into
+`_renderOccurrences()`, the lang-tab handler repaints both, and the Urdu edition is lazy-loaded
+(`_ensureOccUrdu`); roots keep English (no toggle). Cache-bust: `ayah-export.js?v=1→2` in all three
+module HTMLs; `explore/index.html` `css/style.css?v=8→9`, `js/app.js?v=18→19`; **no `/data` file changed
+→ no manifest bump**. Verified in-browser: Export CSV opens the 35-edition picker (12 en / 23 ur),
+choosing Maududi(Urdu) yields a CSV whose single translation column is headed "Maududi (Urdu)" with the
+Urdu text; the word modal's اردو tab renders Urdu occurrence cards RTL and toggling back restores English.
+**Android — SHIPPED as APK 1.4.6** (versionCode 17): synced the four changed web files, added the
+`saveCsv` bridge + SAF launcher, bumped the two explore PATCHES anchors to v9/v19, rebuilt + V2-signed
+(SHA-1 d81d0f12…). Prior 2026-07-29: **Tadabbur "Open" now targets Explore Quran, not Connections** — the web
 Tadabbur Open already linked to `../explore/#SN:AN`, but the *Android* bridge branch was calling
 `openConnections`. Fixed by adding a **`window.QuranExplore.open(id)`** deep-link entry point in
 `explore/js/app.js` (mirrors the reader's own `#SN:AN` hash jump: waits for the stored `app._ready =
@@ -190,6 +213,52 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-29 — CSV export works in the Android app + Urdu on the occurrence cards (web + APK 1.4.6).**
+  Two user-reported reader gaps.
+  **(1) "Export CSV" was dead inside the app.** The shared exporter `assets/ayah-export.js`
+  (`window.QuranCsvExport = { buildCsv, download, makeButton }`, used by Explore Quran, Explore Ayaah
+  Connections and Search) built the CSV as a Blob and triggered a `<a href="blob:…" download>.click()`.
+  That works in a desktop browser but a **WebView silently drops the blob download**, so on the phone the
+  button did nothing. Fix: `download()` now, *before* the blob path, checks
+  `window.QuranAndroid && typeof QuranAndroid.saveCsv === 'function'` and if so calls
+  **`QuranAndroid.saveCsv(filename, withBom)`** (the CSV text, UTF-8 BOM already prepended) and returns;
+  the web build is unchanged (still downloads the blob). Native side (Android repo): a new
+  `AppBridge.Host.saveCsv` + `@JavascriptInterface fun saveCsv` hands the text to `MainActivity`, which
+  saves it via the **Storage Access Framework** — a field-registered
+  `registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv"))` launcher opens the
+  system "Save as" picker (no storage permission on any API level, minSdk 26), and the result callback
+  writes the held `pendingCsv` through `contentResolver.openOutputStream` and toasts success/failure.
+  **Also (user's second ask):** the export now **asks which single translation to include first** — a new
+  `pickTranslation(basePath)` modal (`.csv-pick-*`) lists all 35 editions grouped English/Urdu (default
+  `en_sahih`); the chosen edition becomes the sheet's **one dynamically-named Translation column**,
+  replacing the two previously-hardcoded translation columns. `buildCsv(refs, basePath, translation)`
+  emits that single column (`translation.name` as its header); `makeButton`'s click handler is now async
+  (show picker → cancel aborts → `download({…, translation})`). The data loaders were also reworked
+  (`loadQuran`/`loadTranslation`/`loadIndex`, per-id translation cache) since the file no longer loads a
+  fixed pair of translations.
+  **(2) Urdu on the occurrence cards.** In Explore Quran's word modal, the occurrence list under
+  "Occurrences — N ayaat contain this word" rendered only the English translation, even though the
+  meanings block above it has an English/اردو toggle. Now each occurrence card follows that **same
+  toggle**: the render was extracted into `_renderOccurrences()`, the `.lang-tab` handler (`_bindModal`)
+  repaints both meanings and occurrences, the Urdu edition (`ur_junagarhi`) is lazy-loaded by a new
+  `_ensureOccUrdu()`, and Urdu text renders `.occ-ur` (RTL, Nastaliq — new CSS in `explore/css/style.css`).
+  **Root** modals keep English (they have no language toggle). `_renderModal` also pre-loads Urdu when the
+  modal opens already on the اردو tab.
+  **Cache-bust:** `ayah-export.js?v=1→2` in `explore/index.html`, `index.html`, `search/index.html`;
+  `explore/index.html` `css/style.css?v=8→9`, `js/app.js?v=18→19`. **No `/data` file changed, so no
+  `manifest.json` bump.**
+  **Verified in-browser** (served tree, real DOM): opening a word badge → modal with 5 English occurrence
+  cards + an Export CSV button; the اردو tab repaints the occurrence cards as RTL Nastaliq Urdu
+  (ur_junagarhi) and English restores on toggle-back; Export CSV opens the picker listing 35 editions
+  (12 English / 23 Urdu, default Sahih Intl); building with Maududi(Urdu) yields a CSV whose header has a
+  single `Maududi (Urdu)` column carrying the Urdu text, columns
+  `Ser,Surah,Juzz,Ayat,Arabic Ayat Actual,Arabic Ayat Cleaned,<Translation>,List of Words,List of Root Words`.
+  **Android — SHIPPED as APK 1.4.6** (versionCode 17, versionName 1.4.6; see the Android repo's CLAUDE.md):
+  `tools/sync_web_assets.py` copied the four changed web files (ayah-export.js is in TREES, verbatim), the
+  two `explore/index.html` PATCHES anchors were bumped **v8→v9 / v18→v19** (a stale anchor is a hard sync
+  error), and the native `saveCsv` bridge + SAF launcher were added; rebuilt and **V2-signed** with the
+  unchanged v2 release key (SHA-1 `d81d0f12…`), so 1.4.5→1.4.6 upgrades cleanly.
 
 - **2026-07-29 — Tadabbur "Open" now opens Explore Quran (not Explore Ayaah Connections).** The user
   reported that in the Android app, tapping **Open** on a Tadabbur card landed in *Explore Ayaah

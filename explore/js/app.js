@@ -115,6 +115,7 @@ class ExploreApp {
     this.currentSurah = 1;
     this.badgesOn = false;
     this.modalLang = 'en';
+    this.occUrdu = null;         // lazy Urdu translation for occurrence cards
 
     // Font choices (persisted). '' = stylesheet default.
     this.fonts = {
@@ -688,11 +689,13 @@ class ExploreApp {
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.hidden = true; });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.hidden = true; });
     document.querySelectorAll('.lang-tab').forEach(tab =>
-      tab.addEventListener('click', () => {
+      tab.addEventListener('click', async () => {
         this.modalLang = tab.dataset.lang;
         document.querySelectorAll('.lang-tab').forEach(t =>
           t.classList.toggle('active', t === tab));
         this._renderMeanings();
+        if (this.modalLang === 'ur') { try { await this._ensureOccUrdu(); } catch (e) {} }
+        this._renderOccurrences();
       }));
   }
 
@@ -782,17 +785,44 @@ class ExploreApp {
         basePath: '../',
       })));
     }
+    this._renderOccurrences();
+    // Word modals remember the last language choice. If it is Urdu, the Urdu
+    // translation for the occurrence cards may not be loaded yet — fetch it,
+    // then repaint the list. (Roots always stay English — see _renderOccurrences.)
+    if (this.modalLang === 'ur' && !st.book && !this.occUrdu) {
+      this._ensureOccUrdu().then(() => this._renderOccurrences()).catch(() => {});
+    }
+    document.getElementById('word-modal').hidden = false;
+    document.querySelector('.modal').scrollTop = 0;
+  }
+
+  // Lazily loads the Urdu edition used for the occurrence cards' translation.
+  async _ensureOccUrdu() {
+    if (!this.occUrdu) {
+      this.occUrdu = await this._json('../data/translations/ur_junagarhi.json');
+    }
+    return this.occUrdu;
+  }
+
+  // The occurrence list. Each card shows the ayah's Arabic plus — following the
+  // meanings language toggle — either the English or the Urdu translation. Root
+  // modals hide the toggle, so their occurrence list stays English.
+  _renderOccurrences() {
+    const st = this._modalState;
+    if (!st) return;
+    const urdu = !st.book && this.modalLang === 'ur';
     const host = document.getElementById('modal-occurrences');
     host.innerHTML = '';
     const MAX = 60;
     for (const a of st.occurrences.slice(0, MAX)) {
+      const text = urdu ? (this.occUrdu?.[`${a.sn}:${a.an}`] || '') : (a.en || '');
       const btn = document.createElement('button');
       btn.className = 'occ-item';
       btn.type = 'button';
       btn.innerHTML = `
         <span class="occ-ref">${a.sn}:${a.an} · ${this._esc(a.snr)}</span>
         <span class="occ-ar" lang="ar">${this._esc(a.ar)}</span>
-        <span class="occ-en">${this._esc((a.en || '').slice(0, 180))}</span>`;
+        <span class="occ-en${urdu ? ' occ-ur' : ''}"${urdu ? ' lang="ur" dir="rtl"' : ''}>${this._esc(text.slice(0, 180))}</span>`;
       btn.addEventListener('click', () => {
         document.getElementById('word-modal').hidden = true;
         this.openSurah(a.sn, a.an);
@@ -805,8 +835,6 @@ class ExploreApp {
       more.textContent = `…and ${st.occurrences.length - MAX} more`;
       host.appendChild(more);
     }
-    document.getElementById('word-modal').hidden = false;
-    document.querySelector('.modal').scrollTop = 0;
   }
 
   _renderMeanings() {

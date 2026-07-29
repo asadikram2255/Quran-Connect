@@ -371,6 +371,10 @@ button { font-family: inherit; cursor: pointer; }
 .occ-ref { font-size: .7rem; font-weight: 700; color: var(--accent); }
 .occ-ar { font-family: var(--font-ar); font-size: 1.15rem; direction: rtl; text-align: right; display: block; margin: 3px 0; color: var(--text); }
 .occ-en { font-size: .78rem; color: var(--text-sec); display: block; }
+.occ-ur {
+  font-family: var(--font-ur), "Noto Nastaliq Urdu", serif;
+  direction: rtl; text-align: right; font-size: .95rem; line-height: 2.1;
+}
 .occ-more { text-align: center; font-size: .78rem; color: var(--text-ter); padding: 6px; }
 
 /* The "☰ Surahs" button and the drawer backdrop only exist on narrow screens. */
