@@ -4,7 +4,14 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-29 (**Six Android-reported fixes — shipped APK 1.4.7.** From a user report with
+**Last updated:** 2026-07-29 (**Tadabbur action buttons repositioned so they no longer cover the ayah.** In
+the Tadabbur reel, the per-card Save / Share / Open buttons floated over the text and could obscure it on
+longer ayaat. `tadabbur/css/style.css` now lays them out as a **bottom-centered `.actions` bar** with a
+click-through scrim (the bar sits clear of the text column), and `tadabbur/index.html` bumps
+`css/style.css?v=1→2`. No `/data` change → no manifest bump. This is the web source of a change primarily
+targeting the Android app; it was synced into `quran-connect-android` and shipped in **APK 1.5.1** alongside
+three Journal fixes — see that repo's CLAUDE.md. **Web not yet committed/deployed** (awaiting the usual
+commit-then-`npx vercel --prod`). Prior 2026-07-29: **Six Android-reported fixes — shipped APK 1.4.7.** From a user report with
 screenshots. **(1) Word tiles selectable English/Urdu** (web + app): Explore Quran's per-word gloss badges
 rendered only `w.en`; a new `this.wordLang` (persisted `explore-word-lang`) now renders `w.ur` (RTL
 Nastaliq, `.wb-gloss-ur`) when Urdu, mirroring the occurrence-card toggle. **(2) Controls consolidated
@@ -242,6 +249,15 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-29 — Tadabbur buttons no longer cover the ayah text.** User report: in the Tadabbur reel the
+  per-card **Save / Share / Open** controls floated on top of the ayah and, on longer ayaat, obscured the text.
+  `tadabbur/css/style.css` moves them into a **bottom-centered `.actions` bar** kept clear of the text column,
+  with a click-through scrim so the bar's surround doesn't swallow swipes; `tadabbur/index.html` bumps
+  `css/style.css?v=1→2`. **No `/data` file changed → no `manifest.json` bump.** This is the web source for an
+  Android-targeted fix: it was synced into `quran-connect-android` (sync PATCHES anchor for `tadabbur/index.html`
+  bumped `css/style.css?v=1→2` to match) and shipped in **APK 1.5.1** with three Journal fixes — see that
+  repo's CLAUDE.md. **Web change is not yet committed or deployed** — commit and `npx vercel --prod` when ready.
 
 - **2026-07-29 — Six Android-reported reader fixes (web + APK 1.4.7).** From a user report with three
   screenshots; standing instruction "ask questions, do not hallucinate" applied (Settings scope and the
