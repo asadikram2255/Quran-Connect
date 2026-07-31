@@ -25,7 +25,7 @@
   let ui = null;                   // built on first open
   let current = 0;                 // page on screen
   let scale = 1;                   // book-page zoom (1 = fit width)
-  const MIN_ZOOM = 1, MAX_ZOOM = 5;
+  const MIN_ZOOM = 1, MAX_ZOOM = 8;
 
   function load(basePath) {
     if (loading) return loading;
@@ -235,28 +235,39 @@
     const mid = t => ({ x: (t[0].clientX + t[1].clientX) / 2,
                         y: (t[0].clientY + t[1].clientY) / 2 });
 
+    // Begin (or re-seed) a pinch from the current two fingers.
+    const beginPinch = touches => { dist0 = dist(touches) || 0; scale0 = scale; };
+
     ui.scroll.addEventListener("touchstart", e => {
-      if (e.touches.length === 2) { dist0 = dist(e.touches); scale0 = scale; }
+      if (e.touches.length >= 2) beginPinch(e.touches);
     }, { passive: true });
 
     ui.scroll.addEventListener("touchmove", e => {
-      if (e.touches.length === 2 && dist0 > 0) {
+      if (e.touches.length >= 2) {
+        // Some WebViews drop or coalesce the second finger's touchstart, so a
+        // pinch can arrive here with dist0 still 0 and never zoom. Seed it from
+        // this frame instead of ignoring the gesture — this is the fix for
+        // "pinch doesn't work" on certain pages/opens.
+        if (dist0 <= 0) { beginPinch(e.touches); return; }
         e.preventDefault();                   // we drive the zoom, not the page
         const m = mid(e.touches);
         zoomTo(scale0 * (dist(e.touches) / dist0), m.x, m.y);
       }
     }, { passive: false });
 
-    ui.scroll.addEventListener("touchend", e => {
-      if (e.touches.length < 2) dist0 = 0;
+    const endPinch = e => {
+      if (e.touches.length < 2) dist0 = 0;    // drop back to pan/tap handling
       if (e.touches.length === 0 && e.changedTouches.length === 1) {
         const now = Date.now(), t = e.changedTouches[0];
-        if (now - lastTap < 300) {            // double-tap toggles zoom
-          zoomTo(scale > 1 ? 1 : 2.5, t.clientX, t.clientY);
+        if (now - lastTap < 300) {            // double-tap steps through zoom
+          const nextScale = scale > 3.5 ? 1 : scale > 1 ? 4 : 2.5;
+          zoomTo(nextScale, t.clientX, t.clientY);
           lastTap = 0;
         } else { lastTap = now; }
       }
-    });
+    };
+    ui.scroll.addEventListener("touchend", endPinch);
+    ui.scroll.addEventListener("touchcancel", endPinch);
   }
 
   // `y` is where the root's headword sits, 0-1 down the page; null when we are

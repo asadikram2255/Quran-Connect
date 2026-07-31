@@ -4,7 +4,27 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-29 (**Tadabbur action buttons repositioned so they no longer cover the ayah.** In
+**Last updated:** 2026-07-31 (**Web side of a mainly-Android session: Explore Quran text-size sliders,
+Ideas-and-Topics light-mode fix, and book-viewer pinch-zoom hardening.** Three of six user-requested
+Android improvements had a web source. **(Req3) Explore Quran text is now resizable** — a new **Text size**
+section in the ⚙ Settings modal with two sliders (Arabic ayah, and Translation+Tafseer together, 70–180%,
+persisted `explore-size-ar`/`explore-size-tr`) plus a **Reset to default**. They drive two CSS custom
+properties `--ayah-ar-scale`/`--ayah-tr-scale` that multiply the ayah / translation / tafseer font sizes
+(`explore/css/style.css`, wired by `_loadSize`/`_applyTextSizes`/`_bindTextSize` in `explore/js/app.js`).
+**(Req5) Ideas-and-Topics (and Prophet Stories / Statistics) overlays were invisible in light mode** — the
+full-screen overlays shipped only a dark-navy backdrop, so in light mode the now-dark text sat on a
+still-dark scrim. `assets/styles.css` adds `[data-theme="light"]` rules giving the overlay a parchment
+scrim and the flat panels/headers a light surface. **(Req6) Book-viewer pinch-zoom hardened** — some
+WebViews drop/coalesce the second finger's `touchstart`, so a pinch arrived at `touchmove` with `dist0=0`
+and never zoomed; `assets/book-viewer.js` now seeds the pinch from the first two-finger `touchmove` frame
+(`beginPinch`), accepts `≥2` touches, adds `touchcancel` cleanup, raises `MAX_ZOOM` 5→8, and makes
+double-tap step 1×→2.5×→4×→1×. **No `/data` file changed → no `manifest.json` bump**; the touched assets
+are under `/assets` and `/explore`, cache-busted by `?v=`: `assets/styles.css?v=36→37`,
+`assets/book-viewer.js?v=4→5` (root + `search/` + `explore/`), `explore/css/style.css?v=10→11`,
+`explore/js/app.js?v=20→21`. **The Android app carries all three** (the sliders + light-mode fix via the
+synced explore/root files; pinch-zoom via the synced `book-viewer.js`) and shipped them with the three
+Journal features in **APK 1.6.0** — see the Android repo's CLAUDE.md. **Web not yet committed/deployed**
+(awaiting the usual commit-then-`npx vercel --prod`). Prior 2026-07-29: **Tadabbur action buttons repositioned so they no longer cover the ayah.** In
 the Tadabbur reel, the per-card Save / Share / Open buttons floated over the text and could obscure it on
 longer ayaat. `tadabbur/css/style.css` now lays them out as a **bottom-centered `.actions` bar** with a
 click-through scrim (the bar sits clear of the text column), and `tadabbur/index.html` bumps
@@ -249,6 +269,39 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-07-31 — Web side of three Android reader improvements: text-size sliders, light-mode overlay fix,
+  pinch-zoom hardening.** From a six-item user request against the Android app; three items had a web
+  source (the other three — Journal ayah deep-link, ayah counter, two-mode note export — are Android-only,
+  see that repo). Standing "ask, don't hallucinate" applied (the slider/bundled-font/translation scopes were
+  confirmed with the user in a prior window).
+  1. **(Req3) Explore Quran fonts/sizes are now adjustable.** A new **Text size** section in the ⚙ Settings
+     modal (`explore/index.html`) holds two range sliders — **Arabic (ayah)** and **Translation & tafseer**
+     — each 70–180% (step 5) with a live `%` readout and a **Reset to default** button. They persist to
+     `explore-size-ar` / `explore-size-tr` and drive two CSS custom properties `--ayah-ar-scale` /
+     `--ayah-tr-scale` that multiply the base font sizes of `.ayah-arabic`, `.ayah-tr`(+`.urdu`) and
+     `.tafsir-text`(+`.urdu`) — including the narrow-screen `.ayah-arabic` override
+     (`explore/css/style.css`). Wired by `_loadSize` (clamps to 70–180, default 100), `_applyTextSizes`
+     (sets the root vars) and `_bindTextSize` (sliders + reset), called from `init()` after `_applyFonts`
+     (`explore/js/app.js`). The Fonts family picker already existed; this adds the *size* control the user
+     asked for.
+  2. **(Req5) "Ideas and Topics" (and Prophet Stories / Statistics) were invisible in light mode.** Those
+     full-screen overlays (`.feelingsOverlay` / `.prophetsOverlay` / `.statsOverlay`) shipped only a
+     dark-navy backdrop; in light mode the text flips dark and vanished against it. `assets/styles.css`
+     adds `[data-theme="light"]` rules: a parchment radial scrim on the overlays, `--surface-3` on the flat
+     panels, and a faint dark tint on the headers. Dark mode untouched.
+  3. **(Req6) Book-viewer pinch-zoom failed for some pages/opens.** Some WebViews drop or coalesce the
+     second finger's `touchstart`, so a pinch reached `touchmove` with `dist0` still 0 and never zoomed.
+     `assets/book-viewer.js` now **seeds the pinch from the first `≥2`-finger `touchmove` frame**
+     (`beginPinch`) instead of ignoring it, accepts `≥2` touches throughout, adds a `touchcancel` cleanup,
+     raises `MAX_ZOOM` 5→8, and makes double-tap **step** 1×→2.5×→4×→1× (was a 1×↔2.5× toggle).
+  **Cache-bust:** `assets/styles.css?v=36→37` (root `index.html`); `assets/book-viewer.js?v=4→5` in
+  `index.html`, `search/index.html`, `explore/index.html`; `explore/css/style.css?v=10→11`,
+  `explore/js/app.js?v=20→21`. **No `/data` file changed → no `manifest.json` bump.** **Android — carries all
+  three and shipped them with the three Journal features as APK 1.6.0** (versionCode 21): the sync copied the
+  changed root/explore files + `book-viewer.js` (its PATCHES anchors bumped `styles.css?v=36→37`,
+  explore `css/style.css?v=10→11`, `app.js?v=20→21`), rebuilt + V2-signed (SHA-1 `d81d0f12…`). **Web not
+  yet committed or deployed** — commit and `npx vercel --prod` when ready.
 
 - **2026-07-29 — Tadabbur buttons no longer cover the ayah text.** User report: in the Tadabbur reel the
   per-card **Save / Share / Open** controls floated on top of the ayah and, on longer ayaat, obscured the text.

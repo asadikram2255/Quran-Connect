@@ -185,6 +185,15 @@ button { font-family: inherit; cursor: pointer; }
 .settings-note { font-size: .76rem; color: var(--text-ter); margin: -4px 0 10px; }
 .settings-panel { display: flex; flex-direction: column; gap: 2px; }
 
+/* Text-size sliders. */
+.size-panel { gap: 12px; }
+.size-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label value" "slider slider"; align-items: center; gap: 4px 10px; }
+.size-row .size-label { grid-area: label; font-size: .84rem; font-weight: 600; color: var(--text); }
+.size-row .size-value { grid-area: value; font-size: .78rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.size-row input[type="range"] { grid-area: slider; width: 100%; accent-color: var(--accent); cursor: pointer; }
+.size-reset { align-self: flex-start; margin-top: 2px; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: .78rem; font-weight: 600; color: var(--text-sec); cursor: pointer; }
+.size-reset:hover { color: var(--text); border-color: var(--accent); }
+
 /* Word-tile language toggle (English / اردو). */
 .wordlang-tabs {
   display: inline-flex; gap: 4px; padding: 3px;
@@ -298,13 +307,13 @@ button { font-family: inherit; cursor: pointer; }
 .cont-option { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border); }
 
 .ayah-arabic {
-  font-family: var(--font-ar); font-size: 1.75rem; line-height: 2.3;
+  font-family: var(--font-ar); font-size: calc(1.75rem * var(--ayah-ar-scale, 1)); line-height: 2.3;
   text-align: right; direction: rtl; margin-bottom: 10px;
 }
 
 .ayah-translations { display: flex; flex-direction: column; gap: 10px; }
-.ayah-tr { font-size: .92rem; color: var(--text); }
-.ayah-tr.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: 1.05rem; line-height: 2.2; }
+.ayah-tr { font-size: calc(.92rem * var(--ayah-tr-scale, 1)); color: var(--text); }
+.ayah-tr.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: calc(1.05rem * var(--ayah-tr-scale, 1)); line-height: 2.2; }
 .ayah-tr .tr-label { display: block; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 1px; direction: ltr; text-align: left; }
 
 /* ── Word / root badges ─────────────────────────────────────────────────── */
@@ -340,8 +349,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 .tafsir-block summary::before { content: '▸ '; }
 .tafsir-block[open] summary::before { content: '▾ '; }
-.tafsir-text { font-size: .85rem; color: var(--text-sec); margin-top: 8px; white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
-.tafsir-text.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: 1rem; line-height: 2.1; }
+.tafsir-text { font-size: calc(.85rem * var(--ayah-tr-scale, 1)); color: var(--text-sec); margin-top: 8px; white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
+.tafsir-text.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: calc(1rem * var(--ayah-tr-scale, 1)); line-height: 2.1; }
 
 /* ── Modal ──────────────────────────────────────────────────────────────── */
 .modal-overlay {
@@ -446,5 +455,5 @@ button { font-family: inherit; cursor: pointer; }
   }
   .sidebar-backdrop[hidden] { display: none; }
   .reader { padding: 14px 14px 60px; }
-  .ayah-arabic { font-size: 1.45rem; }
+  .ayah-arabic { font-size: calc(1.45rem * var(--ayah-ar-scale, 1)); }
 }

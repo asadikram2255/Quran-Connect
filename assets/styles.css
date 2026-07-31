@@ -2645,6 +2645,29 @@ span.creditGroupSource { border-bottom: none; }
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* Light theme: the full-screen "Ideas and Topics" (and Prophets/Stats) overlays
+   ship a dark-navy backdrop for dark mode. In light mode the text switches to
+   dark, so on that dark backdrop the whole panel reads as invisible. Give the
+   overlay a parchment scrim and the flat panels/headers a light surface. */
+[data-theme="light"] .feelingsOverlay,
+[data-theme="light"] .prophetsOverlay,
+[data-theme="light"] .statsOverlay {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(124, 58, 237, .10), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 90% 100%, rgba(21, 128, 61, .07), transparent 60%),
+    rgba(244, 237, 224, .97) !important;
+}
+[data-theme="light"] .feelingsPanel,
+[data-theme="light"] .prophetsPanel,
+[data-theme="light"] .statsPanel {
+  background: var(--surface-3) !important;
+}
+[data-theme="light"] .feelingsHeader,
+[data-theme="light"] .statsHeader,
+[data-theme="light"] .prophetsHeader {
+  background: rgba(0, 0, 0, .04) !important;
+}
+
 /* Anchor card — kill the left stripe and the radial wash */
 .anchorCard {
   background: rgba(255, 255, 255, .025) !important;

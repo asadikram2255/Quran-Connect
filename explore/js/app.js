@@ -125,6 +125,13 @@ class ExploreApp {
       ur: localStorage.getItem('explore-font-ur') || '',
     };
 
+    // Reading text size, as a percentage (100 = stylesheet default), persisted.
+    // ar scales the Arabic ayah; tr scales translations + tafseer together.
+    this.textSize = {
+      ar: this._loadSize('explore-size-ar'),
+      tr: this._loadSize('explore-size-tr'),
+    };
+
     // Recitation. Disabled entirely in the offline app (no network there).
     this.isAndroid = !!(window.QuranAndroid && window.QuranAndroid.share);
     this.reciter = localStorage.getItem('explore-reciter') || 'afasy';
@@ -176,10 +183,12 @@ class ExploreApp {
     this.selectedTafsir = this.selectedTafsir.filter(id => tafIds.has(id));
 
     this._applyFonts();
+    this._applyTextSizes();
     this._renderSurahList();
     this._wireMobileSidebar();
     this._renderControlPanels();
     this._renderFontPanel();
+    this._bindTextSize();
     this._renderAudioPanel();
     this._bindControls();
     this._bindModal();
@@ -409,6 +418,54 @@ class ExploreApp {
     this.fonts[kind] = id;
     localStorage.setItem(`explore-font-${kind}`, id);
     this._applyFonts();
+  }
+
+  /* ── Text size ─────────────────────────────────────────────────────────── */
+
+  // A persisted size percentage clamped to the slider range, default 100.
+  _loadSize(key) {
+    const n = parseInt(localStorage.getItem(key), 10);
+    if (!Number.isFinite(n)) return 100;
+    return Math.min(180, Math.max(70, n));
+  }
+
+  _applyTextSizes() {
+    const root = document.documentElement.style;
+    root.setProperty('--ayah-ar-scale', (this.textSize.ar / 100).toFixed(3));
+    root.setProperty('--ayah-tr-scale', (this.textSize.tr / 100).toFixed(3));
+  }
+
+  _bindTextSize() {
+    const wire = (kind, key) => {
+      const slider = document.getElementById(`size-${kind}`);
+      const label = document.getElementById(`size-${kind}-val`);
+      if (!slider || !label) return;
+      const sync = () => {
+        slider.value = String(this.textSize[kind]);
+        label.textContent = `${this.textSize[kind]}%`;
+      };
+      sync();
+      slider.addEventListener('input', () => {
+        this.textSize[kind] = Math.min(180, Math.max(70, parseInt(slider.value, 10) || 100));
+        localStorage.setItem(key, String(this.textSize[kind]));
+        label.textContent = `${this.textSize[kind]}%`;
+        this._applyTextSizes();
+      });
+      slider._sync = sync;
+    };
+    wire('ar', 'explore-size-ar');
+    wire('tr', 'explore-size-tr');
+    const reset = document.getElementById('size-reset');
+    if (reset) reset.addEventListener('click', () => {
+      this.textSize = { ar: 100, tr: 100 };
+      localStorage.setItem('explore-size-ar', '100');
+      localStorage.setItem('explore-size-tr', '100');
+      ['ar', 'tr'].forEach(k => {
+        const s = document.getElementById(`size-${k}`);
+        if (s && s._sync) s._sync();
+      });
+      this._applyTextSizes();
+    });
   }
 
   /* ── Recitation (web only) ─────────────────────────────────────────────── */
