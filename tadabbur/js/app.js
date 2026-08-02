@@ -138,6 +138,20 @@
     });
   }
 
+  // Hardware Back inside the app (Android): dismiss the translation picker if it
+  // is open, except on the first run where a choice is required before the reel
+  // can load. Inert on the website, which never calls it. Returns false when
+  // there is nothing to dismiss so the native side leaves Tadabbur.
+  window.QuranBack = {
+    handle: function () {
+      if (els.picker && !els.picker.hidden && els.picker.dataset.firstRun !== "1") {
+        els.picker.hidden = true;
+        return true;
+      }
+      return false;
+    },
+  };
+
   // ── The reel ─────────────────────────────────────────────────────────────
   function start() {
     // Fresh shuffle bag and first card

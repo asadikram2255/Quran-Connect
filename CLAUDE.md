@@ -270,6 +270,16 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
 
 ## Last changes (newest first)
 
+- **2026-07-31 — Tadabbur `window.QuranBack` hook (for the Android app's Back-button rework, APK 1.6.2).**
+  The Android app now wires the hardware Back button to a page's own in-page state before it leaves the
+  module: the native side evaluates `window.QuranBack.handle()`, which closes the topmost overlay and
+  returns true, or false when there is nothing to undo. Added that hook to `tadabbur/js/app.js` — it
+  dismisses the edition/translation picker when open (except on the mandatory first-run, where a choice is
+  required before the reel loads). **Inert on the website** (nothing calls it there), so it is safe to
+  deploy; kept here only so the file stays in lockstep with the Android copy. The Explore and Connections
+  `QuranBack` handlers live in the Android repo's app-only overlays (`android-integration.js`,
+  `android-connections.js`), not here. **Redeploy** to keep the site current (no user-visible change).
+
 - **2026-07-31 — Web side of three Android reader improvements: text-size sliders, light-mode overlay fix,
   pinch-zoom hardening.** From a six-item user request against the Android app; three items had a web
   source (the other three — Journal ayah deep-link, ayah counter, two-mode note export — are Android-only,
