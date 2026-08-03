@@ -4,7 +4,22 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-07-31 (**Web side of a mainly-Android session: Explore Quran text-size sliders,
+**Last updated:** 2026-08-03 (**Web side of a mainly-Android session (APK 1.7.0): shared reader-defaults
+across modules + a Search-overlay Back hook.** The Android app now has a native Settings screen whose theme
+and reader defaults (Arabic font + translation) are pushed into every module's shared per-origin
+localStorage. The web source for that lives in three module scripts, which now listen for a
+`quran-reader-defaults` CustomEvent (fired by the native side after it seeds the shared keys) and **re-apply
+the shared keys live**: `explore/js/app.js` (`_applyReaderDefaults` → font + translations), `mushaf/js/app.js`
+(font key **unified to `explore-font-ar`** so Explore and Mushaf share one Arabic font, reading
+`explore-font-ar || mushaf-font-ar || ""` and writing `explore-font-ar` on change), and `tadabbur/js/app.js`
+(`tadabbur-translation`). Also, `webapp-overlay/assets/android-integration.js` (an **Android-repo overlay**,
+not in this web tree) gained a `#qs-overlay` close case in `window.QuranBack.handle()` so the phone Back
+button dismisses Explore's Search overlay before leaving the module. **These web listeners are inert on the
+website** (nothing dispatches the event there) — safe to deploy; kept here so the files stay in lockstep with
+the synced Android copies. **Cache-bust:** `tadabbur/index.html` `js/app.js?v=4→5`; `mushaf/index.html`
+`js/app.js?v=1→2`; `explore/index.html` already at `css/style.css?v=12`, `js/app.js?v=22` from the earlier
+1.7.0 explore work. **No `/data` file changed → no `manifest.json` bump.** **Web not yet committed or
+deployed** — commit and `npx vercel --prod` when ready. Prior 2026-07-31: **Web side of a mainly-Android session: Explore Quran text-size sliders,
 Ideas-and-Topics light-mode fix, and book-viewer pinch-zoom hardening.** Three of six user-requested
 Android improvements had a web source. **(Req3) Explore Quran text is now resizable** — a new **Text size**
 section in the ⚙ Settings modal with two sliders (Arabic ayah, and Translation+Tafseer together, 70–180%,
@@ -269,6 +284,33 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-08-03 — Web source for APK 1.7.0: shared reader-defaults listeners + Mushaf font-key unification.**
+  The Android app grew a native Settings screen (theme + reader defaults: Arabic font and translation) that
+  writes those defaults into every WebView module's **shared per-origin localStorage** and, on an explicit
+  change, force-pushes them to all built routes. The web-side half of that contract is a `quran-reader-defaults`
+  CustomEvent the native side dispatches after seeding the keys; three module scripts now **listen for it and
+  re-apply the shared keys live** without a reload:
+  - **`explore/js/app.js`** — `_applyReaderDefaults` re-reads `explore-font-ar` (calls `_applyFonts`) and
+    `explore-translations` (JSON array) and re-renders.
+  - **`mushaf/js/app.js`** — the Arabic-font key was **unified to `explore-font-ar`** so Explore and Read Mushaf
+    share one font choice: it reads `explore-font-ar || mushaf-font-ar || ""`, writes `explore-font-ar` when the
+    Mushaf picker changes, and re-applies on the event.
+  - **`tadabbur/js/app.js`** — re-reads `tadabbur-translation` and re-renders the current ayah in place.
+  The matching **Back-button** piece (a `#qs-overlay` close case added to `window.QuranBack.handle()` so Back
+  dismisses Explore's Search overlay before leaving the module, plus a `WebViewCache.back()` `goBack()`
+  fallback) lives in the **Android repo's** overlay/native code (`webapp-overlay/assets/android-integration.js`,
+  `WebModule.kt` / `WebViewCache`), **not in this web tree**. **All three listeners are inert on the website**
+  (nothing dispatches the event there), so the change is safe to deploy; it is kept here only so these files
+  stay byte-identical to the synced Android copies. **Cache-bust:** `tadabbur/index.html` `js/app.js?v=4→5`,
+  `mushaf/index.html` `js/app.js?v=1→2` (`explore/index.html` was already `css/style.css?v=12` / `js/app.js?v=22`
+  from the earlier 1.7.0 explore work). **No `/data` file changed → no `manifest.json` bump.** **Android —
+  SHIPPED as APK 1.7.0** (versionCode 24): the sync copied the changed explore/mushaf/tadabbur module files
+  (explore PATCHES anchors bumped `css/style.css?v=11→12`, `js/app.js?v=21→22`), added the native Settings
+  screen + `applyReaderDefaults`/`changeReaderDefaults` wiring, flattened the drawer to Settings + About (the
+  landing page now owns every module), added Notes sorting and the "Verses about the Prophets" rename, and
+  expanded About — rebuilt + V2-signed (SHA-1 `d81d0f12…`), archived. See the Android repo's CLAUDE.md.
+  **Web not yet committed or deployed** — commit and `npx vercel --prod` when ready.
 
 - **2026-07-31 — Tadabbur `window.QuranBack` hook (for the Android app's Back-button rework, APK 1.6.2).**
   The Android app now wires the hardware Back button to a page's own in-page state before it leaves the

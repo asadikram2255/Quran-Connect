@@ -374,6 +374,17 @@ button { font-family: inherit; cursor: pointer; }
 .modal-head { text-align: center; margin-bottom: 18px; }
 .modal-arabic { font-family: var(--font-ar-root); font-size: 2.4rem; color: var(--accent); line-height: 1.6; }
 .modal-sub { font-size: .82rem; color: var(--text-ter); }
+/* The word's root(s), as tappable chips under the header. Tapping one opens
+   that root's meaning page — roots are now reached through their word. */
+.modal-roots { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.modal-roots-label { font-size: .6rem; font-weight: 700; color: var(--text-ter); text-transform: uppercase; letter-spacing: .04em; }
+.modal-root-btn {
+  font-family: var(--font-ar-root); font-size: 1.05rem; color: var(--accent);
+  letter-spacing: .18em; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--accent-dim); padding: 4px 12px; cursor: pointer;
+  transition: border-color var(--trans), background var(--trans);
+}
+.modal-root-btn:hover { border-color: var(--accent); background: var(--accent-mid); }
 .modal-section { margin-top: 18px; }
 .modal-section h3 { font-family: var(--font-display); font-size: .95rem; margin-bottom: 10px; }
 .modal-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }

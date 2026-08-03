@@ -191,6 +191,7 @@ class ExploreApp {
     this._bindTextSize();
     this._renderAudioPanel();
     this._bindControls();
+    this._bindReaderDefaults();
     this._bindModal();
 
     const hash = location.hash.match(/^#(\d{1,3})(?::(\d{1,3}))?$/);
@@ -335,6 +336,40 @@ class ExploreApp {
       this.badgesOn = e.target.checked;
       document.querySelectorAll('.ayah-badges').forEach(el => el.hidden = !this.badgesOn);
     });
+  }
+
+  /* ── Cross-module reader defaults ───────────────────────────────────────────
+     The native Settings screen (Android) writes the shared font/translation keys
+     into this origin's localStorage and fires `quran-reader-defaults`; re-read
+     and apply them live so a change made in Settings shows without a reload.
+     Inert on the website (nothing dispatches the event there). */
+
+  _bindReaderDefaults() {
+    window.addEventListener('quran-reader-defaults', () => {
+      this._applyReaderDefaults().catch(() => {});
+    });
+  }
+
+  async _applyReaderDefaults() {
+    const ar = localStorage.getItem('explore-font-ar') || '';
+    if (ar !== this.fonts.ar) {
+      this.fonts.ar = ar;
+      this._applyFonts();
+      this._renderFontPanel();
+    }
+    const ids = this._loadIds('explore-translations', ['en_sahih']);
+    const same = ids.length === this.selectedTranslations.length &&
+      ids.every((id, i) => id === this.selectedTranslations[i]);
+    if (!same) {
+      const trIds = new Set(this.translations.index.map(t => t.id));
+      this.selectedTranslations = ids.filter(id => trIds.has(id));
+      if (!this.selectedTranslations.length && trIds.has('en_sahih')) {
+        this.selectedTranslations = ['en_sahih'];
+      }
+      this._renderControlPanels();
+      await this._ensureTranslations();
+      this._rerenderAyaat();
+    }
   }
 
   async _toggleTranslation(id) {
@@ -676,34 +711,21 @@ class ExploreApp {
       }
       html += '</div>';
 
-      // Badges (hidden initially)
+      // Badges (hidden initially). Each word tile carries its gloss; a word's
+      // root(s) are reached by tapping the tile (which opens the word modal) —
+      // the old separate per-ayah "Roots" badge row was merged into that modal.
       if (words.length) {
-        // Root badges come from the ayah's own verified root list (analyzequran,
-        // the same data the Connections module uses), NOT a per-word union of
-        // word_roots.json. That union leaked a collocating neighbour's root onto
-        // common words — e.g. الله → و ع د, في → س و م، م ث ل — putting a wrong
-        // root badge on ~54% of ayaat. The ayah's `roots` field is clean.
-        const ayahRoots = (ayah && ayah.roots) || [];
         html += `<div class="ayah-badges" ${this.badgesOn ? '' : 'hidden'}>
-          <div class="badges-label">Words</div>
           <div class="badges-row">${
             words.map((w, i) => {
               const ur = this.wordLang === 'ur';
               const gloss = ur ? (w.ur || w.en || '') : (w.en || '');
               return `<button class="word-badge" type="button" data-ref="${ref}" data-idx="${i}">
-                 <span class="wb-ar" lang="ar">${this._esc(stripDiacritics(stripWaPrefix(w.ar)))}</span>
+                 <span class="wb-ar" lang="ar">${this._esc(w.ar)}</span>
                  <span class="wb-gloss${ur ? ' wb-gloss-ur' : ''}"${ur ? ' lang="ur" dir="rtl"' : ''}>${this._esc(gloss)}</span>
                </button>`;
             }).join('')
           }</div>
-          ${ayahRoots.length ? `<div class="badges-label">Roots</div>
-          <div class="badges-row">${
-            ayahRoots.map(r =>
-              `<button class="root-badge" type="button" data-root="${this._esc(r)}">
-                 <span class="rb-tag">root</span>
-                 <span class="rb-ar" lang="ar">${this._esc(stripDiacritics(r))}</span>
-               </button>`).join('')
-          }</div>` : ''}
         </div>`;
       }
 
@@ -736,8 +758,6 @@ class ExploreApp {
           const w = (this.wbwCache[no][btn.dataset.ref] || [])[+btn.dataset.idx];
           if (w) this.openWordModal(w);
         }));
-      card.querySelectorAll('.root-badge').forEach(btn =>
-        btn.addEventListener('click', () => this.openRootModal(btn.dataset.root)));
       card.querySelector('.ayah-audio-btn')?.addEventListener('click', () =>
         this._playAyah(no, a));
 
@@ -800,7 +820,8 @@ class ExploreApp {
 
     this._modalState = {
       arabic: stripDiacritics(bareAr),
-      sub: `${word.tr || ''}${roots.length ? ' · root: ' + roots.map(stripDiacritics).join(' ، ') : ''}`,
+      roots,
+      sub: `${word.tr || ''}`,
       meanings: this.glosses.word[norm] || { en: [], ur: [] },
       occurrences: this._findWordOccurrences(bareVariants),
       occLabel: 'this word',
@@ -850,6 +871,7 @@ class ExploreApp {
     const st = this._modalState;
     document.getElementById('modal-arabic').textContent = st.arabic;
     document.getElementById('modal-sub').textContent = st.sub;
+    this._renderRoots();
     this._renderMeanings();
 
     const occTitle = document.getElementById('modal-occ-title');
@@ -912,6 +934,32 @@ class ExploreApp {
       more.className = 'occ-more';
       more.textContent = `…and ${st.occurrences.length - MAX} more`;
       host.appendChild(more);
+    }
+  }
+
+  // The word's root(s), shown as tappable chips under the header. Tapping one
+  // swaps the modal to that root's meaning — its page in Fatuhat al-Quran — the
+  // same view the old per-ayah root badges opened, now reached through the word.
+  _renderRoots() {
+    const st = this._modalState;
+    const host = document.getElementById('modal-roots');
+    if (!host) return;
+    host.innerHTML = '';
+    const roots = (st && st.roots) || [];
+    if (!roots.length) { host.hidden = true; return; }
+    host.hidden = false;
+    const label = document.createElement('span');
+    label.className = 'modal-roots-label';
+    label.textContent = roots.length > 1 ? 'Roots' : 'Root';
+    host.appendChild(label);
+    for (const r of roots) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'modal-root-btn';
+      btn.lang = 'ar';
+      btn.textContent = stripDiacritics(r);
+      btn.addEventListener('click', () => this.openRootModal(r));
+      host.appendChild(btn);
     }
   }
 

@@ -152,6 +152,19 @@
     },
   };
 
+  // The native Settings screen writes the shared `tadabbur-translation` key and
+  // fires this; if it names a different known edition, switch to it and re-render
+  // the current ayah. Inert on the website (nothing dispatches it there).
+  window.addEventListener("quran-reader-defaults", function () {
+    var id = readStr("tadabbur-translation");
+    if (!id || id === state.editionId) return;
+    if (!state.editions.some(function (e) { return e.id === id; })) return;
+    loadEdition(id).then(function () {
+      els.editionSel.value = id;
+      if (state.current) rerenderCurrent();
+    }).catch(function () {});
+  });
+
   // ── The reel ─────────────────────────────────────────────────────────────
   function start() {
     // Fresh shuffle bag and first card
@@ -186,6 +199,7 @@
 
   function goNext(first) {
     if (state.animating) return;
+    if (!first) dismissHint();          // the reader swiped — the hint has done its job
     if (state.pos < state.history.length - 1) {
       state.pos++;                       // forward through already-seen history
     } else {
@@ -197,6 +211,7 @@
 
   function goPrev() {
     if (state.animating || state.pos <= 0) return;
+    dismissHint();
     state.pos--;
     showCard(state.ayaat[state.history[state.pos]], "down");
   }
@@ -437,12 +452,25 @@
   }
 
   // ── Small bits ───────────────────────────────────────────────────────────
+  // Show the "swipe up" hint once per session (not once ever) — it reappears on
+  // a fresh app launch. In the Android app the WebView is kept alive across
+  // in-app navigation, so sessionStorage survives leaving and returning to
+  // Tadabbur within one launch and clears only when the app is killed.
   function maybeShowHint() {
-    if (readStr("tadabbur-hint-seen")) return;
+    if (sessionRead("tadabbur-hint-seen")) return;
+    sessionWrite("tadabbur-hint-seen", "1");
     els.hint.hidden = false;
-    setTimeout(function () { els.hint.hidden = true; writeStr("tadabbur-hint-seen", "1"); }, 4200);
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(dismissHint, 4200);
   }
 
+  // Hide the hint the moment the reader swipes/advances, or after the timeout.
+  function dismissHint() {
+    if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+    if (els.hint) els.hint.hidden = true;
+  }
+
+  var hintTimer = null;
   var toastTimer = null;
   function toast(msg) {
     els.toast.textContent = msg;
@@ -465,6 +493,8 @@
   function getSaved() { return readJSON("tadabbur-saved", []); }
   function readStr(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function writeStr(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function sessionRead(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function sessionWrite(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
   function readJSON(k, fb) { try { var v = JSON.parse(localStorage.getItem(k)); return Array.isArray(v) ? v : fb; } catch (e) { return fb; } }
   function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function escapeHtml(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {

@@ -26,7 +26,11 @@
 
     async init() {
       try {
-        this.font = localStorage.getItem("mushaf-font-ar") || "";
+        // Shared with Explore Quran (and the native Settings default) so the
+        // Quran-text font is consistent across modules; falls back to any older
+        // Mushaf-only choice a reader made before the keys were unified.
+        this.font = localStorage.getItem("explore-font-ar") ||
+          localStorage.getItem("mushaf-font-ar") || "";
       } catch (e) {}
 
       var base = "../data/";
@@ -200,9 +204,22 @@
       };
       document.getElementById("font-select").onchange = e => {
         self.font = e.target.value;
-        try { localStorage.setItem("mushaf-font-ar", self.font); } catch (err) {}
+        // Written to the shared key so the choice carries into Explore Quran too.
+        try { localStorage.setItem("explore-font-ar", self.font); } catch (err) {}
         self._applyFont();
       };
+
+      // The native Settings screen writes the shared font key and fires this;
+      // re-read and apply live. Inert on the website (nothing dispatches it).
+      window.addEventListener("quran-reader-defaults", () => {
+        var f = "";
+        try { f = localStorage.getItem("explore-font-ar") || ""; } catch (err) {}
+        if (f === self.font) return;
+        self.font = f;
+        var sel = document.getElementById("font-select");
+        if (sel) sel.value = f;
+        self._applyFont();
+      });
 
       // Keyboard — RTL reading, matching the book viewer: ← next, → previous.
       document.addEventListener("keydown", e => {
