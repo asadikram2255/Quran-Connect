@@ -269,6 +269,14 @@
       current = new Set((JSON.parse(b.tagsForAyah(sn, an) || "[]") || []).map(t => t.id));
     } catch (e) { return; }
 
+    // This fires right after Save note, which just re-focused a fresh textarea
+    // (see render()'s ta.focus()) — the soft keyboard is still opening. Some
+    // WebViews pan the whole document up to keep a focused field visible rather
+    // than resizing the viewport, and a position:fixed overlay appended while
+    // that pan is in flight can end up positioned off-screen below the fold.
+    // Closing the keyboard first, before this overlay is even built, avoids it.
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+
     const ov = document.createElement("div");
     ov.className = "qn-overlay qn-tagov";
     ov.innerHTML = `
@@ -341,6 +349,10 @@
     // and the "Save tags" button lives in the footer, so auto-opening the soft
     // keyboard would hide it. The reader taps the field only when adding a tag.
     document.body.appendChild(ov);
+    // Belt-and-braces alongside the blur() above: settle the page at the top so
+    // this fixed-position overlay is guaranteed on-screen regardless of where
+    // the reader had scrolled the note editor underneath it.
+    window.scrollTo(0, 0);
   }
 
   function noteCard(n, rerender) {

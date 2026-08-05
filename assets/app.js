@@ -155,16 +155,104 @@ const state = {
 };
 
 // ── Translation options ────────────────────────────────────
+// The full set from data/translations/index.json — same ids and names Explore
+// Quran's own picker uses, so a translation reads as the same thing in both
+// modules. en_default is this module's own built-in fallback text (no file to
+// load); every other entry's file is data/translations/<id>.json, which
+// getTranslationPath() derives rather than repeating 35 times.
 
 const TRANSLATION_OPTIONS = [
-  { id: "en_default",   name: "English (Built-in)",       lang: "en" },
-  { id: "en_sahih",     name: "Sahih International",     lang: "en", path: "data/translations/en_sahih.json" },
-  { id: "en_yusuf_ali", name: "Yusuf Ali",               lang: "en", path: "data/translations/en_yusuf_ali.json" },
-  { id: "ur_maududi",   name: "مودودی (تفہیم)",          lang: "ur", path: "data/translations/ur_maududi.json" },
-  { id: "ur_junagarhi", name: "جونا گڑھی",              lang: "ur", path: "data/translations/ur_junagarhi.json" },
-  { id: "ur_jalandhri", name: "جالندھری",               lang: "ur", path: "data/translations/ur_jalandhri.json" },
-  { id: "ur_ahmedali",  name: "احمد علی",               lang: "ur", path: "data/translations/ur_ahmedali.json" },
+  { id: "en_default", name: "English (Built-in)", lang: "en" },
+  { id: "en_ahmedhulusi", name: "Ahmed Hulusi — Decoding the Quran", lang: "en" },
+  { id: "en_ahmedraza", name: "Ahmed Raza Khan", lang: "en" },
+  { id: "en_drshabbir", name: "Dr. Shabbir Ahmed", lang: "en" },
+  { id: "en_gaparwez", name: "Ghulam Ahmed Parwez", lang: "en" },
+  { id: "en_maududi", name: "Maududi — Tafhim", lang: "en" },
+  { id: "en_taqiusmani", name: "Mufti Taqi Usmani", lang: "en" },
+  { id: "en_pickthall", name: "Pickthall", lang: "en" },
+  { id: "en_qaribullah", name: "Qaribullah & Darwish", lang: "en" },
+  { id: "en_sahih", name: "Sahih International", lang: "en" },
+  { id: "en_transliteration", name: "Transliteration (Roman)", lang: "en" },
+  { id: "en_wahiduddin", name: "Wahiduddin Khan", lang: "en" },
+  { id: "en_yusuf_ali", name: "Yusuf Ali", lang: "en" },
+  { id: "ur_daryabadi", name: "Abdul Majid Daryabadi", lang: "ur" },
+  { id: "ur_bhutvi", name: "Abdus Salam Bhutvi", lang: "ur" },
+  { id: "ur_ahmedali", name: "Ahmed Ali", lang: "ur" },
+  { id: "ur_islahi", name: "Amin Ahsan Islahi", lang: "ur" },
+  { id: "ur_israr", name: "Dr. Israr Ahmad", lang: "ur" },
+  { id: "ur_jalandhri", name: "Fateh Muhammad Jalandhri", lang: "ur" },
+  { id: "ur_fazli", name: "Fazal Shah (Fazli)", lang: "ur" },
+  { id: "ur_gaparwez", name: "G. A. Parwez", lang: "ur" },
+  { id: "ur_ilmf", name: "Ilm Foundation", lang: "ur" },
+  { id: "ur_ghamdi", name: "Javed Ahmed Ghamidi", lang: "ur" },
+  { id: "ur_junagarhi", name: "Junagarhi", lang: "ur" },
+  { id: "ur_kanzuliman", name: "Kanz-ul-Iman — Ahmed Raza Khan", lang: "ur" },
+  { id: "ur_madani", name: "Madani", lang: "ur" },
+  { id: "ur_mahmood", name: "Mahmudul Hasan", lang: "ur" },
+  { id: "ur_maududi", name: "Maududi (Tafheem)", lang: "ur" },
+  { id: "ur_taqi", name: "Mufti Taqi Usmani", lang: "ur" },
+  { id: "ur_najafi", name: "Najafi", lang: "ur" },
+  { id: "ur_noorulquran", name: "Noor-ul-Quran", lang: "ur" },
+  { id: "ur_riffat", name: "Riffat", lang: "ur" },
+  { id: "ur_abdulqadir", name: "Shah Abdul Qadir", lang: "ur" },
+  { id: "ur_jalalayn", name: "Tafsir al-Jalalayn", lang: "ur" },
+  { id: "ur_qadri", name: "Tahir-ul-Qadri (Irfan-ul-Quran)", lang: "ur" },
+  { id: "ur_jawadi", name: "Zeeshan Haider Jawadi", lang: "ur" },
 ];
+
+function getTranslationPath(id) {
+  return id === "en_default" ? null : `data/translations/${id}.json`;
+}
+
+/** Rebuilds #transSel from TRANSLATION_OPTIONS, grouped English then Urdu, so
+ *  the 35-entry list lives in one place instead of also being hand-written
+ *  into index.html. */
+function populateTranslationSelect() {
+  if (!els.transSel) return;
+  const byLang = { en: [], ur: [] };
+  for (const opt of TRANSLATION_OPTIONS) {
+    if (opt.id === "en_default") continue;
+    (byLang[opt.lang] || byLang.en).push(opt);
+  }
+  const optionsHtml = list => list.map(o => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("");
+  els.transSel.innerHTML =
+    `<option value="en_default">English (Built-in)</option>` +
+    `<optgroup label="English">${optionsHtml(byLang.en)}</optgroup>` +
+    `<optgroup label="اردو">${optionsHtml(byLang.ur)}</optgroup>`;
+}
+
+/**
+ * Explore Quran, Read Mushaf and Tadabbur already share one "default
+ * translation" through the `explore-translations` localStorage key (a JSON
+ * array; here only its first id is used, since this module shows one
+ * translation at a time, not a multi-select). This module previously ignored
+ * that key entirely and always opened on the built-in English text — wiring
+ * it in means picking a translation anywhere carries into this module too,
+ * and picking one here carries out to the others (see applyTranslation's
+ * `persist` branch above).
+ *
+ * The `quran-reader-defaults` CustomEvent is fired by the native Settings
+ * screen on Android after it writes the key, so an already-open WebView
+ * updates live; it is inert on the website, where nothing dispatches it — the
+ * one-time read below is what benefits a website visitor, picking up a
+ * preference set earlier in Explore Quran on the same browser.
+ */
+function wireSharedTranslationDefault(applyFn) {
+  const readSharedId = () => {
+    try {
+      const arr = JSON.parse(localStorage.getItem("explore-translations") || "[]");
+      const id = Array.isArray(arr) ? arr[0] : null;
+      return TRANSLATION_OPTIONS.some(o => o.id === id) ? id : null;
+    } catch (e) { return null; }
+  };
+  const initial = readSharedId();
+  if (initial) applyFn(initial, { persist: false });
+
+  window.addEventListener("quran-reader-defaults", () => {
+    const id = readSharedId();
+    if (id) applyFn(id, { persist: false });
+  });
+}
 
 // ── "What Am I Feeling" — Topic data ──────────────────────
 // Topics and verses sourced from myislam.org/quran-verses/ — used with attribution
@@ -1175,11 +1263,11 @@ function getHadithUrduText(hadithId) {
 
 async function loadTranslation(id) {
   if (id === "en_default" || state.translationData.has(id)) return;
-  const opt = TRANSLATION_OPTIONS.find(o => o.id === id);
-  if (!opt?.path) return;
+  const path = getTranslationPath(id);
+  if (!path) return;
   // ?v=3 in URL acts as cache-buster when data format changes.
   // force-cache: serve from browser/SW cache when available.
-  const fp = resolveDataPath(opt.path) + "?v=3";
+  const fp = resolveDataPath(path) + "?v=3";
   const res = await fetch(fp, { cache: "force-cache" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${fp}`);
   const data = await res.json();
@@ -2488,6 +2576,7 @@ function showSkeletonPairs(count = 3) {
 // ── Init ────────────────────────────────────────────────────
 
 async function init() {
+  populateTranslationSelect();
   try {
     setBadge("warn", "Loading…");
     const manifest = await fetchJson("data/meta/manifest.json");
@@ -2531,40 +2620,54 @@ async function init() {
       Promise.all(warmSurahs.map(s => ensureSurahLoaded(s).catch(() => {})));
     }, 800);
 
-    // Translation switch handler
-    if (els.transSel) {
-      els.transSel.addEventListener("change", async () => {
-        const newId = els.transSel.value;
-        if (newId === state.activeTranslation) return;
-        if (!state.shardMapQuran) { els.transSel.value = state.activeTranslation; return; } // not ready yet
+    // Translation switch handler — shared by the picker itself and by a
+    // matching shared-default change made in another module (see
+    // wireSharedTranslationDefault below). `persist` is false for the latter:
+    // the value already came from that shared key, so writing it back would be
+    // a no-op at best and a redundant event dispatch at worst.
+    async function applyTranslation(newId, { persist = true } = {}) {
+      if (newId === state.activeTranslation) return;
+      if (!state.shardMapQuran) { if (els.transSel) els.transSel.value = state.activeTranslation; return; } // not ready yet
 
-        const prevId = state.activeTranslation;
-        state.activeTranslation = newId;
+      const prevId = state.activeTranslation;
+      state.activeTranslation = newId;
+      if (els.transSel) els.transSel.value = newId;
 
-        // Load translation data if not already cached
-        if (newId !== "en_default" && !state.translationData.has(newId)) {
-          setBadge("warn", "Loading translation…");
-          try {
-            await loadTranslation(newId);
-          } catch (err) {
-            console.error("Translation load error:", err);
-            // Roll back — revert to previous translation
-            state.activeTranslation = prevId;
-            els.transSel.value = prevId;
-            setBadge("err", "Translation failed to load — check network");
-            return;
-          }
+      // Load translation data if not already cached
+      if (newId !== "en_default" && !state.translationData.has(newId)) {
+        setBadge("warn", "Loading translation…");
+        try {
+          await loadTranslation(newId);
+        } catch (err) {
+          console.error("Translation load error:", err);
+          // Roll back — revert to previous translation
+          state.activeTranslation = prevId;
+          if (els.transSel) els.transSel.value = prevId;
+          setBadge("err", "Translation failed to load — check network");
+          return;
         }
+      }
 
-        setBadge("ok", "Translation applied");
-        // Translation drives default tafsir source — clear sticky choice so it re-picks
-        state.activeTafsirSource = null;
-        // Re-render everything currently visible with new translation
-        renderResults(state.lastResults, { preserveOrder: true });
-        if (state.selectedAyahId) openDetail(state.selectedAyahId, { preserveHistory: true });
-        renderDailyAyah();
-      });
+      setBadge("ok", "Translation applied");
+      // Translation drives default tafsir source — clear sticky choice so it re-picks
+      state.activeTafsirSource = null;
+      // Re-render everything currently visible with new translation
+      renderResults(state.lastResults, { preserveOrder: true });
+      if (state.selectedAyahId) openDetail(state.selectedAyahId, { preserveHistory: true });
+      renderDailyAyah();
+
+      if (persist) {
+        try {
+          localStorage.setItem("explore-translations", JSON.stringify([newId]));
+          window.dispatchEvent(new CustomEvent("quran-reader-defaults"));
+        } catch (e) {}
+      }
     }
+
+    if (els.transSel) {
+      els.transSel.addEventListener("change", () => applyTranslation(els.transSel.value));
+    }
+    wireSharedTranslationDefault(applyTranslation);
 
     // Type toggle buttons. Manual click locks the mode until Clear.
     document.querySelectorAll(".typeBtn").forEach(btn => {

@@ -218,6 +218,12 @@ button { font-family: inherit; cursor: pointer; }
 .panel-option input { margin-top: 4px; accent-color: var(--accent); }
 .panel-option .opt-name { color: var(--text); font-weight: 500; display: block; }
 .panel-option .opt-sub { font-size: .7rem; color: var(--text-ter); }
+/* A sample of real script in the candidate face — the English label alone
+   cannot show the difference between two Arabic or two Urdu fonts. */
+.panel-option .opt-sample {
+  display: block; margin-top: 3px; font-size: 1.05rem; line-height: 1.6;
+  color: var(--text); text-align: right;
+}
 
 .badges-toggle {
   display: flex; align-items: center; gap: 7px;
@@ -327,18 +333,21 @@ button { font-family: inherit; cursor: pointer; }
   transition: border-color var(--trans), background var(--trans);
 }
 .word-badge:hover, .root-badge:hover { border-color: var(--accent); background: var(--accent-mid); }
-.word-badge .wb-ar { font-family: var(--font-ar); font-size: 1.15rem; color: var(--accent); }
-.word-badge .wb-gloss { font-size: .62rem; color: var(--text-sec); direction: ltr; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.word-badge .wb-ar { font-family: var(--font-ar); font-size: calc(1.15rem * var(--badge-scale, 1)); color: var(--accent); }
+.word-badge .wb-gloss {
+  font-size: calc(.62rem * var(--badge-scale, 1)); color: var(--text-sec); direction: ltr;
+  max-width: calc(110px * var(--badge-scale, 1)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 /* Urdu glosses need Nastaliq, RTL, and room to breathe (no nowrap/ellipsis —
    Nastaliq clips badly when truncated). */
 .word-badge .wb-gloss-ur {
-  font-family: var(--font-ur); direction: rtl; font-size: .82rem; line-height: 1.7;
-  max-width: 130px; white-space: normal; overflow: visible; text-overflow: clip;
+  font-family: var(--font-ur); direction: rtl; font-size: calc(.82rem * var(--badge-scale, 1)); line-height: 1.7;
+  max-width: calc(130px * var(--badge-scale, 1)); white-space: normal; overflow: visible; text-overflow: clip;
   margin-top: 2px;
 }
 .root-badge { flex-direction: row; gap: 6px; align-items: center; }
-.root-badge .rb-ar { font-family: var(--font-ar-root); font-size: 1.05rem; color: var(--accent); letter-spacing: .18em; }
-.root-badge .rb-tag { font-size: .6rem; font-weight: 700; color: var(--text-ter); text-transform: uppercase; }
+.root-badge .rb-ar { font-family: var(--font-ar-root); font-size: calc(1.05rem * var(--badge-scale, 1)); color: var(--accent); letter-spacing: .18em; }
+.root-badge .rb-tag { font-size: calc(.6rem * var(--badge-scale, 1)); font-weight: 700; color: var(--text-ter); text-transform: uppercase; }
 
 /* ── Tafsir ─────────────────────────────────────────────────────────────── */
 .ayah-tafsir { margin-top: 12px; }

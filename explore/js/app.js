@@ -126,10 +126,13 @@ class ExploreApp {
     };
 
     // Reading text size, as a percentage (100 = stylesheet default), persisted.
-    // ar scales the Arabic ayah; tr scales translations + tafseer together.
+    // ar scales the Arabic ayah; tr scales translations + tafseer together;
+    // badge scales the word/root tiles under "Words & Roots" (their fixed,
+    // small font size is what makes them hard to read at a glance).
     this.textSize = {
       ar: this._loadSize('explore-size-ar'),
       tr: this._loadSize('explore-size-tr'),
+      badge: this._loadSize('explore-size-badge', 200),
     };
 
     // Recitation. Disabled entirely in the offline app (no network there).
@@ -429,24 +432,42 @@ class ExploreApp {
   _renderFontPanel() {
     const panel = document.getElementById('fonts-panel');
     if (!panel) return;
-    const group = (title, list, current, kind) => {
+    // The option label is plain English, which does not distinguish "Al Mushaf"
+    // from "Noore Huda" from "Noto Naskh Arabic" at a glance — only a sample
+    // actually rendered in that face does. defaultStack is what the "(default)"
+    // entry's own sample renders in, so it is styled the same as every other
+    // option instead of silently inheriting whatever the reader currently has
+    // selected.
+    const group = (title, list, current, kind, sample, defaultStack) => {
       const wrap = document.createElement('div');
       wrap.className = 'font-group';
       wrap.innerHTML = `<div class="font-group-title">${title}</div>`;
       for (const opt of list) {
         const label = document.createElement('label');
         label.className = 'panel-option';
+        const stack = opt.stack || defaultStack;
         label.innerHTML = `
           <input type="radio" name="font-${kind}" ${opt.id === current ? 'checked' : ''}>
-          <span><span class="opt-name" style="${opt.stack ? `font-family:${opt.stack}` : ''}">${this._esc(opt.label)}</span></span>`;
+          <span>
+            <span class="opt-name">${this._esc(opt.label)}</span>
+            <span class="opt-sample" lang="${kind}" dir="rtl" style='font-family:${stack}'>${this._esc(sample)}</span>
+          </span>`;
         label.querySelector('input').addEventListener('change', () => this._setFont(kind, opt.id));
         wrap.appendChild(label);
       }
       return wrap;
     };
     panel.innerHTML = '';
-    panel.appendChild(group('Arabic (Quran text)', AR_FONTS, this.fonts.ar, 'ar'));
-    panel.appendChild(group('Urdu (translations)', UR_FONTS, this.fonts.ur, 'ur'));
+    panel.appendChild(group(
+      'Arabic (Quran text)', AR_FONTS, this.fonts.ar, 'ar',
+      'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
+      '"Amiri Quran", "Noto Naskh Arabic", "Amiri", serif',
+    ));
+    panel.appendChild(group(
+      'Urdu (translations)', UR_FONTS, this.fonts.ur, 'ur',
+      'شروع اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے',
+      '"Noto Nastaliq Urdu", "Amiri", serif',
+    ));
   }
 
   _setFont(kind, id) {
@@ -457,21 +478,25 @@ class ExploreApp {
 
   /* ── Text size ─────────────────────────────────────────────────────────── */
 
-  // A persisted size percentage clamped to the slider range, default 100.
-  _loadSize(key) {
+  // A persisted size percentage clamped to [70, max], default 100. Badges get a
+  // higher ceiling (200) than ayah/translation text (180) because their
+  // baseline is smaller to start with — the same 180% cap would leave them
+  // still hard to read at the slider's top end.
+  _loadSize(key, max = 180) {
     const n = parseInt(localStorage.getItem(key), 10);
     if (!Number.isFinite(n)) return 100;
-    return Math.min(180, Math.max(70, n));
+    return Math.min(max, Math.max(70, n));
   }
 
   _applyTextSizes() {
     const root = document.documentElement.style;
     root.setProperty('--ayah-ar-scale', (this.textSize.ar / 100).toFixed(3));
     root.setProperty('--ayah-tr-scale', (this.textSize.tr / 100).toFixed(3));
+    root.setProperty('--badge-scale', (this.textSize.badge / 100).toFixed(3));
   }
 
   _bindTextSize() {
-    const wire = (kind, key) => {
+    const wire = (kind, key, max = 180) => {
       const slider = document.getElementById(`size-${kind}`);
       const label = document.getElementById(`size-${kind}-val`);
       if (!slider || !label) return;
@@ -481,7 +506,7 @@ class ExploreApp {
       };
       sync();
       slider.addEventListener('input', () => {
-        this.textSize[kind] = Math.min(180, Math.max(70, parseInt(slider.value, 10) || 100));
+        this.textSize[kind] = Math.min(max, Math.max(70, parseInt(slider.value, 10) || 100));
         localStorage.setItem(key, String(this.textSize[kind]));
         label.textContent = `${this.textSize[kind]}%`;
         this._applyTextSizes();
@@ -490,12 +515,14 @@ class ExploreApp {
     };
     wire('ar', 'explore-size-ar');
     wire('tr', 'explore-size-tr');
+    wire('badge', 'explore-size-badge', 200);
     const reset = document.getElementById('size-reset');
     if (reset) reset.addEventListener('click', () => {
-      this.textSize = { ar: 100, tr: 100 };
+      this.textSize = { ar: 100, tr: 100, badge: 100 };
       localStorage.setItem('explore-size-ar', '100');
       localStorage.setItem('explore-size-tr', '100');
-      ['ar', 'tr'].forEach(k => {
+      localStorage.setItem('explore-size-badge', '100');
+      ['ar', 'tr', 'badge'].forEach(k => {
         const s = document.getElementById(`size-${k}`);
         if (s && s._sync) s._sync();
       });

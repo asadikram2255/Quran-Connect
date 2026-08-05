@@ -89,6 +89,13 @@ html, body {
 }
 .tool-select:hover, .tool-page:hover { border-color: var(--accent); }
 .tool-select:focus, .tool-page:focus { outline: none; border-color: var(--accent); }
+/* A live sample of the selected font, next to the dropdown (see _applyFont).
+   Capped and truncated so a long face name / RTL sample can never push the
+   toolbar's flex-wrap layout wide enough to force horizontal scroll. */
+.font-preview {
+  font-size: 15px; color: var(--text);
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .tool-page { width: 74px; text-align: center; cursor: text; }
 .tool-of { font-size: 13px; color: var(--text-ter); }
 

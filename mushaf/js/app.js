@@ -184,6 +184,15 @@
       } else {
         document.documentElement.style.removeProperty("--font-ar");
       }
+      // A live sample next to the picker — the dropdown's own option text is
+      // plain English and cannot show what one Arabic face looks like next to
+      // another the way actual script in that face does.
+      var preview = document.getElementById("font-preview");
+      if (preview) {
+        preview.style.fontFamily = f.stack ||
+          '"Amiri Quran", "Noto Naskh Arabic", "Amiri", serif';
+        preview.textContent = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+      }
     },
 
     _bind() {
