@@ -108,7 +108,8 @@
   background:var(--surface2,var(--panel2,rgba(255,255,255,.05)));
   border:1px solid var(--border,rgba(255,255,255,.14))}
 .qn-chip:hover{color:var(--accent,#f5b75e);border-color:var(--accent,#f5b75e)}
-.qn-chip.on{color:var(--accent,#f5b75e)}
+.qn-chip.on{color:var(--accent,#f5b75e);border-color:var(--accent,#f5b75e)}
+.qn-tagwrap{display:flex;flex-wrap:wrap;gap:8px}
 
 @media (max-width:640px){
   .qn-overlay{padding:0}
@@ -228,6 +229,9 @@
         if (!body) return;
         QuranNotes.add(sn, an, body);
         render();
+        // In the Android app, offer to file this ayah under tags so the reader
+        // can sift ayaat by a consistent label. Inert on the website.
+        maybePromptTags(sn, an);
       };
       save.addEventListener("click", commit);
       // Ctrl/Cmd+Enter saves, so a long note does not need a mouse trip.
@@ -242,6 +246,101 @@
 
     render();
     open();
+  }
+
+  /* ── Tag prompt (Android only) ────────────────────────────────────────────
+     After a note is saved in the app, offer to file its ayah under one or more
+     tags — a user-defined vocabulary for sifting ayaat. Tags belong to the ayah,
+     so this shows whatever the ayah already has, pre-checked. Skippable. Runs
+     only when the native bridge exposes the tag calls, so it is a no-op on the
+     website. */
+  function tagsBridge() {
+    const b = window.QuranAndroid;
+    return (b && typeof b.tagsAll === "function" && typeof b.ayahSetTags === "function"
+      && typeof b.tagsForAyah === "function" && typeof b.tagCreate === "function") ? b : null;
+  }
+
+  function maybePromptTags(sn, an) {
+    const b = tagsBridge();
+    if (!b) return;
+    let all, current;
+    try {
+      all = JSON.parse(b.tagsAll() || "[]");
+      current = new Set((JSON.parse(b.tagsForAyah(sn, an) || "[]") || []).map(t => t.id));
+    } catch (e) { return; }
+
+    const ov = document.createElement("div");
+    ov.className = "qn-overlay qn-tagov";
+    ov.innerHTML = `
+      <div class="qn-panel" style="width:min(520px,100%)">
+        <div class="qn-bar"><span class="qn-title">Tag this ayah</span>
+          <span class="qn-sub">${esc(sn + ":" + an)} · optional</span>
+          <div class="qn-spacer"></div>
+          <button class="qn-x" type="button" data-skip>Skip</button></div>
+        <div class="qn-body">
+          <div class="qn-tagwrap"></div>
+          <div class="qn-row">
+            <input class="qn-ta qn-taginput" type="text" placeholder="New tag"
+              style="min-height:0;height:auto;padding:9px 12px;flex:1"/>
+            <button class="qn-btn ghost small" type="button" data-add>Add</button>
+          </div>
+        </div>
+        <div class="qn-foot"><div class="qn-spacer"></div>
+          <button class="qn-btn" type="button" data-save>Save tags</button></div>
+      </div>`;
+    const wrap = ov.querySelector(".qn-tagwrap");
+    const input = ov.querySelector(".qn-taginput");
+
+    function chip(tag) {
+      const c = document.createElement("button");
+      c.type = "button";
+      c.className = "qn-chip" + (current.has(tag.id) ? " on" : "");
+      c.textContent = tag.name;
+      c.addEventListener("click", () => {
+        if (current.has(tag.id)) { current.delete(tag.id); c.classList.remove("on"); }
+        else { current.add(tag.id); c.classList.add("on"); }
+      });
+      return c;
+    }
+    function renderChips() {
+      wrap.innerHTML = "";
+      if (!all.length) {
+        const e = document.createElement("div");
+        e.className = "qn-empty";
+        e.textContent = "No tags yet — type one below to create it.";
+        wrap.appendChild(e);
+      }
+      all.forEach(t => wrap.appendChild(chip(t)));
+    }
+    renderChips();
+
+    const close = () => ov.remove();
+    ov.querySelector("[data-skip]").addEventListener("click", close);
+    ov.addEventListener("click", e => { if (e.target === ov) close(); });
+    const addTag = () => {
+      const name = input.value.trim();
+      if (!name) return;
+      let tag;
+      try { tag = JSON.parse(b.tagCreate(name) || "null"); } catch (e) { tag = null; }
+      if (!tag || !tag.id) return;
+      if (!all.some(t => t.id === tag.id)) all.push(tag);
+      current.add(tag.id);
+      input.value = "";
+      renderChips();
+    };
+    ov.querySelector("[data-add]").addEventListener("click", addTag);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); addTag(); }
+    });
+    ov.querySelector("[data-save]").addEventListener("click", () => {
+      try { b.ayahSetTags(sn, an, JSON.stringify([...current])); } catch (e) {}
+      close();
+    });
+
+    // Deliberately no input.focus() here: on a phone the panel is full-screen
+    // and the "Save tags" button lives in the footer, so auto-opening the soft
+    // keyboard would hide it. The reader taps the field only when adding a tag.
+    document.body.appendChild(ov);
   }
 
   function noteCard(n, rerender) {
