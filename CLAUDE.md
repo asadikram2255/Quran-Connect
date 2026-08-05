@@ -4,7 +4,19 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-03 (**Web side of a mainly-Android session (APK 1.7.0): shared reader-defaults
+**Last updated:** 2026-08-05 (**Web side of an Android session (APK 1.8.0).** Explore Quran: a third
+Settings slider scales word/root badges (`--badge-scale`, was hardcoded and "often unreadable"), and every
+font option in the Fonts panel now shows a real script sample in that face (fixed a quote-delimiter bug
+along the way — the sample's inline `style` attribute and the font stack it held both used double quotes,
+silently truncating to `font-family:` for every non-default entry). Read Mushaf's font `<select>` gained a
+matching live preview span. The root Connections app (`assets/app.js`) grew from 7 hardcoded translation
+options to the full 35 (English then Urdu, A→Z within each), and now reads/writes the same
+`explore-translations` shared-default key and `quran-reader-defaults` event Explore Quran/Mushaf/Tadabbur
+already use — previously it was completely disconnected from that system. `assets/notes-ui.js`'s tag
+prompt (Android-only path) now blurs focus + scrolls to top before showing, fixing it opening below the
+fold when the WebView pans for the still-open keyboard. See the Android repo's CLAUDE.md (1.8.0 entry) for
+the full eleven-item list — the other seven items are native-Kotlin or Android-overlay-only and don't
+touch this repo. **Not yet committed or deployed.** Prior 2026-08-03 (**Web side of a mainly-Android session (APK 1.7.0): shared reader-defaults
 across modules + a Search-overlay Back hook.** The Android app now has a native Settings screen whose theme
 and reader defaults (Arabic font + translation) are pushed into every module's shared per-origin
 localStorage. The web source for that lives in three module scripts, which now listen for a
