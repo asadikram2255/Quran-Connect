@@ -2659,7 +2659,8 @@ span.creditGroupSource { border-bottom: none; }
 }
 [data-theme="light"] .feelingsPanel,
 [data-theme="light"] .prophetsPanel,
-[data-theme="light"] .statsPanel {
+[data-theme="light"] .statsPanel,
+[data-theme="light"] .wordModalPanel {
   background: var(--surface-3) !important;
 }
 [data-theme="light"] .feelingsHeader,
