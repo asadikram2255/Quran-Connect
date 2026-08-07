@@ -196,6 +196,7 @@ class ExploreApp {
     this._bindControls();
     this._bindReaderDefaults();
     this._bindModal();
+    this._wireNoteToggles();
 
     const hash = location.hash.match(/^#(\d{1,3})(?::(\d{1,3}))?$/);
     const s = hash ? Math.min(114, Math.max(1, +hash[1])) : 1;
@@ -720,6 +721,7 @@ class ExploreApp {
           ${this.isAndroid ? '' : `<button class="ayah-audio-btn" type="button" data-ref="${ref}" title="Play recitation">▶ Play</button>`}
           <a class="ayah-pairs-btn" href="../?ayah=${ref}" title="Explore this ayah's connections — meaning & root-word pairs">Pairs →</a>
           <button class="ayah-badges-btn" type="button" data-ref="${ref}">words &amp; roots</button>
+          ${window.QuranNotes ? `<button class="ayah-note-toggle-btn" type="button" data-ref="${ref}" title="Show your notes on this ayah" hidden>note</button>` : ''}
         </div>
         <div class="ayah-arabic" lang="ar">${
           words.length
@@ -772,6 +774,11 @@ class ExploreApp {
         html += '</div>';
       }
 
+      // Note panel (read-only, hidden initially) — toggled by .ayah-note-toggle-btn.
+      // Its content is painted lazily, on first open, not here: the note text
+      // itself doesn't affect layout until the reader asks for it.
+      if (window.QuranNotes) html += '<div class="ayah-note-panel" hidden></div>';
+
       card.innerHTML = html;
 
       card.querySelector('.ayah-badges-btn')?.addEventListener('click', e => {
@@ -799,6 +806,21 @@ class ExploreApp {
             translation: this.translations.loaded.en_sahih?.[ref]
               || this.translations.loaded[this.selectedTranslations[0]]?.[ref] || '',
           })));
+      }
+
+      // Reading an existing note in place, the same way the word/root badges
+      // open in place — separate from the "Notes · N" button above, which
+      // opens the full add/edit overlay.
+      if (window.QuranNotes) {
+        const toggle = card.querySelector('.ayah-note-toggle-btn');
+        toggle.hidden = QuranNotes.count(no, a) === 0;
+        toggle.addEventListener('click', () => {
+          const panel = card.querySelector('.ayah-note-panel');
+          if (!panel) return;
+          panel.hidden = !panel.hidden;
+          toggle.classList.toggle('on', !panel.hidden);
+          if (!panel.hidden) this._paintNotePanel(panel, no, a);
+        });
       }
 
       listEl.appendChild(card);
@@ -1021,6 +1043,43 @@ class ExploreApp {
     return String(s ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ── Inline note panel ─────────────────────────────────────────────────── */
+
+  // One subscription for the page's lifetime, not one per ayah card: a
+  // per-card subscription would pile up on every surah switch, since
+  // _rerenderAyaat() throws the old cards away without ever unsubscribing
+  // them (the same leak notes-ui.js's own single global subscription avoids
+  // for its "Notes · N" buttons). Re-queries the live DOM on every note
+  // change, so it only ever touches cards that still exist.
+  _wireNoteToggles() {
+    if (!window.QuranNotes) return;
+    QuranNotes.subscribe(() => {
+      document.querySelectorAll('.ayah-note-toggle-btn[data-ref]').forEach(btn => {
+        const [sn, an] = btn.dataset.ref.split(':').map(Number);
+        const n = QuranNotes.count(sn, an);
+        btn.hidden = n === 0;
+        const panel = btn.closest('.ayah-card')?.querySelector('.ayah-note-panel');
+        if (!panel) return;
+        if (n === 0) {
+          panel.hidden = true;
+          btn.classList.remove('on');
+        } else if (!panel.hidden) {
+          this._paintNotePanel(panel, sn, an);
+        }
+      });
+    });
+  }
+
+  _paintNotePanel(panel, sn, an) {
+    const notes = QuranNotes.list(sn, an);
+    panel.innerHTML = notes.map(n => `
+      <div class="ayah-note-entry">
+        <div class="ayah-note-date">${this._esc(new Date(n.created).toLocaleDateString())}</div>
+        <div class="ayah-note-body">${this._esc(n.body)}</div>
+      </div>
+    `).join('');
   }
 }
 

@@ -361,6 +361,20 @@ button { font-family: inherit; cursor: pointer; }
 .tafsir-text { font-size: calc(.85rem * var(--ayah-tr-scale, 1)); color: var(--text-sec); margin-top: 8px; white-space: pre-wrap; max-height: 420px; overflow-y: auto; }
 .tafsir-text.urdu { font-family: var(--font-ur); direction: rtl; text-align: right; font-size: calc(1rem * var(--ayah-tr-scale, 1)); line-height: 2.1; }
 
+/* ── Inline note (read-only) ────────────────────────────────────────────── */
+.ayah-note-toggle-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 12px;
+  font-size: .7rem; font-weight: 600; color: var(--text-ter);
+  transition: background var(--trans), border-color var(--trans), color var(--trans);
+}
+.ayah-note-toggle-btn:hover, .ayah-note-toggle-btn.on { border-color: var(--accent); color: var(--accent); }
+.ayah-note-toggle-btn.on { background: var(--accent-dim); }
+.ayah-note-panel { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 10px; }
+.ayah-note-entry { background: var(--accent-dim); border-radius: var(--radius-sm); padding: 8px 12px; }
+.ayah-note-date { font-size: .64rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-ter); margin-bottom: 4px; }
+.ayah-note-body { font-size: .85rem; color: var(--text); white-space: pre-wrap; }
+
 /* ── Modal ──────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 100;
