@@ -20,6 +20,10 @@
   --font-ar:      'Amiri Quran', 'Noto Naskh Arabic', 'Amiri', serif;
   --font-ur:      'Noto Nastaliq Urdu', 'Amiri', serif;
   --trans:        .16s ease;
+  --control-radius: 12px;
+  --field-radius: 14px;
+  --control-min: 48px;
+  --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
   /* Two calm background washes the card gently drifts between, so the feed
      feels alive without the frantic visual reward of a social reel. */
   --wash:         radial-gradient(120% 90% at 50% 0%, #fbf3e4 0%, var(--bg) 60%);
@@ -37,7 +41,15 @@
   --accent-hov:   #e0a042;
   --accent-dim:   rgba(245, 183, 94, .16);
   --wash:         radial-gradient(120% 90% at 50% 0%, #1a0f2e 0%, #0e0816 60%);
+  --focus-ring: 0 0 0 3px rgba(192, 132, 252, .42);
 }
+
+:where(button, input, select, a[href], [role="button"], [tabindex]):focus-visible {
+  outline: none; box-shadow: var(--focus-ring);
+}
+:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(input:not([type="range"]), select) { min-height: var(--control-min); border-radius: var(--field-radius); }
+:where(button, input, select):disabled { cursor: not-allowed; opacity: .55; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }

@@ -23,6 +23,12 @@
   --trans:        .16s ease;
   --header-h:     58px;
   --sidebar-w:    280px;
+  --control-radius: 12px;
+  --field-radius: 14px;
+  --control-min: 48px;
+  --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
+  --disabled-content: #8a8175;
+  --disabled-container: #e7dfd2;
 }
 
 [data-theme="dark"] {
@@ -38,6 +44,21 @@
   --accent-dim:   rgba(245, 183, 94, .14);
   --accent-mid:   rgba(245, 183, 94, .22);
   --card-shad:    0 1px 3px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.28);
+  --focus-ring: 0 0 0 3px rgba(192, 132, 252, .42);
+  --disabled-content: #827689;
+  --disabled-container: #30283a;
+}
+
+:where(button, input, select, textarea, a[href], [role="button"], [tabindex]):focus-visible {
+  outline: none; box-shadow: var(--focus-ring);
+}
+:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  min-height: var(--control-min); border-radius: var(--field-radius);
+}
+:where(button, input, select, textarea):disabled,
+:where([role="button"])[aria-disabled="true"] {
+  color: var(--disabled-content); background-color: var(--disabled-container); cursor: not-allowed; opacity: 1;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

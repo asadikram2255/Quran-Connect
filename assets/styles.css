@@ -66,10 +66,49 @@
   /* ── Layout ────────────────────────────────────── */
   --stickyTopOffset: 12px;
 
+  /* Cross-platform interaction tokens (Compose/CSS/Flutter equivalents). */
+  --control-radius: 12px;
+  --field-radius: 14px;
+  --dialog-radius: 20px;
+  --control-min: 48px;
+  --control-compact: 40px;
+  --icon-size: 20px;
+  --focus-ring: 0 0 0 3px rgba(192, 132, 252, .42);
+  --disabled-content: #827689;
+  --disabled-container: #30283a;
+  --control-transition: 140ms ease;
+
   /* ── Reading sizes (user-adjustable via JS) ────── */
   --arabic-font-size:  24px;
   --english-font-size: 14px;
   --tafsir-font-size:  14px;
+}
+
+/* Shared interactive baseline. Feature selectors and event hooks remain intact;
+   this layer only normalizes accessibility, geometry, and feedback. */
+:where(button, input, select, textarea, a[href], [role="button"], [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+:where(button, [role="button"], input[type="button"], input[type="submit"]) {
+  min-height: var(--control-min);
+  border-radius: var(--control-radius);
+  transition: color var(--control-transition), background-color var(--control-transition),
+    border-color var(--control-transition), transform var(--control-transition);
+}
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  min-height: var(--control-min);
+  border-radius: var(--field-radius);
+}
+:where(button, input, select, textarea):disabled,
+:where([role="button"])[aria-disabled="true"] {
+  color: var(--disabled-content);
+  background-color: var(--disabled-container);
+  cursor: not-allowed;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, input, select, textarea, [role="button"]) { transition: none !important; }
 }
 
 /* ── Light theme — warm parchment (matches search/explore light) ───────── */
@@ -98,6 +137,9 @@
 
   --feel:        #7c3aed;
   --feel-soft:   rgba(124, 58, 237, .10);
+  --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
+  --disabled-content: #8a8175;
+  --disabled-container: #e7dfd2;
   --feel-glow:   rgba(124, 58, 237, .22);
 
   --warm:        #b45309;
