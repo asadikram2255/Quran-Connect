@@ -4,10 +4,12 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Codex windows.
 
-**2026-08-08 handoff:** Canonical shipped styles gained 12px control/14px field
-geometry, 48px targets, brand-compatible focus-visible and disabled treatment.
-Cache-busts: root 38→39, Explore 14→15, Mushaf/Tadabbur 2→3. No data, JS
-behavior, routes, bridges, or storage keys changed.
+**2026-08-08 handoff:** Canonical Connections, Explore, Mushaf, Tadabbur,
+Search, and Roots styles gained 12px control/14px field geometry, 48px targets,
+brand-compatible focus-visible and disabled treatment. Cache-busts: root
+38→39, Explore 14→15, Mushaf/Tadabbur 2→3, Search 4→5, Roots 1→2. Android's
+sanctioned sync check passes. No data, JS behavior, routes, bridges, or storage
+keys changed.
 
 **Last updated:** 2026-08-03 (**Web side of a mainly-Android session (APK 1.7.0): shared reader-defaults
 across modules + a Search-overlay Back hook.** The Android app now has a native Settings screen whose theme
