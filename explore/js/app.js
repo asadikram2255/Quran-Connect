@@ -113,7 +113,9 @@ class ExploreApp {
     this.selectedTranslations = this._loadIds('explore-translations', ['en_sahih']);
     this.selectedTafsir = this._loadIds('explore-tafsir', []);
     this.currentSurah = 1;
-    this.badgesOn = false;
+    // Whether the "Words & Roots" badge row shows under each ayah (persisted,
+    // like every other reader preference here).
+    this.badgesOn = localStorage.getItem('explore-badges-on') === '1';
     // Language of the per-word gloss under each Arabic word tile (persisted).
     this.wordLang = localStorage.getItem('explore-word-lang') === 'ur' ? 'ur' : 'en';
     this.modalLang = 'en';
@@ -336,8 +338,11 @@ class ExploreApp {
       this._rerenderAyaat();
     }));
 
-    document.getElementById('badges-toggle').addEventListener('change', e => {
+    const badgesToggle = document.getElementById('badges-toggle');
+    badgesToggle.checked = this.badgesOn;
+    badgesToggle.addEventListener('change', e => {
       this.badgesOn = e.target.checked;
+      localStorage.setItem('explore-badges-on', this.badgesOn ? '1' : '0');
       document.querySelectorAll('.ayah-badges').forEach(el => el.hidden = !this.badgesOn);
     });
   }

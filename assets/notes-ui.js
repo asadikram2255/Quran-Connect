@@ -276,6 +276,7 @@
     // that pan is in flight can end up positioned off-screen below the fold.
     // Closing the keyboard first, before this overlay is even built, avoids it.
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const restoreX = window.scrollX, restoreY = window.scrollY;
 
     const ov = document.createElement("div");
     ov.className = "qn-overlay qn-tagov";
@@ -322,7 +323,7 @@
     }
     renderChips();
 
-    const close = () => ov.remove();
+    const close = () => { ov.remove(); window.scrollTo(restoreX, restoreY); };
     ov.querySelector("[data-skip]").addEventListener("click", close);
     ov.addEventListener("click", e => { if (e.target === ov) close(); });
     const addTag = () => {
@@ -351,7 +352,8 @@
     document.body.appendChild(ov);
     // Belt-and-braces alongside the blur() above: settle the page at the top so
     // this fixed-position overlay is guaranteed on-screen regardless of where
-    // the reader had scrolled the note editor underneath it.
+    // the reader had scrolled the note editor underneath it — close() restores
+    // it so the reader's place in the ayah list survives the prompt.
     window.scrollTo(0, 0);
   }
 
