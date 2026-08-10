@@ -117,10 +117,17 @@
 .rootdict-book .bookv-where{font-size:.78rem;
   color:var(--text-sec,var(--text-muted,#9c8d7e))}`;
 
-  function build() {
+  let styled = false;
+  function ensureStyle() {
+    if (styled) return;
+    styled = true;
     const style = document.createElement("style");
     style.textContent = CSS;
     document.head.appendChild(style);
+  }
+
+  function build() {
+    ensureStyle();
 
     const overlay = document.createElement("div");
     overlay.className = "bookv-overlay";
@@ -322,6 +329,7 @@
 
   /** The "See Meanings" control, with the page it will open. */
   function button(root, label) {
+    ensureStyle();
     const wrap = document.createElement("div");
     wrap.className = "rootdict-book";
     if (!has(root)) {
