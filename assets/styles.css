@@ -2218,6 +2218,13 @@ span.creditGroupSource { border-bottom: none; }
   cursor: pointer;
   text-align: center;
   position: static;
+  /* .prophetCard is a <button>, so the site-wide control-geometry rule
+     (`:where(button…){min-height:var(--control-min)}`) would otherwise replace
+     the browser's content-based auto-minimum for this grid item, letting the
+     grid shrink the card below its real content height — the text then spills
+     onto the card below it. Restore natural sizing. */
+  min-height: auto;
+  height: auto;
 }
 
 /* No floating numbered nodes */

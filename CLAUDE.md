@@ -4,7 +4,33 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-10 (**Pure Android session, no web-repo files touched — APK 1.8.5 (code 37).**
+**Last updated:** 2026-08-10 (**One-line CSS fix — the real cause of the "badges still cluttered" report
+the user sent back after 1.8.5, shipped as Android APK 1.8.7 (code 39).** The 1.8.5 entry below claimed a
+control-sizing pass had fixed text-clipping and cluttered badges across the app; the user's follow-up
+screenshots proved it hadn't — the "Verses about the Prophets" 25-tile grid still showed the ayat-count
+line spilling onto the next row's number badge. Root cause: that same 1.8.5 control-sizing commit
+(`cf4963e`, `assets/styles.css`) added a global `:where(button, [role="button"], …){min-height:
+var(--control-min)}` rule (`--control-min:48px`) to normalize control geometry app-wide. `.prophetCard`
+(built in `assets/app.js`'s `buildProphetsModal`) is itself a `<button>`, and giving a flex/grid item an
+*explicit numeric* `min-height` removes the browser's automatic content-based minimum — the grid could
+then size each card shorter than its actual content, and with `overflow:visible` the overflow spilled
+downward onto the card below. Fixed with a two-line override scoped to `.prophetCard` in
+`assets/styles.css` (`min-height:auto; height:auto;` — restores natural content-based sizing while leaving
+the global button rule untouched everywhere else). Verified via live DOM measurement in the browser preview
+(25/25 prophet cards overflowing their own box before the fix → 0/25 after, measured against the actual
+served file, not a JS override) and then live on the connected Xiaomi via real adb screenshots after
+building/signing/installing APK 1.8.7 — all 25 tiles (Adam through Muhammad ﷺ) render cleanly. The other
+three screens the user flagged (Explore Quran word modals for "الله" and "ولا", the root modal for
+"الصرط") were re-checked this session via live DOM measurement and found already clean — not regressed,
+so no code change was needed there, but this had not actually been verified after 1.8.5 shipped, which is
+why the user's complaint was fair. A broader survey of other `<button>`-in-grid patterns (`.moodTile` on
+the Ideas-and-Topics browser, `.statsCard`/`.statsHeroCard` on Statistics) found no other instance of the
+same bug class. **Not yet re-audited:** Read Mushaf, Root Words Directory, Notes, Settings, Tadabbur —
+carried over from 1.8.5, still unconfirmed. **Web:** only `assets/styles.css` changed; not yet committed —
+see the note at the end of this entry. **Android — SHIPPED as APK 1.8.7** (versionCode 39): synced the
+fixed `assets/styles.css`, rebuilt + V2-signed (SHA-1 `d81d0f12…`, unchanged key), installed over 1.8.6 on
+the connected Xiaomi. Prior 2026-08-10 (**Pure Android session, no web-repo files touched — APK 1.8.5 (code 37), claimed all
+five items device-verified — items 4/5 below turned out incomplete, see the entry above.**
 Five user-reported fixes, all native Kotlin/Compose, all device-verified live on the connected Xiaomi with
 real adb taps: back-tracking from a note-opened ayah back to the exact note; back-tracking from an
 ayah-edited note back to the exact ayah; confirmed (three ways — surah switch, actual badge rendering, and
