@@ -2195,9 +2195,9 @@ span.creditGroupSource { border-bottom: none; }
 .prophetsBody {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  gap: 14px 10px;
   padding: 16px 20px 20px;
-  overflow: hidden; /* no scroll — all 25 fit */
+  overflow-y: auto; /* cards with a Surah label run taller — don't clip them, scroll instead */
 }
 
 /* No decorative timeline line */
@@ -2246,8 +2246,8 @@ span.creditGroupSource { border-bottom: none; }
   line-height: 1.3;
 }
 .prophetEn     { font-size: 11px; font-weight: 600; line-height: 1.25; color: var(--text); }
-.prophetSurah  { font-size: 9px;  color: var(--text-muted); }
-.prophetCount  { font-size: 9px;  color: var(--accent); font-weight: 700; }
+.prophetSurah  { font-size: 9px;  line-height: 1.3; color: var(--text-muted); }
+.prophetCount  { font-size: 9px;  line-height: 1.3; color: var(--accent); font-weight: 700; }
 
 /* Mobile: 3 columns, allow scroll */
 @media (max-width: 600px) {

@@ -4,7 +4,15 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-05 (**Web side of an Android session (APK 1.8.0).** Explore Quran: a third
+**Last updated:** 2026-08-10 (**Pure Android session, no web-repo files touched — APK 1.8.5 (code 37).**
+Five user-reported fixes, all native Kotlin/Compose, all device-verified live on the connected Xiaomi with
+real adb taps: back-tracking from a note-opened ayah back to the exact note; back-tracking from an
+ayah-edited note back to the exact ayah; confirmed (three ways — surah switch, actual badge rendering, and
+a cold force-stop/relaunch) that the Words & Roots toggle already persisted correctly, no fix needed; a
+text-clipping survey/fix across every screen; and a control-sizing/design-consistency pass (buttons, entry
+fields, sort/filter controls, checkboxes, radio buttons) built on the 2026-08-08 UI-consistency audit's
+token groundwork. See the Android repo's CLAUDE.md for the full per-item writeup. **Nothing in this web
+tree changed.** Prior 2026-08-05 (**Web side of an Android session (APK 1.8.0).** Explore Quran: a third
 Settings slider scales word/root badges (`--badge-scale`, was hardcoded and "often unreadable"), and every
 font option in the Fonts panel now shows a real script sample in that face (fixed a quote-delimiter bug
 along the way — the sample's inline `style` attribute and the font stack it held both used double quotes,

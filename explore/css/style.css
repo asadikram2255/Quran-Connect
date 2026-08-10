@@ -442,13 +442,14 @@ button { font-family: inherit; cursor: pointer; }
 }
 .lang-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-.meanings { display: flex; flex-wrap: wrap; gap: 7px; }
+.meanings { display: flex; flex-wrap: wrap; gap: 6px; }
 .meaning-chip {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 20px; padding: 4px 14px; font-size: .84rem; color: var(--text);
+  background: var(--accent-dim); border: 1px solid var(--border);
+  border-radius: 999px; padding: 5px 12px; font-size: .78rem; font-weight: 500;
+  line-height: 1.3; color: var(--text);
 }
 .meanings.urdu { direction: rtl; }
-.meanings.urdu .meaning-chip { font-family: var(--font-ur); font-size: .95rem; line-height: 1.9; }
+.meanings.urdu .meaning-chip { font-family: var(--font-ur); font-size: .86rem; line-height: 1.9; }
 .meanings-empty { font-size: .82rem; color: var(--text-ter); }
 
 /* Root meaning: a full article from Fatuhat al-Quran, Urdu, RTL. */
@@ -473,14 +474,14 @@ button { font-family: inherit; cursor: pointer; }
 
 .occurrences { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
 .occ-item {
-  display: block; width: 100%; text-align: left;
+  display: block; width: 100%; text-align: left; flex-shrink: 0;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 10px 14px;
   transition: border-color var(--trans);
 }
 .occ-item:hover { border-color: var(--accent); }
 .occ-ref { font-size: .7rem; font-weight: 700; color: var(--accent); }
-.occ-ar { font-family: var(--font-ar); font-size: 1.15rem; direction: rtl; text-align: right; display: block; margin: 3px 0; color: var(--text); }
+.occ-ar { font-family: var(--font-ar); font-size: 1.15rem; line-height: 1.9; direction: rtl; text-align: right; display: block; margin: 4px 0; color: var(--text); }
 .occ-en { font-size: .78rem; color: var(--text-sec); display: block; }
 .occ-ur {
   font-family: var(--font-ur), "Noto Nastaliq Urdu", serif;
