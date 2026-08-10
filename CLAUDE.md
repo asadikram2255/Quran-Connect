@@ -4,7 +4,19 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-10 (**One-line CSS fix — the real cause of the "badges still cluttered" report
+**Last updated:** 2026-08-10 (**Pure Android session, no web-repo files touched — shipped APK 1.8.8 (code 40),
+the final delta closing out the multi-session UI-standardization rollout.** Two Flutter Journal composer/
+export-screen controls (`journal/app/lib/screens/{note_editor_screen,export_screen}.dart`) had hardcoded
+`style:`/`iconSize:`/`padding:` overrides that bypassed the shared Flutter theme (`main.dart`'s
+`iconButtonTheme`/`outlinedButtonTheme`); both overrides were removed so those controls inherit the same
+compact, theme-consistent sizing as everywhere else. A full remaining-Compose-screen audit found no further
+gaps — the systematic control-sizing/design-token rollout across Compose, the canonical web styles synced
+into WebViews, and Flutter Journal is now complete. Installed cleanly over 1.8.7 on the connected Xiaomi via
+`adb install -r` (the `INSTALL_FAILED_USER_RESTRICTED` error from earlier in the effort did not reproduce);
+device-verified via real adb screenshots (composer icon buttons, the export screen's date-range button, and
+— for the first time on-device — the 2026-08-08 `DialogShape` 20dp fix via the "Manage tags" dialog). Saved
+to the Android repo's `apk-releases/QuranConnect-1.8.8.apk`. **Nothing in this web tree changed** — full
+writeup in the Android repo's CLAUDE.md.) Prior 2026-08-10 (**One-line CSS fix — the real cause of the "badges still cluttered" report
 the user sent back after 1.8.5, shipped as Android APK 1.8.7 (code 39).** The 1.8.5 entry below claimed a
 control-sizing pass had fixed text-clipping and cluttered badges across the app; the user's follow-up
 screenshots proved it hadn't — the "Verses about the Prophets" 25-tile grid still showed the ayat-count
