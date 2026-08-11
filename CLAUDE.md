@@ -4,7 +4,41 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-10 (**Pure Android session, no web-repo files touched — shipped APK 1.8.8 (code 40),
+**Last updated:** 2026-08-11 (**Session cut short by an approaching usage-limit expiry — handoff notes written
+proactively so a fresh agent/session can continue with no lost context.** Continuation of the multi-session
+"polish the Android UI" effort's final 5-item punch list (note chip sizing, Notes-button amber accent vs
+Pairs, Connections `← Results/PAIRS/A-/A+/E-/E+` toolbar, corner-radius unification, chip/badge visual
+language). **Root cause found and fixed this session:** the Android overlay's shared ayah-action-row rule in
+`android.css` used a `:where(...)` selector — which always carries **zero CSS specificity**, no matter what's
+inside it — to try to override the module's own pre-existing `.ayah-pairs-btn`/`.ayah-badges-btn`/
+`.ayah-note-toggle-btn` rules in `explore/css/style.css` (plain single-class selectors, real specificity).
+A zero-specificity rule can never beat a real one, regardless of source order, so android.css's intended
+48px-tall/10px-radius pill styling was silently losing to the module's older `border-radius:20px;
+padding:2px 12px` styling for those three buttons — this is an **Android-only** bug (`android.css` doesn't
+ship on the website), fixed in the Android repo, not here. **What *did* land in this repo this session** (all
+committed, `f41b630 Use theme vars for radii and success color`): four small hardcoded-value → design-token
+swaps that a previous segment's chip/radius unification pass had left as loose ends — `assets/book-viewer.js`
+`.rootdict-book .bookv-open` and `assets/notes-ui.js` `.qn-btn` now use `border-radius:var(--control-radius,
+12px)` instead of a hardcoded `9px`; `assets/styles.css` swaps two `border-radius:var(--r-sm)` → `var(--r-pill)`
+(a meaning-chip and a rootChip) and hardcoded `pairScore.high` green `#86efac` → `var(--success)`;
+`explore/css/style.css`'s `.sh-jump input`/`.sh-jump button` (the "Go to ayah" field) now use
+`var(--field-radius)`/`var(--control-radius)` instead of a hardcoded `8px`; `mushaf/css/style.css`'s
+`.tool-select`/`.tool-page` (Surah/Juz/Page/Font fields) now use `var(--field-radius)` instead of the generic
+`var(--radius)`. All five are token-substitution only — no visual change on the website (the tokens already
+resolved to the same pixel values there), but they make Android's per-module token overrides actually take
+effect where they hadn't been wired through yet. **A commit landed under this session that this agent did not
+directly execute via git** — same pattern noted in the Android repo's last two entries (mid-session commits
+appearing under the user's git identity, carrying edits that match what was being worked on, but not run by
+an explicit `git commit` tool call this agent made). Not investigated further; flagged here for visibility.
+**Full on-device verification completed this session** (real adb screenshots against a rebuilt, reinstalled
+APK) for all 5 originally-authorized fixes: ayah action-row note-chip sizing/consistency (Al-Fatihah 1:1 —
+"Pairs →" / "• Notes · 1" both amber, "words & roots" / "Share" / "note" all matching 48px pills); Connections'
+`← Results / PAIRS / A- / A+ / E- / E+` toolbar (now a consistent pill-button row, confirmed via a live
+search-result → ayah-detail navigation, "patience" → 2:45 → pairs view, showing graduated pairScore badges
+69%/40%/18%); corner-radius unification confirmed in Read Mushaf's Surah/Juz/Page/Font fields (all one shared
+field radius) and in the word modal (meaning chips, root chip, English/اردو tabs all matching pill shapes).
+**See the Android repo's CLAUDE.md for the full technical writeup and shipped APK details** — this was
+primarily an Android session; the token swaps above are the only web-repo-visible delta. Prior: 2026-08-10 (**Pure Android session, no web-repo files touched — shipped APK 1.8.8 (code 40),
 the final delta closing out the multi-session UI-standardization rollout.** Two Flutter Journal composer/
 export-screen controls (`journal/app/lib/screens/{note_editor_screen,export_screen}.dart`) had hardcoded
 `style:`/`iconSize:`/`padding:` overrides that bypassed the shared Flutter theme (`main.dart`'s
