@@ -267,7 +267,7 @@ button { font-family: inherit; cursor: pointer; }
 .surah-header .sh-jump label { font-weight: 600; }
 .surah-header .sh-jump input {
   width: 5.5em; font: inherit; font-size: .85rem; text-align: center;
-  padding: 5px 8px; border-radius: 8px;
+  padding: 5px 8px; border-radius: var(--field-radius);
   background: var(--surface); color: var(--text);
   border: 1px solid var(--border);
 }
@@ -275,7 +275,7 @@ button { font-family: inherit; cursor: pointer; }
 .surah-header .sh-jump input[aria-invalid="true"] { border-color: #d9534f; }
 .surah-header .sh-jump button {
   font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
-  padding: 5px 14px; border-radius: 8px;
+  padding: 5px 14px; border-radius: var(--control-radius);
   color: #1a1208; background: var(--accent); border: 1px solid transparent;
 }
 .surah-header .sh-jump button:hover { filter: brightness(1.08); }

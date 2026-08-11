@@ -109,7 +109,7 @@
 .rootdict-book{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:0 0 14px}
 .rootdict-book .bookv-open{font:inherit;font-size:.9rem;cursor:pointer;
-  padding:9px 16px;border-radius:9px;font-weight:600;
+  padding:9px 16px;border-radius:var(--control-radius,12px);font-weight:600;
   color:#1a1208;background:var(--accent,#f5b75e);border:1px solid transparent;
   transition:filter .15s ease,transform .15s ease}
 .rootdict-book .bookv-open:hover{filter:brightness(1.08)}

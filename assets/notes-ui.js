@@ -81,7 +81,7 @@
 .qn-row .qn-spacer{flex:1}
 
 .qn-btn{font:inherit;font-size:.85rem;font-weight:600;padding:8px 16px;
-  border-radius:9px;cursor:pointer;border:1px solid transparent;
+  border-radius:var(--control-radius,12px);cursor:pointer;border:1px solid transparent;
   background:var(--accent,#f5b75e);color:#1a1004;transition:filter .15s}
 .qn-btn:hover{filter:brightness(1.08)}
 .qn-btn:disabled{opacity:.5;cursor:default;filter:none}

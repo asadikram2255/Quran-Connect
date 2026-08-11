@@ -96,7 +96,7 @@ html, body {
 .tool-select, .tool-page {
   font-family: var(--font); font-size: 14px; color: var(--text);
   background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 6px 10px; cursor: pointer;
+  border-radius: var(--field-radius); padding: 6px 10px; cursor: pointer;
   transition: var(--trans);
 }
 .tool-select:hover, .tool-page:hover { border-color: var(--accent); }
