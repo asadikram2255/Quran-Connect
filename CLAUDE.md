@@ -4,7 +4,44 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-12 (**Pure Android session, no web-repo files touched — shipped APK 1.9.4 (code 46),
+**Last updated:** 2026-08-12 (**Button size/shape pass — the follow-on to the "tonal pill" color effort below,
+this time shrinking and de-pilling buttons app-wide, shipped as Android APK 1.9.5 (code 47).** User feedback:
+"i dont like my button sizes and shapes" — buttons felt "too big / bulky". Clarified scope: every genuinely
+interactive button across the whole app (chips/badges and circular icon-only buttons excluded — a separate,
+already-completed visual language) shrinks from 48px/48dp to **36px/36dp** and de-pills from full-pill to a
+**softer ~12px rounded rect**. **Web:** new `--btn-min: 36px` token (alongside the existing `--control-min:
+48px`, which stays for touch-target-sized controls); button `min-height` rules across `assets/styles.css`,
+`explore/css/style.css`, `mushaf/css/style.css`, `roots/css/style.css`, `search/css/style.css`,
+`tadabbur/css/style.css` switched from `--control-min` to `--btn-min`, and hardcoded/`--r-pill` button radii
+swapped to `var(--control-radius)` (chips/badges kept their pill radius — only real buttons changed). Commit
+`5222f2e Unify button min-height and control radii`. **Android — shipped as APK 1.9.5** (versionCode 47):
+`webapp-overlay/assets/android.css`/`android-connections.css` got a matching `--qc-btn-min: 36px` token and
+`--qc-btn-radius` switched from `var(--r-pill, 999px)` to `var(--qc-control-radius)`; native Compose
+(`AppControls.kt`) renamed `PillShape`→`ButtonShape` (`RoundedCornerShape(12.dp)`, was `50%`) and added
+`AppControlTokens.ButtonHeight = 36.dp`, feeding `TonalPillButton`/`AppQuietButton` (the circular
+`AppIconButton`, 48dp, untouched); Flutter Journal (`journal/app/lib/main.dart`) changed `controlShape` from
+`StadiumBorder()` to a 12px `RoundedRectangleBorder` and every button theme's `minimumSize` from `Size(48, 48)`
+to `Size(36, 36)` (`iconButtonTheme`/`chipTheme` untouched). **Gotcha re-hit:** the Journal is a Flutter
+"add-to-app" module whose AAR only rebuilds via a manual `flutter build aar --no-debug --no-profile --release`
++ copy into `journal/aar-repo`, never via plain `assembleRelease` (see the 1.9.4 entry below for the full
+mechanism) — followed that checklist correctly this time (AAR sha1 confirmed changed,
+`bf2ab126e5ea77326e08c1aea9a4a58acf9d71fe`), then bumped `ANDROID_OVERLAY_V 2→3` in `tools/sync_web_assets.py`
+(cache-busts the overlay CSS/JS query strings so an in-place `adb install -r` can't serve stale WebView-cached
+bytes — see the 1.9.2 entry below for why that matters), re-synced (6 stale files, all expected), bumped to
+1.9.5/code 47, rebuilt with `--refresh-dependencies` (`BUILD SUCCESSFUL`), V2-signed (SHA-1 `d81d0f12…`
+confirmed unchanged), installed over 1.9.4. **On-device verification, all three surfaces, via adb
+screenshots cropped/zoomed with PIL and measured against the known 48dp circular-icon-button reference
+(≈2.19 px/dp on this device):** WebView (Explore Quran's Search/☰ Surahs/⚙ Settings header buttons and the
+Al-Fatihah 1:1 ayah action row — Pairs→/Notes/words & roots/Share/note — all render as consistent ~36dp,
+12px-rounded-rect buttons; the `1:1` ayah chip and note-count badge correctly stayed full pill); native Compose
+(My Notes screen's Export/Import/Sort/Tag/Manage buttons all 12px rounded-rect at the smaller height); Flutter
+Journal (the Export-notes screen's "Filter by date range"/"Export PDF"/"Backup (.json)"/"All" buttons all 12px
+rounded-rect). **One thing deliberately NOT touched:** Journal's "New Note" control is a Flutter **extended
+FloatingActionButton**, a distinct widget family with no `floatingActionButtonTheme` override in `main.dart` —
+it stayed full-pill/large, mirroring the same "circular/prominent-action controls are a separate category"
+exception already applied to `AppIconButton` and the WebView's own icon buttons; flagged here as a possible
+future follow-up, not fixed this session (out of the agreed scope, no user instruction to change it). Prior
+2026-08-12 (**Pure Android session, no web-repo files touched — shipped APK 1.9.4 (code 46),
 closing out the app-wide "tonal pill" button-unification effort.** Fixed a build-pipeline gap that had let
 the Journal (Flutter "add-to-app" module) tonal-pill theme changes go uncompiled into any shipped APK for
 several sessions: `journal/app`'s AAR is only refreshed by a manual `flutter build aar` + copy into
