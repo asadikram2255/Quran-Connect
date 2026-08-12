@@ -28,7 +28,12 @@
   --control-radius: 12px;
   --field-radius: 14px;
   --control-min: 48px;
+<<<<<<< Updated upstream
   --btn-min: 36px;
+=======
+  --control-default: 56px;
+  --touch-target: 48px;
+>>>>>>> Stashed changes
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
   --disabled-content: #8a8175;
   --disabled-container: #e7dfd2;
@@ -59,7 +64,7 @@
 }
 :where(button, [role="button"]) { min-height: var(--btn-min); border-radius: var(--control-radius); }
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
-  min-height: var(--control-min); border-radius: var(--field-radius);
+  min-height: var(--control-default); border-radius: var(--field-radius);
 }
 :where(button, input, select, textarea):disabled,
 :where([role="button"])[aria-disabled="true"] {
@@ -128,6 +133,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .theme-toggle {
+  min-width: var(--touch-target); min-height: var(--touch-target);
   width: 34px; height: 34px; cursor: pointer; font-size: 16px;
   background: none; border: 1px solid var(--border); border-radius: 50%;
   color: var(--text-sec);

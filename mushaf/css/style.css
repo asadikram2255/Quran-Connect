@@ -22,7 +22,12 @@
   --control-radius: 12px;
   --field-radius: 14px;
   --control-min: 48px;
+<<<<<<< Updated upstream
   --btn-min: 36px;
+=======
+  --control-default: 56px;
+  --touch-target: 48px;
+>>>>>>> Stashed changes
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
 }
 
@@ -44,8 +49,13 @@
 :where(button, input, select, a[href], [role="button"], [tabindex]):focus-visible {
   outline: none; box-shadow: var(--focus-ring);
 }
+<<<<<<< Updated upstream
 :where(button, [role="button"]) { min-height: var(--btn-min); border-radius: var(--control-radius); }
 :where(input:not([type="range"]), select) { min-height: var(--control-min); border-radius: var(--field-radius); }
+=======
+:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(input:not([type="range"]), select) { min-height: var(--control-default); border-radius: var(--field-radius); }
+>>>>>>> Stashed changes
 :where(button, input, select):disabled { cursor: not-allowed; opacity: .55; }
 
 * { box-sizing: border-box; }
@@ -78,6 +88,7 @@ html, body {
 }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .theme-toggle {
+  min-width: var(--touch-target); min-height: var(--touch-target);
   width: 34px; height: 34px; cursor: pointer; font-size: 16px;
   background: none; border: 1px solid var(--border); border-radius: 50%;
   color: var(--text-sec); transition: var(--trans);

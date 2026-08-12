@@ -23,7 +23,12 @@
   --control-radius: 12px;
   --field-radius: 14px;
   --control-min: 48px;
+<<<<<<< Updated upstream
   --btn-min: 36px;
+=======
+  --control-default: 56px;
+  --touch-target: 48px;
+>>>>>>> Stashed changes
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
   /* Two calm background washes the card gently drifts between, so the feed
      feels alive without the frantic visual reward of a social reel. */
@@ -48,8 +53,13 @@
 :where(button, input, select, a[href], [role="button"], [tabindex]):focus-visible {
   outline: none; box-shadow: var(--focus-ring);
 }
+<<<<<<< Updated upstream
 :where(button, [role="button"]) { min-height: var(--btn-min); border-radius: var(--control-radius); }
 :where(input:not([type="range"]), select) { min-height: var(--control-min); border-radius: var(--field-radius); }
+=======
+:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(input:not([type="range"]), select) { min-height: var(--control-default); border-radius: var(--field-radius); }
+>>>>>>> Stashed changes
 :where(button, input, select):disabled { cursor: not-allowed; opacity: .55; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -88,7 +98,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
 }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 .icon-btn {
-  width: 34px; height: 34px; border-radius: 50%;
+  width: var(--touch-target); height: var(--touch-target); min-height: var(--touch-target); border-radius: 50%;
   border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 60%, transparent);
   color: var(--text-sec); font-size: 1rem; line-height: 1;
   display: grid; place-items: center;
@@ -242,7 +252,11 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   background: var(--bg); color: var(--text); font-size: .95rem; font-family: inherit;
 }
 .picker-start {
+<<<<<<< Updated upstream
   width: 100%; padding: 13px; border: 0; border-radius: var(--control-radius);
+=======
+  width: 100%; min-height: var(--control-default); padding: 13px; border: 0; border-radius: var(--control-radius);
+>>>>>>> Stashed changes
   background: var(--accent); color: #1a1208; font-size: 1rem; font-weight: 700;
   transition: background var(--trans), transform var(--trans);
 }

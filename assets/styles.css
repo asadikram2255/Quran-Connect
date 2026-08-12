@@ -71,7 +71,11 @@
   --field-radius: 14px;
   --dialog-radius: 20px;
   --control-min: 48px;
+<<<<<<< Updated upstream
   --btn-min: 36px;
+=======
+  --control-default: 56px;
+>>>>>>> Stashed changes
   --control-compact: 40px;
   --icon-size: 20px;
   --focus-ring: 0 0 0 3px rgba(192, 132, 252, .42);
@@ -98,7 +102,7 @@
     border-color var(--control-transition), transform var(--control-transition);
 }
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
-  min-height: var(--control-min);
+  min-height: var(--control-default);
   border-radius: var(--field-radius);
 }
 :where(button, input, select, textarea):disabled,
@@ -373,7 +377,7 @@ input::placeholder, textarea::placeholder { color: var(--text-dim); }
 textarea {
   resize: none;
   overflow: hidden;
-  min-height: 46px;
+  min-height: var(--control-default);
   line-height: 1.5;
 }
 input:focus, textarea:focus {
