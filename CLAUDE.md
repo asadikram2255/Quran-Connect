@@ -4,7 +4,19 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-11 (**Session cut short by an approaching usage-limit expiry — handoff notes written
+**Last updated:** 2026-08-12 (**Pure Android session, no web-repo files touched — shipped APK 1.9.4 (code 46),
+closing out the app-wide "tonal pill" button-unification effort.** Fixed a build-pipeline gap that had let
+the Journal (Flutter "add-to-app" module) tonal-pill theme changes go uncompiled into any shipped APK for
+several sessions: `journal/app`'s AAR is only refreshed by a manual `flutter build aar` + copy into
+`journal/aar-repo`, not by the normal `assembleRelease`, so 1.9.1–1.9.3 all silently shipped a stale
+pre-tonal-pill Journal build despite the theme code (`main.dart`) being correct. Rebuilt the AAR
+(`flutter build aar --no-debug --no-profile --release`, release-only to route around an unrelated
+`flutter_file_dialog`/Kotlin-Gradle-Plugin incompatibility that breaks the profile flavor), re-synced
+`journal/aar-repo`, bumped to 1.9.4/code 46, rebuilt with `--refresh-dependencies`, signed, installed, and
+pixel-verified on-device (PowerShell `Bitmap.GetPixel()`) that the Journal app bar's icon buttons now render
+the correct gold tonal wash + gold icon tint. All three tonal-pill implementation surfaces — WebView CSS
+overlay, native Compose, Flutter Journal — are now confirmed correct in a single installed build for the
+first time. **See the Android repo's CLAUDE.md for the full technical writeup.** Prior 2026-08-11 (**Session cut short by an approaching usage-limit expiry — handoff notes written
 proactively so a fresh agent/session can continue with no lost context.** Continuation of the multi-session
 "polish the Android UI" effort's final 5-item punch list (note chip sizing, Notes-button amber accent vs
 Pairs, Connections `← Results/PAIRS/A-/A+/E-/E+` toolbar, corner-radius unification, chip/badge visual
