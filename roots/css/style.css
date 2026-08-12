@@ -23,6 +23,7 @@
   --control-radius: 12px;
   --field-radius: 14px;
   --control-min: 48px;
+  --btn-min: 36px;
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
   --disabled-content: #8a8175;
   --disabled-container: #e7dfd2;
@@ -48,7 +49,7 @@
 :where(button, input, select, textarea, a[href], [role="button"], [tabindex]):focus-visible {
   outline: none; box-shadow: var(--focus-ring);
 }
-:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(button, [role="button"]) { min-height: var(--btn-min); border-radius: var(--control-radius); }
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
   min-height: var(--control-min); border-radius: var(--field-radius);
 }
@@ -110,7 +111,7 @@ button { font-family: inherit; cursor: pointer; }
 .count { font-size: .8rem; color: var(--text-ter); font-weight: 500; }
 .sort-btn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--control-radius);
   background: none; color: var(--text-sec); font-size: .8rem; font-weight: 600;
   transition: border-color var(--trans), color var(--trans);
 }

@@ -23,6 +23,7 @@
   --control-radius: 12px;
   --field-radius: 14px;
   --control-min: 48px;
+  --btn-min: 36px;
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
   /* Two calm background washes the card gently drifts between, so the feed
      feels alive without the frantic visual reward of a social reel. */
@@ -47,7 +48,7 @@
 :where(button, input, select, a[href], [role="button"], [tabindex]):focus-visible {
   outline: none; box-shadow: var(--focus-ring);
 }
-:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(button, [role="button"]) { min-height: var(--btn-min); border-radius: var(--control-radius); }
 :where(input:not([type="range"]), select) { min-height: var(--control-min); border-radius: var(--field-radius); }
 :where(button, input, select):disabled { cursor: not-allowed; opacity: .55; }
 
@@ -241,7 +242,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; }
   background: var(--bg); color: var(--text); font-size: .95rem; font-family: inherit;
 }
 .picker-start {
-  width: 100%; padding: 13px; border: 0; border-radius: 999px;
+  width: 100%; padding: 13px; border: 0; border-radius: var(--control-radius);
   background: var(--accent); color: #1a1208; font-size: 1rem; font-weight: 700;
   transition: background var(--trans), transform var(--trans);
 }

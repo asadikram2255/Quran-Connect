@@ -28,6 +28,7 @@
   --control-radius: 12px;
   --field-radius: 14px;
   --control-min: 48px;
+  --btn-min: 36px;
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, .30);
   --disabled-content: #8a8175;
   --disabled-container: #e7dfd2;
@@ -56,7 +57,7 @@
 :where(button, input, select, textarea, a[href], [role="button"], [tabindex]):focus-visible {
   outline: none; box-shadow: var(--focus-ring);
 }
-:where(button, [role="button"]) { min-height: var(--control-min); border-radius: var(--control-radius); }
+:where(button, [role="button"]) { min-height: var(--btn-min); border-radius: var(--control-radius); }
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
   min-height: var(--control-min); border-radius: var(--field-radius);
 }
@@ -184,7 +185,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .mode-btn {
   background: var(--surface2); color: var(--text-sec);
-  border: 1px solid var(--border); border-radius: 30px;
+  border: 1px solid var(--border); border-radius: var(--control-radius);
   padding: 6px 18px; font-size: .82rem; font-weight: 600;
   cursor: pointer; transition: background var(--trans), color var(--trans), border-color var(--trans);
 }
@@ -269,13 +270,13 @@ button { cursor: pointer; font-family: inherit; }
 }
 #chat-input:focus { border-color: var(--accent); }
 .chat-send-btn {
-  background: var(--accent); color: #fff; border: none; border-radius: 22px;
+  background: var(--accent); color: #fff; border: none; border-radius: var(--control-radius);
   padding: 9px 22px; font-size: .85rem; font-weight: 600; flex-shrink: 0;
 }
 .chat-send-btn:hover { background: var(--accent-hov); }
 .chat-clear-btn {
   background: transparent; color: var(--text-ter); border: 1px solid var(--border);
-  border-radius: 22px; padding: 9px 16px; font-size: .8rem; flex-shrink: 0;
+  border-radius: var(--control-radius); padding: 9px 16px; font-size: .8rem; flex-shrink: 0;
 }
 .chat-clear-btn:hover { color: var(--text); border-color: var(--accent); }
 
@@ -723,7 +724,7 @@ mark {
 }
 .load-more-btn {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 40px; padding: 10px 44px;
+  border-radius: var(--control-radius); padding: 10px 44px;
   font-size: .88rem; color: var(--text);
   transition: background var(--trans), border-color var(--trans);
 }
@@ -795,7 +796,7 @@ mark {
   color: var(--accent);
   background: var(--accent-dim);
   border: 1px solid transparent;
-  border-radius: 20px;
+  border-radius: var(--control-radius);
   padding: 4px 11px;
   text-decoration: none;
   cursor: pointer;
@@ -1318,7 +1319,7 @@ mark {
 .category-search-btn {
   background: none;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 20px;
+  border-radius: var(--control-radius);
   color: var(--accent);
   font-size: 0.78rem;
   padding: 3px 12px;

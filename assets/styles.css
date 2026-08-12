@@ -71,6 +71,7 @@
   --field-radius: 14px;
   --dialog-radius: 20px;
   --control-min: 48px;
+  --btn-min: 36px;
   --control-compact: 40px;
   --icon-size: 20px;
   --focus-ring: 0 0 0 3px rgba(192, 132, 252, .42);
@@ -91,7 +92,7 @@
   box-shadow: var(--focus-ring);
 }
 :where(button, [role="button"], input[type="button"], input[type="submit"]) {
-  min-height: var(--control-min);
+  min-height: var(--btn-min);
   border-radius: var(--control-radius);
   transition: color var(--control-transition), background-color var(--control-transition),
     border-color var(--control-transition), transform var(--control-transition);
@@ -523,7 +524,7 @@ input[dir="rtl"], textarea[dir="rtl"] {
   background: rgba(255,255,255,.03);
   color: var(--text-muted);
   padding: 4px 9px;
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   cursor: pointer;
   font-size: 11px;
   font-family: inherit;
@@ -557,11 +558,11 @@ input[dir="rtl"], textarea[dir="rtl"] {
   padding: 4px;
   background: rgba(0,0,0,.20);
   border: 1px solid var(--border);
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
 }
 .typeBtn {
   padding: 6px 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
@@ -673,14 +674,14 @@ body.view-research .searchHint { display: none; }
   padding: 4px;
   background: rgba(0,0,0,.20);
   border: 1px solid var(--border);
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
 }
 .tab {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
   padding: 6px 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   cursor: pointer;
   font-size: 12px;
   font-family: inherit;
@@ -2291,7 +2292,7 @@ span.creditGroupSource { border-bottom: none; }
   background: rgba(255,255,255,.04);
   color: var(--text-soft);
   padding: 4px 11px 4px 8px;
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -2595,7 +2596,7 @@ span.creditGroupSource { border-bottom: none; }
   border: 1px solid transparent;
   color: var(--text-muted);
   padding: 3px 10px;
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
@@ -3108,7 +3109,7 @@ span.creditGroupSource { border-bottom: none; }
   border: 1px solid var(--border-strong);
   color: var(--text-soft);
   padding: 10px 18px;
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -3144,7 +3145,7 @@ span.creditGroupSource { border-bottom: none; }
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-soft);
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -3188,7 +3189,7 @@ span.creditGroupSource { border-bottom: none; }
   border: 1px solid var(--border);
   background: rgba(255,255,255,.03);
   color: var(--text-soft);
-  border-radius: var(--r-pill);
+  border-radius: var(--control-radius);
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
