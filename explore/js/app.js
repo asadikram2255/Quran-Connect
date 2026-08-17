@@ -120,6 +120,10 @@ class ExploreApp {
     this.wordLang = localStorage.getItem('explore-word-lang') === 'ur' ? 'ur' : 'en';
     this.modalLang = 'en';
     this.occUrdu = null;         // lazy Urdu translation for occurrence cards
+    // The word/root modal state to restore if the reader backs out of an ayah
+    // that was opened from one of its occurrence rows (see _renderOccurrences
+    // and reopenLastModal). Cleared on any explicit modal close.
+    this._modalReturnState = null;
 
     // Font choices (persisted). '' = stylesheet default.
     this.fonts = {
@@ -836,9 +840,13 @@ class ExploreApp {
 
   _bindModal() {
     const overlay = document.getElementById('word-modal');
-    document.getElementById('modal-close').addEventListener('click', () => overlay.hidden = true);
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.hidden = true; });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.hidden = true; });
+    // An explicit close means the reader is done with this modal, not just
+    // passing through it to an ayah — drop any pending return state so a
+    // later Back-out-of-an-ayah doesn't reopen something they already closed.
+    const close = () => { overlay.hidden = true; this._modalReturnState = null; };
+    document.getElementById('modal-close').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) close(); });
     document.querySelectorAll('.lang-tab').forEach(tab =>
       tab.addEventListener('click', async () => {
         this.modalLang = tab.dataset.lang;
@@ -921,6 +929,20 @@ class ExploreApp {
     });
   }
 
+  // Restores the word/root modal a reader last left via an occurrence row, if
+  // any is pending. Called from the Android Back handler (window.QuranExplore
+  // .reopenModal, wired in android-integration.js) when nothing else on the
+  // page is open to consume Back — i.e. the reader is looking at an ayah that
+  // a modal sent them to. Single-use: consumes the pending state so a second
+  // Back press falls through to leaving the module, not reopening it again.
+  reopenLastModal() {
+    if (!this._modalReturnState) return false;
+    this._modalState = this._modalReturnState;
+    this._modalReturnState = null;
+    this._renderModal();
+    return true;
+  }
+
   _renderModal() {
     const st = this._modalState;
     document.getElementById('modal-arabic').textContent = st.arabic;
@@ -978,6 +1000,11 @@ class ExploreApp {
         <span class="occ-ar" lang="ar">${this._esc(a.ar)}</span>
         <span class="occ-en${urdu ? ' occ-ur' : ''}"${urdu ? ' lang="ur" dir="rtl"' : ''}>${this._esc(text.slice(0, 180))}</span>`;
       btn.addEventListener('click', () => {
+        // Remember whichever modal state is on screen right now (a word's
+        // occurrence list, or a root's reached by tapping one of its chips)
+        // so backing out of the ayah this opens can restore it — see
+        // reopenLastModal, called from the Android Back handler.
+        this._modalReturnState = st;
         document.getElementById('word-modal').hidden = true;
         this.openSurah(a.sn, a.an);
       });
@@ -1109,6 +1136,12 @@ window.QuranExplore = {
         setTimeout(() => wait(tries + 1), 50);
       })(0);
     });
+  },
+  // True and restores the modal if the reader is viewing an ayah opened from
+  // a word/root modal's occurrence list; false if there is nothing to undo.
+  // See reopenLastModal above.
+  reopenModal() {
+    return app.reopenLastModal();
   },
 };
 

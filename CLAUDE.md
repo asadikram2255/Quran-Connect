@@ -4,7 +4,37 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-12 (**Button size/shape pass — the follow-on to the "tonal pill" color effort below,
+**Last updated:** 2026-08-17 (**Explore Quran word/root-modal back-navigation fixed — shipped as Android APK
+1.9.7 (code 49).** User report: opening an ayah from a word badge's occurrence-list modal (or from a root
+modal reached by tapping a root chip inside that word modal) and then pressing the hardware Back button
+landed on the app's Home screen instead of retracing the hop back to whichever modal sent the reader there.
+**Root cause:** `_renderOccurrences()`'s occurrence-click handler in `explore/js/app.js` unconditionally hides
+`#word-modal` before navigating to the ayah, so by the time Back is pressed, the Android overlay's
+`QuranBack.handle()` — which walks "is X overlay open? close it" checks (book viewer → search → notes → word
+modal → settings → sidebar) — finds nothing open and falls through to `return false`, telling native code to
+pop the destination stack straight to Home. **Fix, web repo (`explore/js/app.js`, shared source, synced into
+Android):** a single-slot `_modalReturnState` field (word and root modals share the same `_modalState`/
+`_renderModal` mechanism, so one slot covers both) is set to the currently-open modal's state right before an
+occurrence click hides the modal and navigates; a new `reopenLastModal()` restores it (single-use — consumed
+and nulled on restore, and explicitly cleared on any deliberate modal close via X/backdrop/Escape so a stale
+reopen can never fire after the reader has already moved on); `window.QuranExplore` (the existing native
+deep-link entry point) gained a `reopenModal()` wrapper around it. **Fix, Android repo (Android-only overlay,
+`webapp-overlay/assets/android-integration.js`):** `QuranBack.handle()` gained one more check, after the
+sidebar check and before the final `return false` — calls `window.QuranExplore.reopenModal()` and returns
+`true` if it restored something. **Verified in the local browser preview** (direct JS state inspection via
+`javascript_tool`, since the Browser pane wasn't visually composited this session): the full round trip for
+both the word-modal case and the root-modal case (root chip → root modal → occurrence click → `_modalReturnState`
+correctly captures `book: "س م و"`, not stale word data → `reopenModal()` restores the root modal specifically,
+clears the slot, and a second call correctly no-ops). **Shipped as APK 1.9.7** (versionCode 49): cache-bust
+`explore/index.html` `js/app.js?v=25→26` (web repo and the Android sync's PATCHES anchor kept in lockstep, a
+stale anchor being a hard sync error), `ANDROID_OVERLAY_V` bumped `4→5` for the overlay file change (this
+ripples the `?v=` on `index.html`/`mushaf/index.html`/`tadabbur/index.html`'s patched overlay script/CSS tags
+too, since they share the same constant), synced (`sync_web_assets.py --check` confirmed exactly the 6
+expected files differing, no patch-anchor errors), rebuilt with `--refresh-dependencies` (`BUILD SUCCESSFUL`),
+V2-signed (SHA-1 `d81d0f12…`, unchanged key — confirmed via `apksigner verify --print-certs`), archived to
+`apk-releases/QuranConnect-1.9.7.apk` with a new `apk-releases/README.md` row. **On-device verification
+pending** — the user is connecting their phone for a quick test; see the Android repo's CLAUDE.md once that
+lands. Prior 2026-08-12 (**Button size/shape pass — the follow-on to the "tonal pill" color effort below,
 this time shrinking and de-pilling buttons app-wide, shipped as Android APK 1.9.5 (code 47).** User feedback:
 "i dont like my button sizes and shapes" — buttons felt "too big / bulky". Clarified scope: every genuinely
 interactive button across the whole app (chips/badges and circular icon-only buttons excluded — a separate,
