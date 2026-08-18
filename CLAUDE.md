@@ -32,9 +32,10 @@ ripples the `?v=` on `index.html`/`mushaf/index.html`/`tadabbur/index.html`'s pa
 too, since they share the same constant), synced (`sync_web_assets.py --check` confirmed exactly the 6
 expected files differing, no patch-anchor errors), rebuilt with `--refresh-dependencies` (`BUILD SUCCESSFUL`),
 V2-signed (SHA-1 `d81d0f12…`, unchanged key — confirmed via `apksigner verify --print-certs`), archived to
-`apk-releases/QuranConnect-1.9.7.apk` with a new `apk-releases/README.md` row. **On-device verification
-pending** — the user is connecting their phone for a quick test; see the Android repo's CLAUDE.md once that
-lands. Prior 2026-08-12 (**Button size/shape pass — the follow-on to the "tonal pill" color effort below,
+`apk-releases/QuranConnect-1.9.7.apk` with a new `apk-releases/README.md` row. **Install initially failed with `INSUFFICIENT_STORAGE`** (phone at 541 MB free / 99% full) — the user freed
+space on-device (now 2.7 GB free) and the reinstall succeeded. **On-device functional verification (the actual
+back-navigation test) is next**; see the Android repo's CLAUDE.md for the full storage-diagnosis writeup and
+the result once that lands. Prior 2026-08-12 (**Button size/shape pass — the follow-on to the "tonal pill" color effort below,
 this time shrinking and de-pilling buttons app-wide, shipped as Android APK 1.9.5 (code 47).** User feedback:
 "i dont like my button sizes and shapes" — buttons felt "too big / bulky". Clarified scope: every genuinely
 interactive button across the whole app (chips/badges and circular icon-only buttons excluded — a separate,
