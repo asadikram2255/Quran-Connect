@@ -4,7 +4,57 @@
 > "Last Changes" section (newest first, keep ~10 entries) and the "Last updated" line. This file is
 > the hand-off context between Claude windows.
 
-**Last updated:** 2026-08-17 (**Explore Quran word/root-modal back-navigation fixed — shipped as Android APK
+**Last updated:** 2026-08-23 (**Multi-script search overhaul: Arabic, Urdu, English, Roman Urdu, and common
+transliterations of Quranic terms now all work in one query, spelling variants included. Driven from and
+shipped in the Android app (APK 1.9.12, code 54); this repo is the source of the shared logic and data.**
+User ask (via the Android session): search should accept Arabic, Urdu, English, Roman Urdu, and common
+Roman transliterations of Arabic/Quranic terms, including mixed-script queries and spelling variants, and
+return the exact ayat. Two new pieces of shared infrastructure:
+1. **`assets/transliteration.js`** (new) — a dependency-free, offline UMD module (`window.QuranTranslit`)
+   extracted from `search/js/concepts.js`'s server-backed `TRANSLITERATIONS` dictionary (~600 Roman terms →
+   English keywords + Arabic roots — `sabr`/`sabar`/`sabbr` → `{english:['patience','endure'],
+   roots:['ص ب ر']}`), since the offline search paths (Explore Quran, Explore Ayaah Connections, and the
+   Android-only Read Through Roots) have no dependency on that server-backed module. `_lookupTranslit(word)`
+   is a 3-pass match — exact key, a canonical spelling-variant form (`aa→a`, doubled consonants,
+   `-ah/-at/-uh/-ih` endings folded), then a **root-gated fuzzy pass**: Levenshtein-close words are only
+   treated as spelling variants of each other if they also share the same consonant skeleton (vowels
+   stripped), which is what stops e.g. `wasila` (وسل, intercession) fuzzy-matching `wasiya` (وصي,
+   will/bequest) just because they look alike.
+2. **`data/search_index/urdu_token_to_ayahids.json` + `urdu_trigram_to_tokens.json`** (new) — an Urdu search
+   index, built by new `scripts/build_urdu_search_index.py` from **all 23 bundled Urdu translation editions**
+   (unioned), mirroring the existing English token/trigram index shape. New `normalize_urdu()` folds
+   cosmetic Arabic-vs-Urdu letterform variance (alef/hamza forms, Arabic yeh/kaf/heh → Urdu yeh/keheh/
+   heh-goal) but deliberately keeps `ھ` (do-chashmi heh — folding it would conflate genuinely different
+   words). `data/meta/manifest.json` gained `urdu_token_to_ayahids`/`urdu_trigram_to_tokens` path entries.
+**`assets/app.js`** (Explore Ayaah Connections' search, the root module): `runSearch()`'s old ar/en
+mode-branch dispatch (`searchByArabicKeyword`/`searchByEnglishSmart`) was replaced with a new
+`searchUnified()` orchestrator. Each raw query word is classified independently (Arabic-block script vs
+Latin) and resolved through whichever engines apply: an Arabic-script word tries both the Arabic exact-index
+and the new Urdu exact+fuzzy index (script alone can't reliably tell Quranic Arabic from Urdu typed in the
+same Unicode block, so both run rather than guessing); a Latin word checks `QuranTranslit.lookup()` first —
+a hit contributes its root(s) via the existing `root_to_ayahids` index (precise, high weight) and its
+English glosses via fuzzy English matching (lower weight) — and always ALSO runs as plain English (the sole
+path for genuine English queries, and the fallback for an unrecognized Roman word). Each query word casts
+one vote; an ayah needs ≥60% of the query's words voting for it, the threshold the English-only path already
+used. The trigram+Levenshtein inner loop was factored out into one script-agnostic `fuzzyTokenLookup()`
+reused for both English and Urdu, rather than a second hand-copied implementation. `index.html`'s script
+tags gained `transliteration.js?v=1` before `app.js?v=49` (bumped from 48).
+**Also landed this cycle, same repo:** `explore/js/app.js`'s `_modalReturnState` (a single slot) was
+generalized to a real stack `_modalStack` in the immediately preceding Android session, so the word/root
+modal chain (word → root → ayah → word → root → ayah → …) can retrace Back through unlimited depth with
+exact-ayah precision, not just reopen the right modal over whatever ayah happens to be loaded — see the
+Android repo's `CLAUDE.md` for the full native-side half of that fix (a `rootStack` generalization, a
+`window.__qcRootPending` ordering flag) and its device-testing status.
+**Native-only counterparts (Android repo, not this one):** `TransliterationIndex.kt` (loads
+`transliterations.json`, extracted from `assets/transliteration.js` by a one-off Python script — same
+dictionary, no drift) for Read Through Roots' root search; `NotesStore.search()` got a lighter, script-aware
+upgrade (Arabic/Urdu letterform folding + transliteration-term boost, deliberately not full fuzzy matching,
+since a personal note isn't indexed Quranic vocabulary).
+**Not deployed to production from this repo directly** — the Android session ran `tools/sync_web_assets.py`
+to pull these changes into the app, built, and archived APK 1.9.12; this repo's own working tree has the
+source changes uncommitted as of this entry (see `git status` in this repo) — commit and deploy when ready.
+
+Prior: 2026-08-17 (**Explore Quran word/root-modal back-navigation fixed — shipped as Android APK
 1.9.7 (code 49).** User report: opening an ayah from a word badge's occurrence-list modal (or from a root
 modal reached by tapping a root chip inside that word modal) and then pressing the hardware Back button
 landed on the app's Home screen instead of retracing the hop back to whichever modal sent the reader there.
@@ -456,6 +506,12 @@ All root words, per-ayah root lists, and occurrence counts across ALL modules co
   Anything that must be faithful to the book should therefore use the page image, not the text.
 
 ## Last changes (newest first)
+
+- **2026-08-23 — Multi-script search overhaul: new `assets/transliteration.js` (Roman-transliteration
+  dictionary, root-gated fuzzy spelling-variant matching) and a new Urdu search index (unioned across all 23
+  bundled Urdu editions), wired into `assets/app.js`'s `searchUnified()`. Driven from and shipped in the
+  Android app (APK 1.9.12); full detail in the "Last updated" narrative above. Source changes in this repo
+  were uncommitted as of this entry.**
 
 - **2026-08-03 — Web source for APK 1.7.0: shared reader-defaults listeners + Mushaf font-key unification.**
   The Android app grew a native Settings screen (theme + reader defaults: Arabic font and translation) that

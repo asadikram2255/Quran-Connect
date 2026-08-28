@@ -121,9 +121,14 @@ class ExploreApp {
     this.modalLang = 'en';
     this.occUrdu = null;         // lazy Urdu translation for occurrence cards
     // The word/root modal state to restore if the reader backs out of an ayah
-    // that was opened from one of its occurrence rows (see _renderOccurrences
-    // and reopenLastModal). Cleared on any explicit modal close.
-    this._modalReturnState = null;
+    // that was opened from one of its occurrence rows, or handed off to Read
+    // Through Roots via a root chip (see _renderOccurrences, reopenLastModal,
+    // and window.QuranExplore.stashModal). A real stack, not a single slot:
+    // each level a reader descends through — word, root, another word, another
+    // root — pushes one more entry, so Back can retrace it exactly regardless
+    // of how deep the reader went. Cleared on any explicit modal close, or by
+    // the native host if the reader abandons this browsing thread entirely.
+    this._modalStack = [];
 
     // Font choices (persisted). '' = stylesheet default.
     this.fonts = {
@@ -799,7 +804,7 @@ class ExploreApp {
       card.querySelectorAll('.word-badge').forEach(btn =>
         btn.addEventListener('click', () => {
           const w = (this.wbwCache[no][btn.dataset.ref] || [])[+btn.dataset.idx];
-          if (w) this.openWordModal(w);
+          if (w) this.openWordModal(w, card);
         }));
       card.querySelector('.ayah-audio-btn')?.addEventListener('click', () =>
         this._playAyah(no, a));
@@ -840,10 +845,11 @@ class ExploreApp {
 
   _bindModal() {
     const overlay = document.getElementById('word-modal');
-    // An explicit close means the reader is done with this modal, not just
-    // passing through it to an ayah — drop any pending return state so a
-    // later Back-out-of-an-ayah doesn't reopen something they already closed.
-    const close = () => { overlay.hidden = true; this._modalReturnState = null; };
+    // An explicit close means the reader is done with this whole browsing
+    // thread, not just passing through it to an ayah or a root — drop the
+    // entire return stack so a later Back-out-of-an-ayah doesn't reopen
+    // something they already closed.
+    const close = () => { overlay.hidden = true; this._modalStack.length = 0; };
     document.getElementById('modal-close').addEventListener('click', close);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) close(); });
@@ -869,7 +875,13 @@ class ExploreApp {
     }
   }
 
-  async openWordModal(word) {
+  // [card] is the ayah-card the word badge was tapped on — its id (the
+  // established `ayah-SN-AN` format _rerenderAyaat already gives every card)
+  // is recorded on the modal state as `ayahId`, so reopenLastModal can
+  // navigate straight back to it later, however many words/roots/ayaat the
+  // reader has since gone through. Absent (e.g. a future caller with no
+  // card in hand) just means that precision is lost, not that anything breaks.
+  async openWordModal(word, card) {
     await this._ensureGlosses();
     // Fold a وَ-conjunction prefix so والأرض opens as الأرض and its
     // occurrence list covers both bare and و-prefixed appearances.
@@ -879,6 +891,7 @@ class ExploreApp {
     const variants = [...new Set([...bareVariants, ...normVariants(word.ar)])];
     const norm = variants.find(v => this.wordRoots[v] || this.glosses.word[v]) || variants[0];
     const roots = this.wordRoots[norm] || [];
+    const cardRef = /^ayah-(\d+)-(\d+)$/.exec(card?.id || '');
 
     this._modalState = {
       arabic: stripDiacritics(bareAr),
@@ -887,6 +900,7 @@ class ExploreApp {
       meanings: this.glosses.word[norm] || { en: [], ur: [] },
       occurrences: this._findWordOccurrences(bareVariants),
       occLabel: 'this word',
+      ayahId: cardRef ? `${cardRef[1]}:${cardRef[2]}` : null,
     };
     this._renderModal();
   }
@@ -902,6 +916,10 @@ class ExploreApp {
       book: root,
       occurrences: occ,
       occLabel: 'this root',
+      // A root reached via a word's root chip is still conceptually "about"
+      // the same ayah the word was tapped on — carry that forward rather
+      // than losing it.
+      ayahId: this._modalState?.ayahId ?? null,
     };
     this._renderModal();
   }
@@ -929,17 +947,35 @@ class ExploreApp {
     });
   }
 
-  // Restores the word/root modal a reader last left via an occurrence row, if
-  // any is pending. Called from the Android Back handler (window.QuranExplore
+  // Pops and restores the word/root modal a reader most recently left — via
+  // an occurrence row, or via a root chip handed off to Read Through Roots'
+  // native screen (window.QuranExplore.stashModal) — navigating back to the
+  // exact ayah it belongs to first if that differs from the ayah currently
+  // on screen. Called from the Android Back handler (window.QuranExplore
   // .reopenModal, wired in android-integration.js) when nothing else on the
-  // page is open to consume Back — i.e. the reader is looking at an ayah that
-  // a modal sent them to. Single-use: consumes the pending state so a second
-  // Back press falls through to leaving the module, not reopening it again.
+  // page is open to consume Back, and explicitly by the native host the
+  // moment a root's own native detail screen closes. Each call undoes
+  // exactly one level, so pressing Back repeatedly through a chain of
+  // several nested words and roots retraces it one screen at a time, however
+  // deep it goes — the stack empties, it never runs out early.
   reopenLastModal() {
-    if (!this._modalReturnState) return false;
-    this._modalState = this._modalReturnState;
-    this._modalReturnState = null;
-    this._renderModal();
+    if (!this._modalStack.length) return false;
+    const state = this._modalStack.pop();
+    const show = () => { this._modalState = state; this._renderModal(); };
+    const ref = state.ayahId && /^(\d+):(\d+)$/.exec(state.ayahId);
+    if (!ref) {
+      show();
+    } else {
+      const sn = +ref[1], an = +ref[2];
+      if (sn === this.currentSurah) {
+        // Already the right surah — just re-flash the ayah rather than
+        // paying for a full reload of a list that is already correct.
+        this._scrollToAyah(an);
+        show();
+      } else {
+        this.openSurah(sn, an).then(show);
+      }
+    }
     return true;
   }
 
@@ -1000,11 +1036,11 @@ class ExploreApp {
         <span class="occ-ar" lang="ar">${this._esc(a.ar)}</span>
         <span class="occ-en${urdu ? ' occ-ur' : ''}"${urdu ? ' lang="ur" dir="rtl"' : ''}>${this._esc(text.slice(0, 180))}</span>`;
       btn.addEventListener('click', () => {
-        // Remember whichever modal state is on screen right now (a word's
+        // Stash whichever modal state is on screen right now (a word's
         // occurrence list, or a root's reached by tapping one of its chips)
         // so backing out of the ayah this opens can restore it — see
         // reopenLastModal, called from the Android Back handler.
-        this._modalReturnState = st;
+        this._modalStack.push(st);
         document.getElementById('word-modal').hidden = true;
         this.openSurah(a.sn, a.an);
       });
@@ -1138,10 +1174,31 @@ window.QuranExplore = {
     });
   },
   // True and restores the modal if the reader is viewing an ayah opened from
-  // a word/root modal's occurrence list; false if there is nothing to undo.
-  // See reopenLastModal above.
+  // a word/root modal's occurrence list, or has just left Read Through
+  // Roots' native detail screen for a root reached via a root chip; false if
+  // there is nothing to undo. See reopenLastModal above.
   reopenModal() {
     return app.reopenLastModal();
+  },
+  // Called by the native host right before it hands a root chip off to Read
+  // Through Roots' native screen — stashes the currently-open word/root
+  // screen (with the ayah it belongs to) so reopenModal can restore it
+  // later, then hides it. The WebView is cached rather than destroyed, so
+  // this just sits here — untouched by whatever native screens cover it in
+  // the meantime — until reopenModal pops it back off.
+  stashModal() {
+    const overlay = document.getElementById('word-modal');
+    if (!overlay || overlay.hidden || !app._modalState) return false;
+    app._modalStack.push(app._modalState);
+    overlay.hidden = true;
+    return true;
+  },
+  // Drops every stashed screen. Called by the native host when the reader
+  // leaves this whole browsing thread for something unrelated (the drawer,
+  // another module), so a much later, unrelated Back press can't resurrect
+  // a screen from a session the reader has already abandoned.
+  clearModalStack() {
+    app._modalStack.length = 0;
   },
 };
 

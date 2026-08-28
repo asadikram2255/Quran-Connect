@@ -25,8 +25,8 @@ const SURAH_NAMES = {
 };
 
 const SEARCH_HINTS = {
-  en: "Tip: type a concept in English and press Enter",
-  ar: "Tip: type an Arabic word and press Enter",
+  en: "Also understands Urdu, Roman Urdu, and common transliterations (sabr, namaz, wudu…) — spelling variants included.",
+  ar: "Also understands Urdu, Roman Urdu, and common transliterations (sabr, namaz, wudu…) — spelling variants included.",
   id: "Tip: type an ayah reference like 2:255 and press Enter",
   smart: ""
 };
@@ -1449,6 +1449,26 @@ function normalizeEnglish(s) {
   return String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Urdu normalization — MUST mirror scripts/build_urdu_search_index.py's
+// normalize_urdu() exactly, since that script built the index this queries
+// against. Narrower than a full linguistic normalizer on purpose: it folds
+// cosmetic script variance (diacritics, alef/hamza forms, Arabic-vs-Urdu
+// letterforms that are the same sound) but leaves letters that change the
+// word alone — ھ (do-chashmi heh, the aspiration marker in کھا/تھا/بھا) is
+// kept, since dropping it would conflate genuinely different words.
+function normalizeUrdu(s) {
+  return String(s || "")
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ]/g, "")
+    .replace(/ـ/g, "")
+    .replace(/[آأإٱ]/g, "ا")
+    .replace(/[يےۓ]/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/[ةه]/g, "ہ")
+    .replace(/[ءؤئ]/g, "")
+    .replace(/[^؀-ۿ\s]/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+
 // Display-only stripper: removes tashkeel/quranic marks but keeps letter
 // spellings (ة، ى، أ …) intact — unlike normalizeArabic, which folds letters
 // for matching and would visibly change the word.
@@ -1498,6 +1518,214 @@ function levenshtein(a, b) {
     [prev, curr] = [curr, prev];
   }
   return prev[n];
+}
+
+// ── Script-agnostic fuzzy token match ───────────────────────
+// Trigram candidate generation + Levenshtein filtering, factored out of the
+// original English-only search so the identical algorithm can run against
+// any token->ayah / trigram->token pair (English or, newly, Urdu — both are
+// plain strings by the time they reach here, so nothing about the technique
+// is script-specific). Returns a Map<ayahId, score> — this ONE token's
+// contribution, not yet combined with any other query token.
+function fuzzyTokenLookup(token, tokenToAyah, triToTokens) {
+  const byId = new Map();
+  if (!token || !tokenToAyah || !triToTokens) return byId;
+
+  const grams = trigrams(token);
+  const candidateScores = new Map();
+  for (const g of grams) {
+    const bucket = triToTokens[g] || [];
+    for (const t of bucket) candidateScores.set(t, (candidateScores.get(t) || 0) + 1);
+  }
+
+  const maxEd = maxAllowedEdits(token.length);
+  const candidates = Array.from(candidateScores.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)
+    .slice(0, 1200)
+    .map(x => x[0]);
+
+  const good = [];
+  for (const cand of candidates) {
+    if (Math.abs(cand.length - token.length) > maxEd) continue;
+    const d = levenshtein(token, cand);
+    if (d <= maxEd) good.push({ t: cand, d, trigramScore: candidateScores.get(cand) || 0 });
+  }
+  good.sort((a, b) => a.d - b.d || b.trigramScore - a.trigramScore);
+
+  good.slice(0, 12).forEach(m => {
+    const ids = tokenToAyah[m.t] || [];
+    const base = maxEd - m.d + 1;
+    const exactBonus = m.d === 0 ? 2 : 0;
+    const w = base + exactBonus;
+    ids.forEach(id => byId.set(id, (byId.get(id) || 0) + w));
+  });
+  return byId;
+}
+
+// English fuzzy match for ONE token, trying every stem variant and keeping
+// the best score any variant produced per ayah.
+function fuzzyEnglishToken(token) {
+  const merged = new Map();
+  if (!state.enTokenToAyah || !state.enTriToTokens) return merged;
+  for (const v of stemVariantsEn(token)) {
+    fuzzyTokenLookup(v, state.enTokenToAyah, state.enTriToTokens)
+      .forEach((score, id) => merged.set(id, Math.max(merged.get(id) || 0, score)));
+  }
+  return merged;
+}
+
+// Urdu fuzzy match for ONE token. No stemmer (Urdu izafat/plural/possessive
+// suffixes — اں، وں، کا، کی، کے — are complex enough that a naive stripper
+// would create false matches); the trigram overlap already tolerates most
+// suffix variation on its own.
+function fuzzyUrduToken(token) {
+  if (!state.urTokenToAyah || !state.urTriToTokens) return new Map();
+  return fuzzyTokenLookup(token, state.urTokenToAyah, state.urTriToTokens);
+}
+
+// ── Root-first resolution (2026-08-23 redesign) ─────────────
+// A query in ANY script or language should resolve to the Arabic root(s) it
+// names, then the search returns EVERY ayah carrying that root — not a
+// blend of loosely-related fuzzy signals. Three root-resolution sources,
+// tried per query word:
+//   1. The curated transliteration dictionary (Roman Quranic/Islamic terms
+//      — "sabr", "namaz", "wudu" — exact/canonical/root-gated-fuzzy).
+//   2. The English-gloss reverse index — built from every root's own
+//      curated English gloss phrases in root_directory.json, so "mercy"
+//      resolves to exactly ر ح م, not to every ayah whose English
+//      TRANSLATION happens to contain a fuzzy-close word.
+//   3. The Urdu-gloss reverse index — same idea, from each root's Urdu
+//      glosses, for Urdu-script queries.
+// A query word that resolves to at least one root uses ONLY that
+// resolution — no result cap, every ayah with that root is returned. A
+// word that resolves to NO root at all (a real gap in the curated gloss
+// vocabulary — an uncommon synonym like "knowledge" when a root's gloss
+// only lists "know") falls through to the older, broader fuzzy
+// translation-text match, so it still finds something rather than nothing.
+
+// English/Roman word -> Map<root, score>.
+function resolveLatinTokenToRoots(rawToken) {
+  const roots = new Map();
+  const bump = (r, w) => roots.set(r, (roots.get(r) || 0) + w);
+  const token = rawToken.toLowerCase();
+
+  const hit = window.QuranTranslit && window.QuranTranslit.lookup(token);
+  if (hit) {
+    const confMult = hit.confidence === "fuzzy" ? 0.85 : 1;
+    for (const r of (hit.entry.roots || [])) bump(r, 10 * confMult);
+  }
+  if (state.glossEnWordToRoots && state.glossEnTriToWords) {
+    fuzzyTokenLookup(token, state.glossEnWordToRoots, state.glossEnTriToWords)
+      .forEach((score, r) => bump(r, score));
+  }
+  return roots;
+}
+
+// Arabic-block-script word -> Map<root, score>. Tries the word itself as a
+// Quranic Arabic word (word_roots.json, exact) AND as an Urdu gloss word
+// (fuzzy) — the two scripts share the same Unicode block, so a query typed
+// in Urdu letters can't be told apart from Arabic by codepoint alone.
+function resolveArabicScriptToRoots(rawToken) {
+  const roots = new Map();
+  const bump = (r, w) => roots.set(r, (roots.get(r) || 0) + w);
+
+  const an = normalizeArabic(rawToken);
+  if (an && state.wordRoots && state.wordRoots[an]) {
+    state.wordRoots[an].forEach(r => bump(r, 10));
+  }
+  const un = normalizeUrdu(rawToken);
+  if (un && state.glossUrWordToRoots && state.glossUrTriToWords) {
+    fuzzyTokenLookup(un, state.glossUrWordToRoots, state.glossUrTriToWords)
+      .forEach((score, r) => bump(r, score));
+  }
+  return roots;
+}
+
+// One query word -> Map<ayahId, score>. Root-resolution first (uncapped,
+// every ayah with that root); only if NO root resolves at all does this
+// fall through to the older broader-but-noisier translation-text fuzzy
+// match, scaled down since it's a lower-confidence signal.
+function tokenVotes(rt) {
+  const merged = new Map();
+  const isArabicScript = /[؀-ۿ]/.test(rt);
+
+  const rootScores = isArabicScript
+    ? resolveArabicScriptToRoots(rt)
+    : resolveLatinTokenToRoots(rt.toLowerCase().replace(/[^a-z0-9]/g, ""));
+
+  rootScores.forEach((score, root) => {
+    const ids = state.rootToAyahIds && state.rootToAyahIds[root];
+    if (ids) ids.forEach(id => merged.set(id, (merged.get(id) || 0) + score));
+  });
+  if (merged.size) return merged;
+
+  if (isArabicScript) {
+    const an = normalizeArabic(rt);
+    if (an && state.arTokenToAyah && state.arTokenToAyah[an]) {
+      state.arTokenToAyah[an].forEach(id => merged.set(id, (merged.get(id) || 0) + 8));
+    }
+    const un = normalizeUrdu(rt);
+    if (un) {
+      const exact = state.urTokenToAyah && state.urTokenToAyah[un];
+      if (exact) exact.forEach(id => merged.set(id, (merged.get(id) || 0) + 8));
+      if (un.length >= 3) {
+        fuzzyUrduToken(un).forEach((score, id) => merged.set(id, (merged.get(id) || 0) + score * 0.5));
+      }
+    }
+  } else {
+    const lower = rt.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (lower) fuzzyEnglishToken(lower).forEach((score, id) => merged.set(id, (merged.get(id) || 0) + score * 0.5));
+  }
+  return merged;
+}
+
+// ── Unified multi-script search ─────────────────────────────
+// Classifies each word of the raw query independently (Arabic-block script
+// vs Latin script), resolves each to its Arabic-equivalent root(s), and
+// unions every ayah carrying any of those roots — so one query can freely
+// mix Arabic, Urdu, English, Roman Urdu and common transliterations of
+// Quranic terms in the same box. Each query word casts one vote; an ayah
+// must be voted for by at least 60% of the query's words to survive
+// (unchanged from before — this is what stops a two-word query returning
+// everything that matches either word). No cap on the result count: a
+// concept like ر ب ب can legitimately span hundreds of ayaat, and all of
+// them are returned.
+async function searchUnified(raw) {
+  const q = String(raw || "").trim();
+  if (!q) return [];
+
+  const idMatch = q.match(/^(\d+)\s*[:.\-]\s*(\d+)$/);
+  if (idMatch) return [Number(idMatch[1]) + ":" + Number(idMatch[2])];
+
+  await ensureSearchIndex();
+  await ensureUrduIndex();
+  await ensureGlossRootIndex();
+
+  const rawTokens = q.split(/\s+/).filter(Boolean);
+  const votes = rawTokens.map(tokenVotes).filter(m => m.size);
+  if (!votes.length) return [];
+
+  const scores = new Map();
+  const hits = new Map();
+  votes.forEach(m => {
+    m.forEach((score, id) => {
+      scores.set(id, (scores.get(id) || 0) + score);
+      hits.set(id, (hits.get(id) || 0) + 1);
+    });
+  });
+
+  const minMatch = Math.max(1, Math.ceil(votes.length * 0.6));
+  const ranked = Array.from(scores.entries())
+    .filter(e => (hits.get(e[0]) || 0) >= minMatch)
+    .sort((a, b) => b[1] - a[1])
+    .map(e => e[0]);
+
+  // renderResults() (and everything downstream of it — openDetail, the pair
+  // panel, warmPreloadTopResults) works on full ayah records, not bare id
+  // strings — the same contract searchByArabicKeyword/searchByEnglishSmart
+  // honored, so this mirrors their tail exactly.
+  await loadSurahsParallel(unique(ranked.map(surahFromAyahId)));
+  return ranked.map(id => state.quranById.get(id)).filter(Boolean);
 }
 
 // ── Data loading ────────────────────────────────────────────
@@ -2361,9 +2589,8 @@ async function runSearch() {
     }
 
     let results = [];
-    if      (type === "id") results = await searchByAyahId(val);
-    else if (type === "ar") results = await searchByArabicKeyword(val);
-    else                    results = await searchByEnglishSmart(val);
+    if (type === "id") results = await searchByAyahId(val);
+    else                results = await searchUnified(val);
 
     renderResults(results);
     warmPreloadTopResults(results);
@@ -2527,6 +2754,60 @@ async function ensureSearchIndex() {
   })();
 
   return _searchIndexPromise;
+}
+
+// Urdu index — same lazy-load-on-first-use discipline as ensureSearchIndex,
+// kept as a separate promise/flag so an Arabic- or English-only search never
+// pays for it.
+let _urduIndexPromise = null;
+
+async function ensureUrduIndex() {
+  if (state.urTokenToAyah) return;
+  if (_urduIndexPromise) return _urduIndexPromise;
+
+  _urduIndexPromise = (async () => {
+    const m = state.manifest;
+    if (!m) throw new Error("Manifest not ready");
+    const [urTokenToAyah, urTriToTokens] = await Promise.all([
+      fetchJson(m.paths.urdu_token_to_ayahids),
+      fetchJson(m.paths.urdu_trigram_to_tokens),
+    ]);
+    state.urTokenToAyah = urTokenToAyah;
+    state.urTriToTokens = urTriToTokens;
+    _urduIndexPromise = null;
+  })();
+
+  return _urduIndexPromise;
+}
+
+// Gloss reverse-index (English/Urdu gloss word -> root) + word_roots.json
+// (Arabic word -> root) — the data root-first search resolves every query
+// word against. Same lazy-load discipline as the other indexes.
+let _glossRootIndexPromise = null;
+
+async function ensureGlossRootIndex() {
+  if (state.glossEnWordToRoots) return;
+  if (_glossRootIndexPromise) return _glossRootIndexPromise;
+
+  _glossRootIndexPromise = (async () => {
+    const m = state.manifest;
+    if (!m) throw new Error("Manifest not ready");
+    const [enWordToRoots, enTriToWords, urWordToRoots, urTriToWords, wordRoots] = await Promise.all([
+      fetchJson(m.paths.gloss_en_word_to_roots),
+      fetchJson(m.paths.gloss_en_trigram_to_words),
+      fetchJson(m.paths.gloss_ur_word_to_roots),
+      fetchJson(m.paths.gloss_ur_trigram_to_words),
+      fetchJson(m.paths.word_roots),
+    ]);
+    state.glossEnWordToRoots = enWordToRoots;
+    state.glossEnTriToWords = enTriToWords;
+    state.glossUrWordToRoots = urWordToRoots;
+    state.glossUrTriToWords = urTriToWords;
+    state.wordRoots = wordRoots;
+    _glossRootIndexPromise = null;
+  })();
+
+  return _glossRootIndexPromise;
 }
 
 // ── Wa-prefix unification map ───────────────────────────────
